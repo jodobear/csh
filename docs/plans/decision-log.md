@@ -141,3 +141,14 @@
   path is implemented.
   Reversal Trigger: once a lower-level PTY input path is verified to execute reliably without
   regressing the demo path.
+
+- Date: 2026-03-12
+  Status: accepted
+  Decision: Phase 2 uses `NostrMCPGateway` in per-client mode rather than replacing the local MCP
+  server with a native Nostr transport immediately.
+  Why: this keeps the working stdio MCP server intact, preserves the Phase 1 local test path, and
+  gives us per-client isolation while we add private ContextVM exposure.
+  Tradeoff: the Phase 2 runtime is a gateway plus child stdio server process, not yet the simplest
+  possible one-process deployment.
+  Reversal Trigger: once the remote path is stable and a native `NostrServerTransport` integration
+  would materially simplify operations without losing correctness.

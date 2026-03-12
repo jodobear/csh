@@ -6,12 +6,15 @@
   "description": "ContextVM shell prototype",
   "scripts": {
     "start": "bun run src/main.ts",
+    "start:contextvm": "bun run src/contextvm-gateway.ts",
     "dev": "bun run --watch src/main.ts",
     "demo:local": "bun run src/demo/local-demo.ts",
+    "demo:contextvm": "bun run src/contextvm-demo-client.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@contextvm/sdk": "^0.7.3",
     "@modelcontextprotocol/sdk": "^1.26.0",
     "zod": "^4.3.5"
   },

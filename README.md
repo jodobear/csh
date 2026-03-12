@@ -3,13 +3,14 @@
 `csh` is a ContextVM shell prototype: a private remote shell service with a real terminal session
 model, reconnect-oriented state, and `tmux`-backed scrollback.
 
-The current implementation is Phase 1 local infrastructure:
+The current implementation spans Phase 1 local infrastructure and the first Phase 2 gateway path:
 
 - MCP server over stdio
 - `tmux`-backed shell sessions
 - poll/ack screen reads
 - owner-bound session access
 - closed-session reporting with exit status
+- private ContextVM gateway entrypoint and demo client
 - session lifecycle tools:
   - `session_open`
   - `session_write`
@@ -24,6 +25,8 @@ The current implementation is Phase 1 local infrastructure:
 - `bun test`
 - `bun run demo:local`
 - `bun run src/main.ts`
+- `bun run start:contextvm`
+- `bun run demo:contextvm`
 
 ## Current Shape
 
@@ -32,7 +35,8 @@ The current implementation is Phase 1 local infrastructure:
   interactive shell startup.
 - `session_write` currently carries terminal input text through `tmux send-keys`, not raw byte
   streams.
-- The service is aiming for private, pubkey-gated ContextVM exposure in Phase 2.
+- The first Phase 2 path uses a private ContextVM gateway with required encryption, allowed public
+  keys, and injected client pubkey ownership binding.
 - Browser UI and explicit upload/download are later phases.
 - Containerization is deferred to the deployment-hardening phase.
 
@@ -43,4 +47,5 @@ The current implementation is Phase 1 local infrastructure:
 - [Phased Implementation Plan](/workspace/projects/csh/docs/plans/phased-implementation-plan.md)
 - [Decision Log](/workspace/projects/csh/docs/plans/decision-log.md)
 - [Local Demo Guide](/workspace/projects/csh/docs/guides/local-demo.md)
+- [ContextVM Private Demo](/workspace/projects/csh/docs/guides/contextvm-private-demo.md)
 - [Research Overview](/workspace/projects/csh/docs/references/local/contextvm-shell-overview-2026-03-11.md)
