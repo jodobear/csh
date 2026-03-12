@@ -3,13 +3,15 @@
 ## Current Phase Schedule
 
 - Phase 0: complete transport and architecture research for remote shell sessions over ContextVM.
-- Phase 1: prototype an MCP terminal server with PTY-backed sessions, `tmux`, poll/ack output, and
+- Phase 1: prototype an MCP terminal server with `tmux`-backed sessions, poll/ack output, and
   explicit session ownership/state.
 - Phase 2: expose the server over ContextVM with a private pubkey-gated configuration, Applesauce
-  relay handling, and sandboxing/containerization decisions recorded in deployment work.
+  relay handling, and explicit pubkey-to-session ownership binding.
 - Phase 3: add browser UI and explicit file capabilities for upload/download, while keeping plain
   shell file access available through the terminal from Phase 1 onward.
-- Phase 4: pursue upstream SDK resource-update routing, then evaluate push updates and mosh-like
+- Phase 4: harden deployment with containerization or another stronger isolation boundary after the
+  demo path is proven.
+- Phase 5: pursue upstream SDK resource-update routing, then evaluate push updates and mosh-like
   improvements after the MVP is stable.
 
 ## Quality Gates
@@ -23,9 +25,10 @@
 - first implementation avoids transport assumptions contradicted by current ContextVM SDK behavior
 - v1 roadmap explicitly notes PTY isolation, private/pubkey-gated access, and non-shell admin
   features as separate work
+- Phase 1 verification covers local shell open/write/poll/close behavior with a reproducible
+  `tmux`-backed check
 
 ## Open Questions
 
-- Which sandbox boundary do we want first: container, namespace/chroot tool, or direct host shell?
-- What first deployment boundary do we accept for direct-host execution: dedicated unprivileged user
-  only, or containerized shell runtime?
+- When `beads_rust` is installed locally, how do we want to map the phased plan into tracker
+  issues without bloating the work graph?

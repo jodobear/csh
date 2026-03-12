@@ -57,8 +57,13 @@ The agent may draft this file from a seed prompt and references before the opera
 
 ## Verification Profile
 
-- Build commands: to be defined after the first implementation spike
-- Test commands: to be defined after the first implementation spike
+- Build commands:
+  - `bun run typecheck`
+  - `bun run src/main.ts`
+- Test commands:
+  - `bun test`
+  - note: tests use a repo-local `tmux` socket under `.csh-runtime/`, so they run inside the
+    default workspace sandbox
 - Quality gates:
   - terminal session open/write/resize/close paths are deterministic and source-backed
   - reconnect restores a usable screen and scrollback view
@@ -71,7 +76,11 @@ The agent may draft this file from a seed prompt and references before the opera
   - Phase 1 MCP terminal server prototype
   - Phase 2 ContextVM exposure and reconnect validation
   - Phase 3 browser UI and file transfer capabilities
-  - Phase 4 upstream push-routing work and mosh-like optimization experiments
-- Issue tracking method:
-- Remote/push policy:
-- Session-end workflow:
+  - Phase 4 deployment hardening
+  - Phase 5 upstream push-routing work and mosh-like optimization experiments
+- Issue tracking method: file-first until `beads_rust` is installed locally; the implementation loop
+  remains tracker-agnostic until then
+- Remote/push policy: commit each logical slice locally after verification; remote publishing is
+  optional until the first demo path is stable
+- Session-end workflow: update `handoff.md` after meaningful progress, record any accepted scope or
+  architecture shifts in `docs/plans/decision-log.md`, and leave the tree in a reviewable state

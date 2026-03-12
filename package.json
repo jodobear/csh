@@ -1,0 +1,21 @@
+{
+  "name": "csh",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "ContextVM shell prototype",
+  "scripts": {
+    "start": "bun run src/main.ts",
+    "dev": "bun run --watch src/main.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "zod": "^4.3.5"
+  },
+  "devDependencies": {
+    "@types/bun": "^1.3.3",
+    "typescript": "^5.9.3"
+  }
+}

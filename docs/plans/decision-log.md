@@ -96,3 +96,37 @@
   Tradeoff: slightly more planning and doc updates per slice versus lower drift, better handoff
   quality, and cleaner autonomous execution.
   Reversal Trigger: evidence shows the loop adds ceremony without reducing rework or review misses.
+
+- Date: 2026-03-12
+  Status: accepted
+  Decision: the first implementation slice uses `tmux` directly as the session and PTY runtime
+  instead of introducing `node-pty` before the demo path is proven.
+  Why: `tmux` already provides a PTY boundary, durable sessions, scrollback, and deterministic
+  reattach behavior, so it is the fastest route to a working local shell prototype.
+  Tradeoff: the implementation is more tightly coupled to `tmux` semantics and leaves lower-level
+  PTY abstraction for later work if needed.
+  Reversal Trigger: later client behavior or portability needs require direct PTY control that
+  `tmux` alone cannot provide cleanly.
+
+- Date: 2026-03-12
+  Status: accepted
+  Decision: v0.1 implementation moves ahead on the host-first fast path, with a dedicated
+  unprivileged shell user as the preferred deployment posture and containerization deferred to a
+  later hardening phase.
+  Why: the immediate goal is fast real-world testing and demos, and early containerization would
+  add substantial runtime and configuration work before the core shell path is validated.
+  Tradeoff: the first deployable version relies more on host posture and operator discipline than a
+  stronger isolation boundary would.
+  Reversal Trigger: if the target host is not single-purpose enough, or demo feedback shows the
+  missing isolation is blocking adoption.
+
+- Date: 2026-03-12
+  Status: accepted
+  Decision: project process stays file-first and tracker-agnostic until `beads_rust` is available
+  locally; `bd` is not part of the active workflow for this repo.
+  Why: `bd` introduced avoidable local friction during bootstrap, while the implementation loop only
+  needs a lightweight tracker once the preferred tool is installed.
+  Tradeoff: short-term work graph state lives in docs and git history instead of a dedicated issue
+  tracker.
+  Reversal Trigger: `beads_rust` is installed and stable enough to carry slice-level work without
+  becoming another source of drift.

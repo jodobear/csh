@@ -3,3 +3,5 @@
 .dolt/
 *.db
 .beads/
+node_modules/
+.csh-runtime/

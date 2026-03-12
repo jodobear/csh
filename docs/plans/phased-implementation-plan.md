@@ -1,6 +1,6 @@
 # Phased Implementation Plan
 
-Status: proposed for review
+Status: active
 
 This is the execution plan for turning `csh` from a research baseline into a demoable remote shell
 over ContextVM.
@@ -34,8 +34,8 @@ Review after loop:
 
 ### Loop 1.2: PTY + tmux Runtime
 
-- Launch shells through `node-pty`.
-- Back sessions with `tmux` for scrollback and reattach.
+- Launch shells through `tmux` directly for the first demo path.
+- Keep `node-pty` as an optional later refinement if we need lower-level PTY control.
 - Decide the first direct-host runtime posture:
   - dedicated unprivileged user on host
 
