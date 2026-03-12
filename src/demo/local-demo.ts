@@ -30,24 +30,29 @@ try {
   await manager.writeToSession(
     session.sessionId,
     `printf 'csh local demo ready\\n'; pwd; uname -s; printf '${doneMarker}\\n'\n`,
+    "local-demo",
   );
 
   console.log("Polling for terminal output...");
-  const snapshot = await pollForSnapshot(session.sessionId, doneMarker);
+  const snapshot = await pollForSnapshot(session.sessionId, "local-demo", doneMarker);
 
   console.log("\nSnapshot:\n");
   console.log(snapshot.trimEnd());
 } finally {
   if (sessionId) {
-    await manager.closeSession(sessionId);
+    await manager.closeSession(sessionId, "local-demo");
   }
 }
 
-async function pollForSnapshot(sessionId: string, expectedText: string): Promise<string> {
+async function pollForSnapshot(
+  sessionId: string,
+  ownerId: string,
+  expectedText: string,
+): Promise<string> {
   let snapshot = "";
 
   for (let attempt = 0; attempt < 40; attempt += 1) {
-    const result = await manager.pollSession(sessionId);
+    const result = await manager.pollSession(sessionId, ownerId);
     snapshot = result.snapshot ?? snapshot;
 
     if (snapshot.includes(expectedText)) {

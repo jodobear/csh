@@ -8,6 +8,8 @@ The current implementation is Phase 1 local infrastructure:
 - MCP server over stdio
 - `tmux`-backed shell sessions
 - poll/ack screen reads
+- owner-bound session access
+- closed-session reporting with exit status
 - session lifecycle tools:
   - `session_open`
   - `session_write`
@@ -28,6 +30,8 @@ The current implementation is Phase 1 local infrastructure:
 - The first demo path runs a direct-host shell.
 - The deterministic local demo uses `/bin/sh` so verification does not depend on user-specific
   interactive shell startup.
+- `session_write` currently carries terminal input text through `tmux send-keys`, not raw byte
+  streams.
 - The service is aiming for private, pubkey-gated ContextVM exposure in Phase 2.
 - Browser UI and explicit upload/download are later phases.
 - Containerization is deferred to the deployment-hardening phase.

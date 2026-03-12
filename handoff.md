@@ -3,8 +3,8 @@
 ## Current State
 
 - Active phase: Phase 1 implementation
-- Current objective: finish Phase 1 local validation work and decide the next slice before adding
-  ContextVM transport
+- Current objective: close the Phase 1 hardening wave and prepare the private ContextVM transport
+  slice
 - Last verified commands:
   - `bun run typecheck`
   - `bun run src/main.ts </dev/null`
@@ -13,17 +13,16 @@
 
 ## Open Questions
 
-- How fine-grained should the `br` issues be for the Phase 1 and Phase 2 loops?
-- When we move beyond the deterministic `/bin/sh` demo, do we keep `tmux send-keys` as the default
-  input path or invest immediately in a lower-level PTY input path for richer TUI fidelity?
+- How fine-grained should the `br` issues be for the Phase 2 loops?
+- Do we keep `tmux send-keys` through the first remote demo, or replace it before browser/TUI work
+  grows more demanding?
 
 ## Next Actions
 
-1. Decide the next input-path slice:
-   keep `tmux send-keys` for early remote demos, or replace it with a lower-level PTY write path.
-2. Tighten Phase 1 session behavior around ownership metadata, cleanup semantics, and polling
-   expectations.
-3. Mirror the current plan into `br` issues and use `br` for the next implementation slice.
+1. Mirror the current plan into `br` issues and use `br` for the next implementation slice.
+2. Start Phase 2 private ContextVM exposure with pubkey-bound session ownership.
+3. Decide whether `tmux send-keys` is acceptable for the first remote demo or should be replaced
+   before broader TUI testing.
 4. Keep the upstream SDK routing contribution as a parallel non-blocking track.
 
 ## Review Summary
@@ -35,5 +34,7 @@
 - Verification is currently strong enough for local slice closure: typecheck passes, the server
   starts, the `tmux` integration test passes, and the deterministic local demo shows real command
   execution under `/bin/sh`.
-- The current reliability tradeoff is explicit: input is driven through `tmux send-keys`, which is
+- The review blockers from Phase 1 were fixed: session ownership is enforced, closed sessions now
+  report closure and exit status, and `SIGINT` now interrupts the foreground terminal workload.
+- The current remaining tradeoff is explicit: input is driven through `tmux send-keys`, which is
   good enough for the first demo path but not the final answer for raw TUI fidelity.

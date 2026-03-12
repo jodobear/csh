@@ -4,6 +4,7 @@ import { z } from "zod";
 import { TmuxSessionManager } from "./server/tmux-session-manager.js";
 
 const manager = new TmuxSessionManager();
+const ownerInputSchema = z.string().min(1).optional();
 
 const server = new McpServer({
   name: "csh-local-terminal",
@@ -19,10 +20,17 @@ server.registerTool(
       cwd: z.string().optional(),
       cols: z.number().int().positive().optional(),
       rows: z.number().int().positive().optional(),
+      ownerId: ownerInputSchema,
     },
   },
-  async ({ command, cwd, cols, rows }) => {
-    const session = await manager.openSession({ command, cwd, cols, rows });
+  async ({ command, cwd, cols, rows, ownerId }, extra) => {
+    const session = await manager.openSession({
+      command,
+      cwd,
+      cols,
+      rows,
+      ownerId: resolveActorId(ownerId, extra),
+    });
 
     return {
       content: [
@@ -57,14 +65,15 @@ server.registerTool(
 server.registerTool(
   "session_write",
   {
-    description: "Write raw input bytes to an existing shell session.",
+    description: "Write terminal input text to an existing shell session.",
     inputSchema: {
       sessionId: z.string(),
       input: z.string(),
+      ownerId: ownerInputSchema,
     },
   },
-  async ({ sessionId, input }) => {
-    const session = await manager.writeToSession(sessionId, input);
+  async ({ sessionId, input, ownerId }, extra) => {
+    const session = await manager.writeToSession(sessionId, input, resolveActorId(ownerId, extra));
 
     return {
       content: [
@@ -73,7 +82,7 @@ server.registerTool(
           text: JSON.stringify(
             {
               sessionId: session.sessionId,
-              acceptedBytes: input.length,
+              acceptedChars: input.length,
               lastActivityAt: session.lastActivityAt,
             },
             null,
@@ -83,7 +92,7 @@ server.registerTool(
       ],
       structuredContent: {
         sessionId: session.sessionId,
-        acceptedBytes: input.length,
+        acceptedChars: input.length,
         lastActivityAt: session.lastActivityAt,
       },
     };
@@ -98,10 +107,16 @@ server.registerTool(
       sessionId: z.string(),
       cols: z.number().int().positive(),
       rows: z.number().int().positive(),
+      ownerId: ownerInputSchema,
     },
   },
-  async ({ sessionId, cols, rows }) => {
-    const session = await manager.resizeSession(sessionId, cols, rows);
+  async ({ sessionId, cols, rows, ownerId }, extra) => {
+    const session = await manager.resizeSession(
+      sessionId,
+      cols,
+      rows,
+      resolveActorId(ownerId, extra),
+    );
 
     return {
       content: [
@@ -134,10 +149,11 @@ server.registerTool(
     inputSchema: {
       sessionId: z.string(),
       signal: z.enum(["SIGINT", "SIGTERM", "SIGHUP"]),
+      ownerId: ownerInputSchema,
     },
   },
-  async ({ sessionId, signal }) => {
-    const session = await manager.signalSession(sessionId, signal);
+  async ({ sessionId, signal, ownerId }, extra) => {
+    const session = await manager.signalSession(sessionId, signal, resolveActorId(ownerId, extra));
 
     return {
       content: [
@@ -170,10 +186,15 @@ server.registerTool(
     inputSchema: {
       sessionId: z.string(),
       cursor: z.number().int().min(0).optional(),
+      ownerId: ownerInputSchema,
     },
   },
-  async ({ sessionId, cursor }) => {
-    const result = await manager.pollSession(sessionId, cursor);
+  async ({ sessionId, cursor, ownerId }, extra) => {
+    const result = await manager.pollSession(
+      sessionId,
+      resolveActorId(ownerId, extra),
+      cursor,
+    );
 
     return {
       content: [
@@ -187,6 +208,8 @@ server.registerTool(
               snapshot: result.snapshot ?? null,
               cols: result.session.cols,
               rows: result.session.rows,
+              closedAt: result.session.closedAt ?? null,
+              exitStatus: result.session.exitStatus ?? null,
             },
             null,
             2,
@@ -200,6 +223,8 @@ server.registerTool(
         snapshot: result.snapshot ?? null,
         cols: result.session.cols,
         rows: result.session.rows,
+        closedAt: result.session.closedAt ?? null,
+        exitStatus: result.session.exitStatus ?? null,
       },
     };
   },
@@ -211,10 +236,11 @@ server.registerTool(
     description: "Close a shell session and its backing tmux runtime.",
     inputSchema: {
       sessionId: z.string(),
+      ownerId: ownerInputSchema,
     },
   },
-  async ({ sessionId }) => {
-    const session = await manager.closeSession(sessionId);
+  async ({ sessionId, ownerId }, extra) => {
+    const session = await manager.closeSession(sessionId, resolveActorId(ownerId, extra));
 
     return {
       content: [
@@ -224,6 +250,7 @@ server.registerTool(
             {
               sessionId: session.sessionId,
               closedAt: session.closedAt,
+              exitStatus: session.exitStatus ?? null,
             },
             null,
             2,
@@ -233,6 +260,7 @@ server.registerTool(
       structuredContent: {
         sessionId: session.sessionId,
         closedAt: session.closedAt ?? null,
+        exitStatus: session.exitStatus ?? null,
       },
     };
   },
@@ -240,3 +268,25 @@ server.registerTool(
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
+
+function resolveActorId(
+  requestedOwnerId: string | undefined,
+  extra: unknown,
+): string {
+  const metadataOwnerId =
+    typeof extra === "object" &&
+    extra !== null &&
+    "_meta" in extra &&
+    typeof extra._meta === "object" &&
+    extra._meta !== null &&
+    "clientPubkey" in extra._meta &&
+    typeof extra._meta.clientPubkey === "string"
+      ? extra._meta.clientPubkey
+      : undefined;
+
+  if (metadataOwnerId && requestedOwnerId && requestedOwnerId !== metadataOwnerId) {
+    throw new Error("ownerId does not match the authenticated client identity");
+  }
+
+  return metadataOwnerId ?? requestedOwnerId ?? "local";
+}

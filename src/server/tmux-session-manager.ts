@@ -62,6 +62,7 @@ export class TmuxSessionManager {
     args.push(command);
 
     await runTmux(args);
+    await runTmux(["set-option", "-t", tmuxSessionName, "remain-on-exit", "on"]);
 
     const paneInfo = await getPaneInfo(tmuxSessionName);
     const createdAt = new Date().toISOString();
@@ -97,16 +98,21 @@ export class TmuxSessionManager {
     return session;
   }
 
-  public async writeToSession(sessionId: string, input: string): Promise<ShellSession> {
-    const session = this.getSession(sessionId);
+  public async writeToSession(sessionId: string, input: string, actorId: string): Promise<ShellSession> {
+    const session = await this.getOpenSessionForActor(sessionId, actorId);
     await sendInput(session.paneTarget, input);
 
     session.lastActivityAt = new Date().toISOString();
     return session;
   }
 
-  public async resizeSession(sessionId: string, cols: number, rows: number): Promise<ShellSession> {
-    const session = this.getSession(sessionId);
+  public async resizeSession(
+    sessionId: string,
+    cols: number,
+    rows: number,
+    actorId: string,
+  ): Promise<ShellSession> {
+    const session = await this.getOpenSessionForActor(sessionId, actorId);
 
     session.cols = clampDimension(cols, session.cols);
     session.rows = clampDimension(rows, session.rows);
@@ -125,16 +131,18 @@ export class TmuxSessionManager {
     return session;
   }
 
-  public async signalSession(sessionId: string, signalName: NodeJS.Signals): Promise<ShellSession> {
-    const session = this.getSession(sessionId);
-    process.kill(session.panePid, signalName);
+  public async signalSession(sessionId: string, signalName: NodeJS.Signals, actorId: string): Promise<ShellSession> {
+    const session = await this.getOpenSessionForActor(sessionId, actorId);
+    await signalPane(session, signalName);
     session.lastActivityAt = new Date().toISOString();
     return session;
   }
 
-  public async pollSession(sessionId: string, cursor?: number): Promise<PollResult> {
-    const session = this.getSession(sessionId);
-    const snapshot = await capturePane(session.paneTarget);
+  public async pollSession(sessionId: string, actorId: string, cursor?: number): Promise<PollResult> {
+    const session = this.getSessionForActor(sessionId, actorId);
+    await this.refreshSessionState(session);
+
+    const snapshot = session.closedAt ? session.lastSnapshot : await capturePane(session.paneTarget);
 
     if (snapshot !== session.lastSnapshot) {
       session.revision += 1;
@@ -152,12 +160,60 @@ export class TmuxSessionManager {
     };
   }
 
-  public async closeSession(sessionId: string): Promise<ShellSession> {
-    const session = this.getSession(sessionId);
-    await runTmux(["kill-session", "-t", session.tmuxSessionName]);
-    session.closedAt = new Date().toISOString();
-    this.sessions.delete(sessionId);
+  public async closeSession(sessionId: string, actorId: string): Promise<ShellSession> {
+    const session = this.getSessionForActor(sessionId, actorId);
+
+    if (!session.closedAt) {
+      try {
+        await runTmux(["kill-session", "-t", session.tmuxSessionName]);
+      } catch (error) {
+        if (!isMissingTmuxTarget(error)) {
+          throw error;
+        }
+      }
+
+      session.closedAt = new Date().toISOString();
+    }
+
     return session;
+  }
+
+  private getSessionForActor(sessionId: string, actorId: string): ShellSession {
+    const session = this.getSession(sessionId);
+    if (session.ownerId !== actorId) {
+      throw new Error(`Session ${sessionId} is owned by a different actor`);
+    }
+
+    return session;
+  }
+
+  private async getOpenSessionForActor(sessionId: string, actorId: string): Promise<ShellSession> {
+    const session = this.getSessionForActor(sessionId, actorId);
+    await this.refreshSessionState(session);
+
+    if (session.closedAt) {
+      throw new Error(`Session ${sessionId} is already closed`);
+    }
+
+    return session;
+  }
+
+  private async refreshSessionState(session: ShellSession): Promise<void> {
+    if (session.closedAt) {
+      return;
+    }
+
+    const paneState = await getPaneState(session.paneTarget);
+    if (paneState.kind === "missing") {
+      session.closedAt = new Date().toISOString();
+      session.exitStatus ??= null;
+      return;
+    }
+
+    if (paneState.dead) {
+      session.closedAt = session.closedAt ?? new Date().toISOString();
+      session.exitStatus = paneState.exitStatus;
+    }
   }
 }
 
@@ -199,6 +255,37 @@ async function getPaneInfo(
   };
 }
 
+async function getPaneState(
+  paneTarget: string,
+): Promise<{ kind: "ok"; dead: boolean; exitStatus: number | null } | { kind: "missing" }> {
+  try {
+    const { stdout } = await runTmux([
+      "list-panes",
+      "-t",
+      paneTarget,
+      "-F",
+      "#{pane_dead} #{pane_dead_status}",
+    ]);
+    const line = stdout.trim().split("\n")[0]?.trim();
+    if (!line) {
+      return { kind: "missing" };
+    }
+
+    const [deadText, exitStatusText] = line.split(/\s+/, 2);
+    return {
+      kind: "ok",
+      dead: deadText === "1",
+      exitStatus: exitStatusText === undefined ? null : Number(exitStatusText),
+    };
+  } catch (error) {
+    if (isMissingTmuxTarget(error)) {
+      return { kind: "missing" };
+    }
+
+    throw error;
+  }
+}
+
 async function runTmux(args: string[]): Promise<{ stdout: string; stderr: string }> {
   try {
     await mkdir(path.dirname(TMUX_SOCKET_PATH), { recursive: true });
@@ -210,6 +297,21 @@ async function runTmux(args: string[]): Promise<{ stdout: string; stderr: string
       error instanceof Error && "stderr" in error ? String(error.stderr) : String(error);
     throw new Error(`tmux ${args.join(" ")} failed: ${stderr.trim()}`);
   }
+}
+
+async function signalPane(session: ShellSession, signalName: NodeJS.Signals): Promise<void> {
+  if (signalName === "SIGINT") {
+    await runTmux(["send-keys", "-t", session.paneTarget, "C-c"]);
+    return;
+  }
+
+  const foregroundProcessGroup = await getForegroundProcessGroup(session.panePid);
+  if (foregroundProcessGroup !== null) {
+    process.kill(-foregroundProcessGroup, signalName);
+    return;
+  }
+
+  process.kill(session.panePid, signalName);
 }
 
 async function sendInput(paneTarget: string, input: string): Promise<void> {
@@ -227,6 +329,26 @@ async function sendInput(paneTarget: string, input: string): Promise<void> {
 
     await runTmux(["send-keys", "-t", paneTarget, "-l", part]);
   }
+}
+
+async function getForegroundProcessGroup(processId: number): Promise<number | null> {
+  try {
+    const { stdout } = await execFileAsync("ps", ["-o", "tpgid=", "-p", String(processId)], {
+      encoding: "utf8",
+    });
+    const tpgid = Number(stdout.trim());
+    if (!Number.isFinite(tpgid) || tpgid <= 1) {
+      return null;
+    }
+
+    return tpgid;
+  } catch {
+    return null;
+  }
+}
+
+function isMissingTmuxTarget(error: unknown): boolean {
+  return error instanceof Error && /can't find (pane|session)/.test(error.message);
 }
 
 function clampDimension(value: number | undefined, fallback: number): number {
