@@ -130,3 +130,14 @@
   tracker.
   Reversal Trigger: `beads_rust` is installed and stable enough to carry slice-level work without
   becoming another source of drift.
+
+- Date: 2026-03-12
+  Status: accepted
+  Decision: the first reliable session input path uses `tmux send-keys` semantics instead of
+  writing directly to the pane TTY.
+  Why: direct TTY writes were not executing commands reliably enough in the current environment,
+  while `tmux send-keys` gave a working local demo and deterministic verification path immediately.
+  Tradeoff: raw control-byte fidelity and some TUI edge cases are deferred until a stronger input
+  path is implemented.
+  Reversal Trigger: once a lower-level PTY input path is verified to execute reliably without
+  regressing the demo path.

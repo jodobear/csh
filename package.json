@@ -7,6 +7,7 @@
   "scripts": {
     "start": "bun run src/main.ts",
     "dev": "bun run --watch src/main.ts",
+    "demo:local": "bun run src/demo/local-demo.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },

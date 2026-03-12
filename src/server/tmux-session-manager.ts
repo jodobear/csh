@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import { open } from "node:fs/promises";
 import { execFile } from "node:child_process";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
@@ -100,13 +99,7 @@ export class TmuxSessionManager {
 
   public async writeToSession(sessionId: string, input: string): Promise<ShellSession> {
     const session = this.getSession(sessionId);
-    const tty = await open(session.paneTty, "w");
-
-    try {
-      await tty.write(input);
-    } finally {
-      await tty.close();
-    }
+    await sendInput(session.paneTarget, input);
 
     session.lastActivityAt = new Date().toISOString();
     return session;
@@ -216,6 +209,23 @@ async function runTmux(args: string[]): Promise<{ stdout: string; stderr: string
     const stderr =
       error instanceof Error && "stderr" in error ? String(error.stderr) : String(error);
     throw new Error(`tmux ${args.join(" ")} failed: ${stderr.trim()}`);
+  }
+}
+
+async function sendInput(paneTarget: string, input: string): Promise<void> {
+  const parts = input.split(/(\r\n|\r|\n)/);
+
+  for (const part of parts) {
+    if (part === "") {
+      continue;
+    }
+
+    if (part === "\r" || part === "\n" || part === "\r\n") {
+      await runTmux(["send-keys", "-t", paneTarget, "Enter"]);
+      continue;
+    }
+
+    await runTmux(["send-keys", "-t", paneTarget, "-l", part]);
   }
 }
 
