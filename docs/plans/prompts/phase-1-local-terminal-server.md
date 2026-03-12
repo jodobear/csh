@@ -25,7 +25,7 @@ Goal: build the first demoable MCP terminal server locally before exposing it ov
 - working local MCP terminal server
 - updated `handoff.md`
 - updated `docs/plans/build-plan.md` if sequencing changed
-- tracker issues for discovered follow-up work when tracker tooling is installed
+- `br` issues for discovered follow-up work
 
 ## Review Loop
 

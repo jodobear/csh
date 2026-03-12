@@ -78,8 +78,8 @@ The agent may draft this file from a seed prompt and references before the opera
   - Phase 3 browser UI and file transfer capabilities
   - Phase 4 deployment hardening
   - Phase 5 upstream push-routing work and mosh-like optimization experiments
-- Issue tracking method: file-first until `beads_rust` is installed locally; the implementation loop
-  remains tracker-agnostic until then
+- Issue tracking method: `br` (`beads_rust`) is the active tracker; if the CLI is temporarily not
+  visible in the shell, canonical work state stays in files until `br` can be run again
 - Remote/push policy: commit each logical slice locally after verification; remote publishing is
   optional until the first demo path is stable
 - Session-end workflow: update `handoff.md` after meaningful progress, record any accepted scope or

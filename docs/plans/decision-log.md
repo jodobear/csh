@@ -122,14 +122,14 @@
 
 - Date: 2026-03-12
   Status: accepted
-  Decision: project process stays file-first and tracker-agnostic until `beads_rust` is available
-  locally; `bd` is not part of the active workflow for this repo.
-  Why: `bd` introduced avoidable local friction during bootstrap, while the implementation loop only
-  needs a lightweight tracker once the preferred tool is installed.
-  Tradeoff: short-term work graph state lives in docs and git history instead of a dedicated issue
-  tracker.
-  Reversal Trigger: `beads_rust` is installed and stable enough to carry slice-level work without
-  becoming another source of drift.
+  Decision: `br` (`beads_rust`) is the active tracker for this repo, and `bd` is not part of the
+  workflow.
+  Why: `bd` introduced avoidable local friction during bootstrap, and `br` is the chosen tracker
+  for this repo going forward.
+  Tradeoff: because `br` is non-invasive, tracker sync now requires explicit git handling for
+  `.beads/` state.
+  Reversal Trigger: only if `br` proves unusable for slice-level work in practice and a different
+  tracker replaces it.
 
 - Date: 2026-03-12
   Status: accepted

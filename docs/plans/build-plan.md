@@ -30,5 +30,4 @@
 
 ## Open Questions
 
-- When `beads_rust` is installed locally, how do we want to map the phased plan into tracker
-  issues without bloating the work graph?
+- How do we want to map the phased plan into `br` issues without bloating the work graph?

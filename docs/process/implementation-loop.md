@@ -30,24 +30,33 @@ Tracker-only state:
 
 Run this loop for every logical implementation slice.
 
+## Issue Tracking with br (beads_rust)
+
+**Note:** `br` is non-invasive and never executes git commands. After `br sync --flush-only`, you
+must manually run `git add .beads/ && git commit`.
+
 Tracker target:
 
-- preferred future tracker: `beads_rust`
-- current local status: not installed in this workspace yet
-- rule: do not let missing tracker tooling block implementation; keep canonical work state in files
+- active tracker: `br`
+- current local shell status: if `br` is not visible on `PATH`, keep canonical work state in files
+  and switch back to the CLI once it is usable in the shell
+- rule: do not let temporary CLI visibility issues block implementation; keep canonical work state
+  in files and sync tracker state once `br` is usable
 
 ### 0. Preflight
 
 - Read `handoff.md`, `docs/plans/build-plan.md`, and the active phase section of
   `docs/plans/phased-implementation-plan.md`.
 - Run `git status --short` before starting.
-- If the tracker is available and there is no issue for the slice, create one before coding.
+- If there is no issue for the slice, create one with `br create` before coding.
 
 ### 1. Track And Claim
 
-- Check ready work in the active tracker when available.
-- Claim the target issue atomically when the tracker supports claims.
-- If new work is discovered, create a linked issue instead of burying it in notes.
+- Check ready work with `br ready`.
+- Inspect target issue state with `br show <id>`.
+- Claim or update the target issue with `br update <id> ...` when the workflow needs it.
+- If new work is discovered, create a linked issue with `br create ...` instead of burying it in
+  notes.
 
 ### 2. Freeze The Slice
 
@@ -93,7 +102,7 @@ Tracker target:
 
 - Update the relevant canonical docs if the slice changed plan, scope, or new risks.
 - Update `handoff.md` after meaningful progress.
-- Close or update the tracker issue with a real closure reason when tracker tooling is active.
+- Close or update the tracker issue with a real closure reason using `br close` or `br update`.
 
 ### 8. Commit Cleanly
 
@@ -110,8 +119,8 @@ Checkpoint expectations:
 
 - the current phase deliverable works end-to-end at its intended level
 - docs reflect the actual system, not the intended one
-- open follow-up work is in the active tracker or explicitly recorded in canonical docs if tracker
-  setup is still pending
+- open follow-up work is in `br` or explicitly recorded in canonical docs if the CLI is temporarily
+  unavailable
 - the next phase is still the right next phase
 - one explicit review summary is written into `handoff.md`
 
@@ -124,16 +133,28 @@ Major checkpoints for this project:
 
 ## Tracker Habits
 
-- Use `beads_rust` once it is installed for all implementation work items.
+- Use `br` for all implementation work items.
 - Prefer one active claimed issue at a time unless there is an obvious independent sidecar task.
 - Create discovered work immediately with parent linkage.
 - Close completed work promptly instead of letting issues drift open.
+- When tracker state changes need to be flushed:
+  ```bash
+  br sync --flush-only
+  git add .beads/
+  git commit -m "sync beads"
+  ```
 
 ## Git Habits
 
 - Start each slice with `git status --short`.
 - End each slice with `git status --short`, `git diff --stat`, and `git diff --check`.
 - Prefer one logical commit per closed slice.
+- If tracker state changed in the slice:
+  ```bash
+  br sync --flush-only
+  git add .beads/
+  git commit -m "sync beads"
+  ```
 - If remote readiness is in scope for the session:
   - `git pull --rebase`
   - push after local verification succeeds

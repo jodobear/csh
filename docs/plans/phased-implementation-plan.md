@@ -163,7 +163,7 @@ Goal: improve long-term resource/update behavior without blocking the prototype.
 
 For every phase:
 
-- create or claim one tracker issue for each narrow slice when tracker tooling is available
+- create or claim one `br` issue for each narrow slice
 - review after each loop
 - update handoff at each major checkpoint
 - stop for operator review if a trust-boundary decision changes

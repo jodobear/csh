@@ -13,8 +13,7 @@
 
 ## Open Questions
 
-- When `beads_rust` is installed locally, how fine-grained should the implementation issues be for
-  the Phase 1 and Phase 2 loops?
+- How fine-grained should the `br` issues be for the Phase 1 and Phase 2 loops?
 - When we move beyond the deterministic `/bin/sh` demo, do we keep `tmux send-keys` as the default
   input path or invest immediately in a lower-level PTY input path for richer TUI fidelity?
 
@@ -24,8 +23,7 @@
    keep `tmux send-keys` for early remote demos, or replace it with a lower-level PTY write path.
 2. Tighten Phase 1 session behavior around ownership metadata, cleanup semantics, and polling
    expectations.
-3. Install and switch to `beads_rust` for tracker-backed slice management when the tool is
-   available locally.
+3. Mirror the current plan into `br` issues and use `br` for the next implementation slice.
 4. Keep the upstream SDK routing contribution as a parallel non-blocking track.
 
 ## Review Summary
