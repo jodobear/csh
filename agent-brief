@@ -1,0 +1,25 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+repo_root="${0:a:h}"
+cd "$repo_root"
+
+printf '%s\n' "csh starter"
+printf '%s\n' "Purpose: ContextVM SSH project"
+printf '%s\n' "Mode: research-heavy bootstrap"
+printf '\n'
+printf '%s\n' "Read Every Session"
+printf '%s\n' "- AGENTS.md"
+printf '%s\n' "- handoff.md"
+printf '\n'
+printf '%s\n' "Priority Files"
+printf '%s\n' "- docs/process/project-profile.md"
+printf '%s\n' "- docs/plans/build-plan.md"
+printf '%s\n' "- docs/plans/decision-log.md"
+printf '%s\n' "- docs/communications/dm-log.md"
+printf '\n'
+printf '%s\n' "Research Focus"
+printf '%s\n' "- ContextVM / CVMI"
+printf '%s\n' "- NIP-17 and related Nostr messaging"
+printf '%s\n' "- SSH and remote execution patterns"
+printf '%s\n' "- research notes in docs/references/local/"

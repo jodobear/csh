@@ -1,0 +1,10 @@
+# Project Packs Lock
+
+# Record pinned shared-pack imports here.
+#
+# Example:
+# [[packs]]
+# name = "process-core"
+# source_repo = "gymnasium"
+# source_commit = "<commit>"
+# source_path = "packs/process-core"
