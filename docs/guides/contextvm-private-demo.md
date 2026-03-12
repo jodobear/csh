@@ -39,6 +39,29 @@ export CSH_NOSTR_RELAY_URLS=wss://your-relay.example
 
 ## Run
 
+Bootstrap everything on the server:
+
+```bash
+scripts/contextvm-private-demo.sh setup --relay-url wss://your-relay.example
+```
+
+That script:
+
+- generates demo server/client keys with `nak`
+- writes env files under `.csh-runtime/contextvm-private-demo/`
+- starts the private gateway in `tmux`
+- prints the exact client-side demo command
+
+Other helper commands:
+
+```bash
+scripts/contextvm-private-demo.sh status
+scripts/contextvm-private-demo.sh print-client
+scripts/contextvm-private-demo.sh stop
+```
+
+Manual server start remains available if you do not want the helper:
+
 Server:
 
 ```bash

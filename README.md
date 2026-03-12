@@ -27,6 +27,7 @@ The current implementation spans Phase 1 local infrastructure and the first Phas
 - `bun run src/main.ts`
 - `bun run start:contextvm`
 - `bun run demo:contextvm`
+- `scripts/contextvm-private-demo.sh setup --relay-url <reachable-relay-url>`
 
 ## Current Shape
 

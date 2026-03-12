@@ -12,6 +12,8 @@
   - `bun run demo:local` with unsandboxed execution in this Codex environment
   - `bun run src/contextvm-gateway.ts` fails fast on missing required env
   - `bun run src/contextvm-demo-client.ts` fails fast on missing required env
+  - `scripts/contextvm-private-demo.sh --help`
+  - `scripts/contextvm-private-demo.sh status`
 
 ## Open Questions
 
@@ -23,7 +25,8 @@
 ## Next Actions
 
 1. Mirror the current plan into `br` issues and use `br` for the next implementation slice.
-2. Run the first real gateway/server plus client demo against a chosen relay and real keys.
+2. Run `scripts/contextvm-private-demo.sh setup --relay-url <reachable-relay-url>` on the server
+   and use the printed client command for the first real gateway/server demo.
 3. Decide whether `tmux send-keys` is acceptable for the first remote demo or should be replaced
    before broader TUI testing.
 4. Keep the upstream SDK routing contribution as a parallel non-blocking track.
