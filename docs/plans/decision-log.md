@@ -152,3 +152,16 @@
   possible one-process deployment.
   Reversal Trigger: once the remote path is stable and a native `NostrServerTransport` integration
   would materially simplify operations without losing correctness.
+
+- Date: 2026-03-13
+  Status: accepted
+  Decision: the first relay-backed Phase 2 proof uses `wss://relay.contextvm.org` as the default
+  test relay, with private/Haven relay testing treated as a follow-on topology.
+  Why: the local ContextVM guidance already centers `relay.contextvm.org`, and this repo verified a
+  real end-to-end gateway/client demo against it. The existing Haven setup also depended on a
+  separate client-side forwarded localhost port that was not active, so it added topology risk to
+  the first proof.
+  Tradeoff: the first demo uses a public relay path instead of the most private possible topology,
+  and private relay validation moves to the next step rather than the first one.
+  Reversal Trigger: if a private relay path is verified to be equally reliable and becomes the
+  higher-priority deployment target than a public-relay proof.

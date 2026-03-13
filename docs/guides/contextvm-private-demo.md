@@ -37,12 +37,33 @@ export CSH_SERVER_PUBKEY=<server-pubkey-hex>
 export CSH_NOSTR_RELAY_URLS=wss://your-relay.example
 ```
 
+## Recommended Relay Choice
+
+Use `wss://relay.contextvm.org` for the first real end-to-end test.
+
+Why this is the current default:
+
+- it is the default relay named by the local ContextVM deployment guidance
+- this repo verified a full gateway-to-client demo against it on 2026-03-13
+- it keeps the first proof aligned with ContextVM's normal relay path before introducing private
+  relay topology variables
+
+After the single-relay proof works, add `wss://cvm.otherstuff.ai` as a secondary relay if you want
+redundancy:
+
+```bash
+export CSH_NOSTR_RELAY_URLS=wss://relay.contextvm.org,wss://cvm.otherstuff.ai
+```
+
+Treat a Haven relay as a separate test topology, not the first default. It is appropriate when the
+relay is private or localhost-only on the server and the client reaches it through `ssh -L`.
+
 ## Run
 
 Bootstrap everything on the server:
 
 ```bash
-scripts/contextvm-private-demo.sh setup --relay-url wss://your-relay.example
+scripts/contextvm-private-demo.sh setup --relay-url wss://relay.contextvm.org
 ```
 
 That script:
@@ -71,6 +92,9 @@ scripts/contextvm-private-demo.sh setup \
 That is the correct shape when the relay is localhost-only on the server and the client reaches it
 through `ssh -L`.
 
+Use that split-url form for Haven-style localhost relays. Do not use it unless the client-side
+forwarded port is actually listening.
+
 Manual server start remains available if you do not want the helper:
 
 Server:
@@ -94,4 +118,5 @@ prints the resulting terminal snapshot, and closes the session.
   terminal input is still routed through `tmux send-keys`.
 - The gateway pattern preserves the working stdio MCP server rather than replacing it with a
   one-process Nostr transport.
-- A live relay-backed end-to-end demo is still pending operator-provided relay and key material.
+- The first verified live relay-backed demo used `wss://relay.contextvm.org` on 2026-03-13.
+- In this Codex environment, the live relay-backed demo required unsandboxed execution.
