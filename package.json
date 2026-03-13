@@ -10,6 +10,7 @@
     "dev": "bun run --watch src/main.ts",
     "demo:local": "bun run src/demo/local-demo.ts",
     "demo:contextvm": "bun run src/contextvm-demo-client.ts",
+    "demo:contextvm:interactive": "bun run src/contextvm-interactive-client.ts",
     "test": "bun test",
     "typecheck": "tsc --noEmit"
   },

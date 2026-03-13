@@ -21,6 +21,8 @@
   - `scripts/contextvm-strfry-relay.sh start`
   - `bun run demo:contextvm` with `CSH_NOSTR_RELAY_URLS=ws://127.0.0.1:10549` completed
     successfully with unsandboxed execution against local `strfry`
+  - `bun run demo:contextvm:interactive` with `CSH_NOSTR_RELAY_URLS=ws://127.0.0.1:10549`
+    completed successfully with unsandboxed execution against local `strfry`
 
 ## Open Questions
 
@@ -60,5 +62,8 @@
   from the demo keys.
 - The demo client now uses a bounded response lookback when subscribing for Nostr events so modest
   clock skew does not drop valid relay responses before the client sees them.
+- The repo now includes an interactive ContextVM demo client that forwards local terminal input to
+  the remote session, resizes with the local terminal, and exits cleanly when the remote shell
+  closes.
 - `scripts/contextvm-private-demo.sh setup` now restarts an already-running gateway so relay
   changes actually take effect.
