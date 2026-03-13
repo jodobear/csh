@@ -39,6 +39,8 @@
     session state, and `Reconnect` opened a fresh remote session
   - `bun run demo:contextvm:interactive` still completed successfully on the current browser branch
     against local `strfry`
+  - `bun run start:browser:contextvm` with the latest browser snapshot-render fix, verified via
+    headless Playwright and direct browser-bridge API checks against local `strfry`
 
 ## Open Questions
 
@@ -93,6 +95,10 @@
 - The ContextVM browser bridge now pins `ownerId` to the authenticated client pubkey before
   forwarding calls, so browser-generated owner IDs do not conflict with the remote shell server's
   session ownership checks.
+- The browser "connected but blank cursor/no prompt" bug was a UI replay issue, not a relay or
+  shell-backend regression: the browser bridge was receiving prompt/output, but the page was
+  replaying full snapshots in a way that left the visible viewport on blank rows. Resetting the
+  terminal before writing each normalized snapshot fixed prompt and output visibility.
 - In this Codex environment the server and client are on the same host, so remote proof used a
   separate `/tmp` client checkout: the local browser bridge cwd differed from the remote shell
   `pwd`, while the remote shell itself remained under `/workspace/projects/csh`.

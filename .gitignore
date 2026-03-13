@@ -5,3 +5,4 @@
 .beads/
 node_modules/
 .csh-runtime/
+.playwright-cli/

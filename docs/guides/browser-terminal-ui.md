@@ -57,7 +57,10 @@ scripts/contextvm-private-demo.sh setup \
 Client side:
 
 ```bash
-source /workspace/projects/csh/.csh-runtime/contextvm-private-demo/client.env
+export CSH_CLIENT_PRIVATE_KEY=11b619c00af0172fdf72fe1443d5e981761bf8fcde6f58d1672beb252fbad6c9
+export CSH_SERVER_PUBKEY=98d5b865ec8b21aa6f893db7793ea1f588beeaf81bdb296dcdb10bd8f4932a75
+export CSH_NOSTR_RELAY_URLS=ws://127.0.0.1:10549
+export CSH_NOSTR_RESPONSE_LOOKBACK_SECONDS=300
 export CSH_BROWSER_PORT=4319
 bun run start:browser:contextvm
 ```
@@ -110,6 +113,10 @@ Remote ContextVM browser path:
 5. Confirm the output matches the remote shell runtime rather than the local browser-bridge
    working directory.
 6. Use `Interrupt`, `Close`, and `Reconnect`.
+
+If the page says it is connected but only shows a blank cursor, pull the latest `master`, restart
+`bun run start:browser:contextvm`, and reload the page. That symptom was a browser snapshot-replay
+bug, not a relay or shell-backend failure.
 
 In this Codex environment the server and client run on the same host, so `hostname` and `uname -a`
 match. To prove the bridge is still talking to the remote shell, the verification run used a

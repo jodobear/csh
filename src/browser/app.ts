@@ -295,10 +295,15 @@ async function pollRemote(): Promise<void> {
 }
 
 function renderSnapshot(snapshot: string): void {
-  terminal.clear();
-  terminal.write(snapshot);
+  terminal.reset();
+  terminal.write(normalizeSnapshot(snapshot));
   terminal.scrollToBottom();
   lastSnapshot = snapshot;
+}
+
+function normalizeSnapshot(snapshot: string): string {
+  const trimmed = snapshot.replace(/(?:\r?\n)+$/u, "\n");
+  return trimmed.length > 0 ? trimmed : snapshot;
 }
 
 function getTerminalSize(): { cols: number; rows: number } {
