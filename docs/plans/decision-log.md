@@ -179,3 +179,16 @@
   more deterministic.
   Reversal Trigger: if a public or private non-`strfry` relay path is proven to be equally
   deterministic for cross-machine demos without adding the SSH-tunnel relay hop.
+
+- Date: 2026-03-13
+  Status: accepted
+  Decision: Phase 3.1 starts with a local browser HTTP bridge that calls the existing
+  `session_open`, `session_write`, `session_resize`, `session_signal`, `session_poll`, and
+  `session_close` tools over stdio MCP instead of putting ContextVM directly in the browser first.
+  Why: this is the smallest path to prove the browser terminal UX against the stable shell contract
+  without reopening relay selection, browser signer support, or the working Phase 2 gateway/demo
+  path.
+  Tradeoff: the first browser slice is local-first rather than a full remote web client, so the
+  browser transport story remains a later loop.
+  Reversal Trigger: if a real browser deployment or browser-native Nostr signing becomes necessary
+  before explicit file capabilities or broader UI work.

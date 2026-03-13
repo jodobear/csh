@@ -2,9 +2,9 @@
 
 ## Current State
 
-- Active phase: Phase 2 implementation
-- Current objective: document and harden the first working cross-machine private ContextVM demo
-  path
+- Active phase: Phase 3 implementation
+- Current objective: land the first browser terminal UI slice without regressing the working
+  ContextVM CLI demos
 - Last verified commands:
   - `bun run typecheck`
   - `bun run src/main.ts </dev/null`
@@ -23,28 +23,27 @@
     successfully with unsandboxed execution against local `strfry`
   - `bun run demo:contextvm:interactive` with `CSH_NOSTR_RELAY_URLS=ws://127.0.0.1:10549`
     completed successfully with unsandboxed execution against local `strfry`
+  - `bun run start:browser` with unsandboxed execution
+  - localhost browser-bridge API smoke for `session_open` -> `session_write` -> `session_poll` ->
+    `session_close` with unsandboxed execution
 
 ## Open Questions
 
-- How fine-grained should the `br` issues be for the Phase 2 loops?
 - Do we keep `tmux send-keys` through the first remote demo, or replace it before browser/TUI work
   grows more demanding?
-- Do we add a helper-level topology mode or relay probe so the split localhost relay setup is
-  harder to misuse?
+- When should the browser client move from the local bridge to a direct ContextVM-aware web path?
 - Should the skew-tolerant subscription lookback move upstream into the ContextVM SDK once the
   relay timing evidence is summarized cleanly?
 
 ## Next Actions
 
-1. Mirror the current plan into `br` issues and use `br` for the next implementation slice.
-2. Use local `strfry` plus SSH port forwarding as the primary cross-machine demo topology instead
-   of Haven or public relays.
-3. Capture the relay timing evidence behind the client timeout and decide whether to upstream the
-   client-side subscription lookback into ContextVM.
-4. Update `scripts/contextvm-private-demo.sh` or its wrapper docs so localhost relay topologies
-   fail earlier when the client-side forwarded port is missing.
-5. Decide whether `tmux send-keys` is acceptable for the first remote demo or should be replaced
-   before broader TUI testing.
+1. Review the first browser UI slice from terminal-behavior and UX angles before broadening it.
+2. Decide whether `tmux send-keys` is acceptable for browser typing or whether common control-input
+   handling should be strengthened before wider TUI/browser testing.
+3. Choose the next Phase 3 loop ordering: richer browser UX polish versus explicit upload/download
+   capabilities.
+4. Decide when the browser path should stop being local-first and start speaking to the private
+   ContextVM deployment shape directly.
 
 ## Review Summary
 
@@ -69,3 +68,8 @@
   closes.
 - `scripts/contextvm-private-demo.sh setup` now restarts an already-running gateway so relay
   changes actually take effect.
+- Phase 3.1 now has a first browser terminal UI at `bun run start:browser`.
+- The browser server is intentionally narrow: it serves an xterm-based page and proxies the
+  existing `session_*` tool contract over a local HTTP API via stdio MCP.
+- This keeps the shell/session backend and the working private ContextVM CLI demo path unchanged
+  while giving the project a real browser UX loop to iterate on.
