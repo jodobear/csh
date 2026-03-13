@@ -99,6 +99,11 @@
   shell-backend regression: the browser bridge was receiving prompt/output, but the page was
   replaying full snapshots in a way that left the visible viewport on blank rows. Resetting the
   terminal before writing each normalized snapshot fixed prompt and output visibility.
+- The browser "prompt visible but typing dies" follow-up pointed back to the render/input
+  interaction: replaying snapshots with `terminal.reset()` was too destructive for browser input
+  state, so the browser now keeps steady-state snapshot replay on `terminal.clear()` and uses a
+  browser-owned invisible capture textarea for keyboard input instead of relying on xterm's
+  recreated helper textarea.
 - In this Codex environment the server and client are on the same host, so remote proof used a
   separate `/tmp` client checkout: the local browser bridge cwd differed from the remote shell
   `pwd`, while the remote shell itself remained under `/workspace/projects/csh`.

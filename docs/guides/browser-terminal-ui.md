@@ -118,6 +118,10 @@ If the page says it is connected but only shows a blank cursor, pull the latest 
 `bun run start:browser:contextvm`, and reload the page. That symptom was a browser snapshot-replay
 bug, not a relay or shell-backend failure.
 
+If the prompt is visible but typing does not register, also pull the latest `master` and restart the
+browser bridge. The browser input path now uses a stable browser-owned capture field rather than
+depending on xterm's recreated helper textarea across snapshot refreshes.
+
 In this Codex environment the server and client run on the same host, so `hostname` and `uname -a`
 match. To prove the bridge is still talking to the remote shell, the verification run used a
 separate `/tmp` client checkout; the browser bridge local working directory was

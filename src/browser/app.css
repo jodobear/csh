@@ -144,6 +144,7 @@ body {
 }
 
 .terminal-shell {
+  position: relative;
   height: 100%;
   min-height: 420px;
   border-radius: 14px;
@@ -151,6 +152,20 @@ body {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 20%),
     var(--terminal-bg);
+}
+
+.terminal-keyboard-capture {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  resize: none;
+  border: 0;
+  background: transparent;
+  color: transparent;
+  caret-color: transparent;
+  outline: none;
 }
 
 .xterm-viewport::-webkit-scrollbar {

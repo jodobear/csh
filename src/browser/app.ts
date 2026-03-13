@@ -52,16 +52,14 @@ const terminal = new Terminal({
 const fitAddon = new FitAddon();
 terminal.loadAddon(fitAddon);
 terminal.open(ui.terminalContainer);
+const keyboardCapture = createKeyboardCapture(ui.terminalContainer);
 ui.terminalContainer.tabIndex = 0;
 fitAddon.fit();
-terminal.focus();
 ui.terminalContainer.addEventListener("click", () => {
-  ui.terminalContainer.focus();
-  terminal.focus();
+  focusKeyboardCapture();
 });
 window.addEventListener("focus", () => {
-  ui.terminalContainer.focus();
-  terminal.focus();
+  focusKeyboardCapture();
 });
 
 let sessionId: string | null = null;
@@ -89,59 +87,9 @@ const resizeObserver = new ResizeObserver(() => {
 
 resizeObserver.observe(ui.terminalContainer);
 
-document.addEventListener(
-  "keydown",
-  (event) => {
-    if (!sessionId || stopping || !isTerminalFocused()) {
-      return;
-    }
-
-    if (event.ctrlKey && event.key.toLowerCase() === "c") {
-      event.preventDefault();
-      void interruptRemote().catch(reportError);
-      return;
-    }
-
-    const input = toTerminalInput(event);
-    if (input === null) {
-      return;
-    }
-
-    event.preventDefault();
-    void queueRpc(async () => {
-      await postJson("session/write", {
-        sessionId,
-        input,
-        ownerId,
-      });
-    }).catch(reportError);
-  },
-  true,
-);
-
-document.addEventListener(
-  "paste",
-  (event) => {
-    if (!sessionId || stopping || !isTerminalFocused()) {
-      return;
-    }
-
-    const pastedText = event.clipboardData?.getData("text");
-    if (!pastedText) {
-      return;
-    }
-
-    event.preventDefault();
-    void queueRpc(async () => {
-      await postJson("session/write", {
-        sessionId,
-        input: pastedText,
-        ownerId,
-      });
-    }).catch(reportError);
-  },
-  true,
-);
+keyboardCapture.addEventListener("keydown", handleKeyboardCaptureKeydown);
+keyboardCapture.addEventListener("input", handleKeyboardCaptureInput);
+keyboardCapture.addEventListener("paste", handleKeyboardCapturePaste);
 
 ui.reconnectButton.addEventListener("click", () => {
   void restartSession().catch(reportError);
@@ -181,8 +129,7 @@ async function restartSession(): Promise<void> {
   sessionId = null;
   terminal.reset();
   fitAddon.fit();
-  terminal.focus();
-  ui.terminalContainer.focus();
+  focusKeyboardCapture();
   setStatus("Connecting to shell bridge...");
   setSessionLabel("opening");
   setControlsDisabled(true);
@@ -200,8 +147,7 @@ async function restartSession(): Promise<void> {
   setStatus(`Connected to ${result.command}`);
   setSessionLabel(result.sessionId);
   setControlsDisabled(false);
-  ui.terminalContainer.focus();
-  terminal.focus();
+  focusKeyboardCapture();
   schedulePoll();
 }
 
@@ -218,6 +164,20 @@ async function interruptRemote(): Promise<void> {
     }),
   );
   setStatus("Sent SIGINT to remote session");
+}
+
+async function sendInput(input: string): Promise<void> {
+  if (!sessionId || stopping) {
+    return;
+  }
+
+  await queueRpc(() =>
+    postJson("session/write", {
+      sessionId,
+      input,
+      ownerId,
+    }),
+  );
 }
 
 async function closeSession(statusMessage: string): Promise<void> {
@@ -295,7 +255,7 @@ async function pollRemote(): Promise<void> {
 }
 
 function renderSnapshot(snapshot: string): void {
-  terminal.reset();
+  terminal.clear();
   terminal.write(normalizeSnapshot(snapshot));
   terminal.scrollToBottom();
   lastSnapshot = snapshot;
@@ -364,15 +324,6 @@ async function postJson<T = Record<string, unknown>>(
   }
 
   return payload as T;
-}
-
-function isTerminalFocused(): boolean {
-  const activeElement = document.activeElement;
-  if (!activeElement) {
-    return false;
-  }
-
-  return ui.terminalContainer.contains(activeElement) || activeElement === ui.terminalContainer;
 }
 
 function toTerminalInput(event: KeyboardEvent): string | null {
@@ -448,4 +399,69 @@ function getUiElements(): UiElements {
     interruptButton,
     closeButton,
   };
+}
+
+function handleKeyboardCaptureKeydown(event: KeyboardEvent): void {
+  if (!sessionId || stopping) {
+    return;
+  }
+
+  if (event.ctrlKey && !event.altKey && !event.metaKey && event.key.toLowerCase() === "c") {
+    event.preventDefault();
+    void interruptRemote().catch(reportError);
+    return;
+  }
+
+  const input = toTerminalInput(event);
+  if (input === null) {
+    return;
+  }
+
+  event.preventDefault();
+  void sendInput(input).catch(reportError);
+}
+
+function handleKeyboardCaptureInput(): void {
+  if (!sessionId || stopping) {
+    keyboardCapture.value = "";
+    return;
+  }
+
+  if (keyboardCapture.value.length === 0) {
+    return;
+  }
+
+  const input = keyboardCapture.value;
+  keyboardCapture.value = "";
+  void sendInput(input).catch(reportError);
+}
+
+function handleKeyboardCapturePaste(event: ClipboardEvent): void {
+  if (!sessionId || stopping) {
+    return;
+  }
+
+  const pastedText = event.clipboardData?.getData("text");
+  if (!pastedText) {
+    return;
+  }
+
+  event.preventDefault();
+  void sendInput(pastedText).catch(reportError);
+}
+
+function createKeyboardCapture(container: HTMLElement): HTMLTextAreaElement {
+  const input = document.createElement("textarea");
+  input.className = "terminal-keyboard-capture";
+  input.setAttribute("aria-label", "Terminal input");
+  input.setAttribute("autocapitalize", "off");
+  input.setAttribute("autocomplete", "off");
+  input.setAttribute("autocorrect", "off");
+  input.spellcheck = false;
+  container.appendChild(input);
+  return input;
+}
+
+function focusKeyboardCapture(): void {
+  keyboardCapture.focus();
 }
