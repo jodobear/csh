@@ -28,6 +28,7 @@ The current implementation spans Phase 1 local infrastructure and the first Phas
 - `bun run src/main.ts`
 - `bun run start:contextvm`
 - `bun run start:browser`
+- `bun run start:browser:contextvm`
 - `bun run demo:contextvm`
 - `scripts/contextvm-private-demo.sh setup --relay-url <reachable-relay-url>`
 
@@ -42,6 +43,8 @@ The current implementation spans Phase 1 local infrastructure and the first Phas
   keys, and injected client pubkey ownership binding.
 - The first Phase 3.1 browser path is local-first: a Bun HTTP bridge calls the existing
   `session_*` tool surface over stdio MCP and serves an xterm-based browser client.
+- The next browser slice keeps the same HTTP/browser contract and adds a ContextVM-backed browser
+  bridge entrypoint for remote shells.
 - Explicit upload/download remains a later Phase 3 loop.
 - Containerization is deferred to the deployment-hardening phase.
 

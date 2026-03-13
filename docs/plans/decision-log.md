@@ -192,3 +192,16 @@
   browser transport story remains a later loop.
   Reversal Trigger: if a real browser deployment or browser-native Nostr signing becomes necessary
   before explicit file capabilities or broader UI work.
+
+- Date: 2026-03-13
+  Status: accepted
+  Decision: the remote browser slice keeps the existing browser HTTP contract and swaps only the
+  bridge implementation, using a ContextVM-backed MCP client bridge that pins `ownerId` to the
+  authenticated client pubkey.
+  Why: this preserves the working browser app and HTTP routes, reuses the proven skew-tolerant
+  ContextVM client transport, and respects the shell server's authenticated ownership checks
+  without teaching the browser page about Nostr identities.
+  Tradeoff: the browser still depends on a trusted local Bun bridge process instead of speaking
+  ContextVM directly.
+  Reversal Trigger: if browser-native signing or a direct browser transport becomes necessary for
+  deployment, or if the local bridge becomes an operational problem.

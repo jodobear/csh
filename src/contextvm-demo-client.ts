@@ -5,36 +5,10 @@ import {
   GiftWrapMode,
   PrivateKeySigner,
 } from "@contextvm/sdk";
-import { z } from "zod";
+import { loadContextVmClientConfig } from "./contextvm/client-config.js";
+import { parseToolResult } from "./mcp/tool-result.js";
 import { SkewTolerantNostrClientTransport } from "./contextvm/skew-tolerant-client-transport.js";
-
-const envSchema = z.object({
-  CSH_CLIENT_PRIVATE_KEY: z
-    .string()
-    .trim()
-    .regex(/^[0-9a-fA-F]{64}$/, "CSH_CLIENT_PRIVATE_KEY must be a 64-character hex private key"),
-  CSH_SERVER_PUBKEY: z
-    .string()
-    .trim()
-    .regex(/^[0-9a-fA-F]{64}$/, "CSH_SERVER_PUBKEY must be a 64-character hex pubkey"),
-  CSH_NOSTR_RELAY_URLS: z
-    .string()
-    .trim()
-    .min(1, "CSH_NOSTR_RELAY_URLS must contain at least one relay URL"),
-  CSH_NOSTR_RESPONSE_LOOKBACK_SECONDS: z
-    .string()
-    .trim()
-    .regex(/^\d+$/, "CSH_NOSTR_RESPONSE_LOOKBACK_SECONDS must be an integer")
-    .optional(),
-});
-
-const env = envSchema.parse(process.env);
-const relayUrls = env.CSH_NOSTR_RELAY_URLS.split(",")
-  .map((value) => value.trim())
-  .filter((value) => value.length > 0);
-const responseLookbackSeconds = env.CSH_NOSTR_RESPONSE_LOOKBACK_SECONDS
-  ? Number.parseInt(env.CSH_NOSTR_RESPONSE_LOOKBACK_SECONDS, 10)
-  : 300;
+const config = loadContextVmClientConfig();
 
 const client = new Client({
   name: "csh-contextvm-demo-client",
@@ -43,22 +17,22 @@ const client = new Client({
 
 const transport = new SkewTolerantNostrClientTransport(
   {
-    signer: new PrivateKeySigner(env.CSH_CLIENT_PRIVATE_KEY),
-    relayHandler: new ApplesauceRelayPool(relayUrls),
-    serverPubkey: env.CSH_SERVER_PUBKEY,
+    signer: new PrivateKeySigner(config.clientPrivateKey),
+    relayHandler: new ApplesauceRelayPool(config.relayUrls),
+    serverPubkey: config.serverPubkey,
     encryptionMode: EncryptionMode.REQUIRED,
     giftWrapMode: GiftWrapMode.EPHEMERAL,
   },
-  responseLookbackSeconds,
+  config.responseLookbackSeconds,
 );
 
 let sessionId: string | undefined;
 
 try {
   console.log("Connecting to remote csh server over ContextVM...");
-  console.log(`Target server pubkey: ${env.CSH_SERVER_PUBKEY}`);
-  console.log(`Relay URLs: ${relayUrls.join(", ")}`);
-  console.log(`Response lookback: ${responseLookbackSeconds}s`);
+  console.log(`Target server pubkey: ${config.serverPubkey}`);
+  console.log(`Relay URLs: ${config.relayUrls.join(", ")}`);
+  console.log(`Response lookback: ${config.responseLookbackSeconds}s`);
   await client.connect(transport);
   console.log("Connected. Opening remote shell session...");
 
@@ -131,60 +105,4 @@ try {
   }
 
   await client.close();
-}
-
-function parseToolResult<T>(result: unknown): T {
-  if (
-    typeof result === "object" &&
-    result !== null &&
-    "structuredContent" in result &&
-    result.structuredContent
-  ) {
-    return result.structuredContent as T;
-  }
-
-  if (
-    typeof result === "object" &&
-    result !== null &&
-    "isError" in result &&
-    result.isError === true
-  ) {
-    throw new Error(`Tool call failed: ${extractTextContent(result)}`);
-  }
-
-  const textContent = extractTextContent(result);
-  if (textContent) {
-    try {
-      return JSON.parse(textContent) as T;
-    } catch (error) {
-      throw new Error(
-        `Expected structuredContent or JSON text in tool result; received text: ${textContent}`,
-        { cause: error },
-      );
-    }
-  }
-
-  throw new Error("Expected structuredContent or JSON text in tool result");
-}
-
-function extractTextContent(result: unknown): string | undefined {
-  if (
-    typeof result !== "object" ||
-    result === null ||
-    !("content" in result) ||
-    !Array.isArray(result.content)
-  ) {
-    return undefined;
-  }
-
-  const textPart = result.content.find((item) =>
-    typeof item === "object" &&
-    item !== null &&
-    "type" in item &&
-    item.type === "text" &&
-    "text" in item &&
-    typeof item.text === "string"
-  );
-
-  return textPart?.text;
 }

@@ -1,10 +1,11 @@
 # Browser Terminal UI
 
-This is the first Phase 3.1 browser slice for `csh`.
+This guide now covers both browser bridge modes for `csh`.
 
 ## What Exists
 
 - local browser server: `bun run start:browser`
+- ContextVM-backed browser server: `bun run start:browser:contextvm`
 - xterm-based terminal rendering in the browser
 - local HTTP bridge routes that mirror the stable shell contract:
   - `POST /api/session/open`
@@ -14,12 +15,15 @@ This is the first Phase 3.1 browser slice for `csh`.
   - `POST /api/session/poll`
   - `POST /api/session/close`
 
-The browser path is intentionally local-first. It reuses the existing stdio MCP shell server rather
-than replacing the working ContextVM gateway/demo path.
+Both browser paths keep the same browser app and HTTP routes.
+
+- `start:browser` talks to the local stdio MCP shell server.
+- `start:browser:contextvm` talks to the remote shell gateway over ContextVM using the existing
+  client env vars and skew-tolerant client transport.
 
 ## Run
 
-From the repo root:
+Local bridge from the repo root:
 
 ```bash
 bun install
@@ -38,6 +42,42 @@ Optional overrides:
 export CSH_BROWSER_HOST=127.0.0.1
 export CSH_BROWSER_PORT=4318
 ```
+
+## Remote ContextVM Mode
+
+Server side:
+
+```bash
+scripts/contextvm-strfry-relay.sh start
+scripts/contextvm-private-demo.sh setup \
+  --server-relay-url ws://127.0.0.1:10549 \
+  --client-relay-url ws://127.0.0.1:10549
+```
+
+Client side:
+
+```bash
+source /workspace/projects/csh/.csh-runtime/contextvm-private-demo/client.env
+export CSH_BROWSER_PORT=4319
+bun run start:browser:contextvm
+```
+
+Open:
+
+```text
+http://127.0.0.1:4319
+```
+
+The ContextVM-backed browser bridge reuses:
+
+- `CSH_CLIENT_PRIVATE_KEY`
+- `CSH_SERVER_PUBKEY`
+- `CSH_NOSTR_RELAY_URLS`
+- `CSH_NOSTR_RESPONSE_LOOKBACK_SECONDS`
+
+It also pins `ownerId` to the authenticated Nostr pubkey before forwarding calls, so the browser
+can keep the same request shape while the remote shell server still enforces session ownership
+against the authenticated ContextVM client identity.
 
 ## Controls
 
@@ -58,6 +98,24 @@ Manual browser path:
 5. Confirm the output appears in the terminal.
 6. Click `Interrupt` during a long-running command or `Close` to end the session.
 
+Remote ContextVM browser path:
+
+1. Bring up the relay and gateway using the server-side commands above.
+2. Run `bun run start:browser:contextvm` on the client.
+3. Open `http://127.0.0.1:4319`.
+4. Type:
+   `hostname`
+   `pwd`
+   `uname -a`
+5. Confirm the output matches the remote shell runtime rather than the local browser-bridge
+   working directory.
+6. Use `Interrupt`, `Close`, and `Reconnect`.
+
+In this Codex environment the server and client run on the same host, so `hostname` and `uname -a`
+match. To prove the bridge is still talking to the remote shell, the verification run used a
+separate `/tmp` client checkout; the browser bridge local working directory was
+`/tmp/csh-browser-client.*` while the remote shell `pwd` was `/workspace/projects/csh`.
+
 HTTP smoke path:
 
 ```bash
@@ -68,6 +126,11 @@ bun -e 'const owner="browser-smoke"; const base="http://127.0.0.1:4318"; const p
 
 - This Phase 3.1 path is local-first and does not yet put ContextVM transport directly in the
   browser.
+- `start:browser:contextvm` still uses a local Bun bridge process on the client; the browser does
+  not hold Nostr keys or speak ContextVM directly.
 - Terminal input still uses the existing `tmux send-keys` backend path.
 - The browser renders whole-screen snapshot refreshes from `session_poll`; it is not yet using
   incremental diff rendering or push updates.
+- Running multiple live ContextVM clients with the same demo key against the same relay can create
+  confusing verification collisions; use the supported demo bootstrap path and test clients
+  sequentially unless you intentionally want to study that behavior.

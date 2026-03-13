@@ -3,8 +3,8 @@
 ## Current State
 
 - Active phase: Phase 3 implementation
-- Current objective: land the first browser terminal UI slice without regressing the working
-  ContextVM CLI demos
+- Current objective: land the ContextVM-backed browser bridge slice without regressing the local
+  browser mode or the working ContextVM CLI demos
 - Last verified commands:
   - `bun run typecheck`
   - `bun run src/main.ts </dev/null`
@@ -26,6 +26,13 @@
   - `bun run start:browser` with unsandboxed execution
   - localhost browser-bridge API smoke for `session_open` -> `session_write` -> `session_poll` ->
     `session_close` with unsandboxed execution
+  - `bun run start:browser:contextvm` with unsandboxed execution from a separate `/tmp` client
+    checkout
+  - localhost browser-contextvm API smoke proving remote `hostname`, remote `pwd`, remote
+    `uname -a`, `Interrupt`, `Close`, and `Reconnect` with unsandboxed execution
+  - headless Playwright page verification for the browser-contextvm UI:
+    page loaded, connected, `Interrupt` changed page status, `Close` moved the page to a closed
+    session state, and `Reconnect` opened a fresh remote session
 
 ## Open Questions
 
@@ -34,16 +41,18 @@
 - When should the browser client move from the local bridge to a direct ContextVM-aware web path?
 - Should the skew-tolerant subscription lookback move upstream into the ContextVM SDK once the
   relay timing evidence is summarized cleanly?
+- Do we want to harden or document the same-key multi-client collision behavior seen when scripted
+  and interactive ContextVM clients were run in parallel against the same demo relay history?
 
 ## Next Actions
 
-1. Review the first browser UI slice from terminal-behavior and UX angles before broadening it.
+1. Review the browser-contextvm slice from terminal-behavior and UX angles before broadening it.
 2. Decide whether `tmux send-keys` is acceptable for browser typing or whether common control-input
    handling should be strengthened before wider TUI/browser testing.
 3. Choose the next Phase 3 loop ordering: richer browser UX polish versus explicit upload/download
    capabilities.
-4. Decide when the browser path should stop being local-first and start speaking to the private
-   ContextVM deployment shape directly.
+4. Decide when the browser path should stop using a local Bun bridge and start speaking to the
+   private ContextVM deployment shape directly from the web client.
 
 ## Review Summary
 
@@ -73,3 +82,14 @@
   existing `session_*` tool contract over a local HTTP API via stdio MCP.
 - This keeps the shell/session backend and the working private ContextVM CLI demo path unchanged
   while giving the project a real browser UX loop to iterate on.
+- The next browser slice adds `bun run start:browser:contextvm`, which keeps the same browser app
+  and HTTP routes but swaps the bridge to a ContextVM-backed MCP client.
+- The ContextVM browser bridge now pins `ownerId` to the authenticated client pubkey before
+  forwarding calls, so browser-generated owner IDs do not conflict with the remote shell server's
+  session ownership checks.
+- In this Codex environment the server and client are on the same host, so remote proof used a
+  separate `/tmp` client checkout: the local browser bridge cwd differed from the remote shell
+  `pwd`, while the remote shell itself remained under `/workspace/projects/csh`.
+- Running the scripted and interactive CLI demos in parallel with the same demo client key caused
+  session confusion during verification; sequential verification against the tmux-managed gateway
+  succeeded and is the correct current demo posture.

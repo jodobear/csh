@@ -8,6 +8,7 @@
     "start": "bun run src/main.ts",
     "start:contextvm": "bun run src/contextvm-gateway.ts",
     "start:browser": "bun run src/browser/server.ts",
+    "start:browser:contextvm": "bun run src/browser/contextvm-server.ts",
     "dev": "bun run --watch src/main.ts",
     "demo:local": "bun run src/demo/local-demo.ts",
     "demo:contextvm": "bun run src/contextvm-demo-client.ts",
