@@ -6,15 +6,21 @@
     <title>csh Demo Deck</title>
     <style>
       :root {
-        --bg: #f5efe6;
-        --ink: #181411;
-        --muted: #5b544c;
-        --card: rgba(255, 251, 245, 0.86);
-        --line: rgba(24, 20, 17, 0.12);
-        --accent: #c1461d;
-        --accent-2: #0d6b75;
-        --accent-3: #d39b12;
-        --shadow: 0 24px 80px rgba(34, 24, 15, 0.14);
+        --bg: #0d1117;
+        --bg-2: #111827;
+        --ink: #f5f7fb;
+        --muted: #a4b0c2;
+        --card: rgba(18, 24, 36, 0.84);
+        --line: rgba(255, 255, 255, 0.08);
+        --accent: #ff7a45;
+        --accent-2: #4fd1c5;
+        --accent-3: #ffd166;
+        --shadow: 0 26px 90px rgba(0, 0, 0, 0.34);
+        --code-bg: #090c12;
+        --code-ink: #ecf3ff;
+        --code-key: #7dd3fc;
+        --code-str: #86efac;
+        --code-num: #fca5a5;
       }
 
       * {
@@ -30,9 +36,9 @@
         color: var(--ink);
         font-family: Georgia, "Times New Roman", serif;
         background:
-          radial-gradient(circle at top left, rgba(193, 70, 29, 0.2), transparent 28%),
-          radial-gradient(circle at top right, rgba(13, 107, 117, 0.18), transparent 22%),
-          linear-gradient(180deg, #f9f4ec 0%, var(--bg) 100%);
+          radial-gradient(circle at top left, rgba(255, 122, 69, 0.18), transparent 26%),
+          radial-gradient(circle at top right, rgba(79, 209, 197, 0.16), transparent 20%),
+          linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
       }
 
       .deck {
@@ -44,9 +50,9 @@
       .slide {
         min-height: calc(100vh - 28px);
         margin: 14px 0;
-        padding: 28px;
+        padding: 36px;
         display: grid;
-        gap: 20px;
+        gap: 24px;
         align-content: center;
         scroll-snap-align: start;
         background: var(--card);
@@ -60,7 +66,7 @@
         margin: 0;
         color: var(--accent-2);
         font-family: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
-        font-size: 12px;
+        font-size: 13px;
         letter-spacing: 0.16em;
         text-transform: uppercase;
       }
@@ -73,27 +79,27 @@
       }
 
       h1 {
-        font-size: clamp(3rem, 8vw, 6.5rem);
+        font-size: clamp(3.6rem, 9vw, 7.4rem);
         line-height: 0.92;
         letter-spacing: -0.06em;
       }
 
       h2 {
-        font-size: clamp(2.1rem, 4vw, 4rem);
+        font-size: clamp(2.7rem, 5vw, 5rem);
         line-height: 0.95;
         letter-spacing: -0.05em;
       }
 
       h3 {
-        font-size: 1.1rem;
+        font-size: 1.45rem;
         line-height: 1.1;
         letter-spacing: -0.03em;
       }
 
       .lede {
-        max-width: 18ch;
-        font-size: clamp(1.2rem, 2vw, 1.8rem);
-        line-height: 1.3;
+        max-width: 20ch;
+        font-size: clamp(1.45rem, 2.4vw, 2.3rem);
+        line-height: 1.26;
         color: var(--muted);
       }
 
@@ -117,28 +123,29 @@
       }
 
       .card {
-        padding: 18px;
+        padding: 22px;
         border-radius: 22px;
         border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.74);
+        background: rgba(255, 255, 255, 0.03);
       }
 
       .card p {
-        margin-top: 10px;
+        margin-top: 12px;
         line-height: 1.5;
         color: var(--muted);
+        font-size: 1.15rem;
       }
 
       .kpi {
-        padding: 18px;
+        padding: 22px;
         border-radius: 22px;
         border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.78);
+        background: rgba(255, 255, 255, 0.04);
       }
 
       .kpi .value {
         display: block;
-        font-size: clamp(1.7rem, 3vw, 2.8rem);
+        font-size: clamp(2.3rem, 4vw, 3.8rem);
         line-height: 0.95;
         letter-spacing: -0.05em;
       }
@@ -147,7 +154,7 @@
         display: block;
         margin-top: 8px;
         color: var(--muted);
-        font-size: 0.96rem;
+        font-size: 1.05rem;
         line-height: 1.35;
       }
 
@@ -157,28 +164,29 @@
       }
 
       .node {
-        padding: 18px 20px;
+        padding: 20px 22px;
         border-radius: 20px;
         border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.76);
+        background: rgba(255, 255, 255, 0.03);
       }
 
       .node strong {
         display: block;
         margin-bottom: 8px;
-        font-size: 1.12rem;
+        font-size: 1.35rem;
       }
 
       .node span {
         color: var(--muted);
         line-height: 1.45;
+        font-size: 1.1rem;
       }
 
       .arrow {
         padding-left: 12px;
         color: var(--accent);
         font-family: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
-        font-size: 1.1rem;
+        font-size: 1.2rem;
       }
 
       ul {
@@ -186,7 +194,7 @@
         padding-left: 20px;
         color: var(--muted);
         line-height: 1.6;
-        font-size: 1.02rem;
+        font-size: 1.2rem;
       }
 
       li + li {
@@ -194,14 +202,26 @@
       }
 
       .code {
-        padding: 18px 20px;
+        padding: 22px 24px;
         border-radius: 22px;
-        background: #171412;
-        color: #fff4e7;
+        background: var(--code-bg);
+        color: var(--code-ink);
         font-family: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
-        font-size: 0.95rem;
-        line-height: 1.75;
+        font-size: 1.05rem;
+        line-height: 1.85;
         overflow: auto;
+      }
+
+      .code .key {
+        color: var(--code-key);
+      }
+
+      .code .str {
+        color: var(--code-str);
+      }
+
+      .code .num {
+        color: var(--code-num);
       }
 
       .accent {
@@ -221,7 +241,7 @@
         justify-content: space-between;
         gap: 16px;
         color: var(--muted);
-        font-size: 0.9rem;
+        font-size: 1rem;
         font-family: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
       }
 
@@ -247,14 +267,11 @@
           over <span class="accent-2">Nostr</span><br />
           with <span class="accent-3">ContextVM</span>
         </h1>
-        <p class="lede">
-          We already have a working remote shell demo, a browser terminal, and a browser-to-remote
-          ContextVM bridge.
-        </p>
+        <p class="lede">Remote shell first. Browser next. Real relay path already working.</p>
         <div class="grid-4">
           <div class="kpi">
             <span class="value">CLI</span>
-            <span class="label">remote interactive demo works</span>
+            <span class="label">interactive remote demo works</span>
           </div>
           <div class="kpi">
             <span class="value">Browser</span>
@@ -262,7 +279,7 @@
           </div>
           <div class="kpi">
             <span class="value">Bridge</span>
-            <span class="label">browser can reach remote ContextVM server</span>
+            <span class="label">browser bridge can hit remote ContextVM server</span>
           </div>
           <div class="kpi">
             <span class="value">Private</span>
@@ -271,13 +288,13 @@
         </div>
         <div class="slide-footer">
           <span>csh / Phase 3</span>
-          <span>remote shell first, polish later</span>
+          <span>the hard part already works</span>
         </div>
       </section>
 
       <section class="slide">
         <p class="eyebrow">Slide 2 / architecture</p>
-        <h2>The plumbing is layered, not reinvented.</h2>
+        <h2>The plumbing is layered.</h2>
         <div class="flow">
           <div class="node">
             <strong>Browser or CLI client</strong>
@@ -311,23 +328,44 @@
       </section>
 
       <section class="slide">
-        <p class="eyebrow">Slide 3 / demo path</p>
-        <h2>What we can demo right now</h2>
+        <p class="eyebrow">Slide 3 / request-response</p>
+        <h2>What the shell loop actually looks like</h2>
         <div class="grid-2">
           <div class="card">
-            <h3>Remote CLI shell</h3>
-            <p>
-              Proven from a separate client machine using local `strfry` on the server plus
-              `ssh -L`.
-            </p>
+            <h3>Request</h3>
+            <div class="code">{
+  <span class="key">"tool"</span>: <span class="str">"session_open"</span>,
+  <span class="key">"args"</span>: {
+    <span class="key">"command"</span>: <span class="str">"/bin/sh"</span>,
+    <span class="key">"cols"</span>: <span class="num">100</span>,
+    <span class="key">"rows"</span>: <span class="num">28</span>
+  }
+}</div>
           </div>
           <div class="card">
-            <h3>Browser terminal UI</h3>
-            <p>
-              Works locally and now has a ContextVM-backed browser bridge for the remote shell path.
-            </p>
+            <h3>Response</h3>
+            <div class="code">{
+  <span class="key">"sessionId"</span>: <span class="str">"..."</span>,
+  <span class="key">"cursor"</span>: <span class="num">0</span>,
+  <span class="key">"snapshot"</span>: <span class="str">null</span>
+}</div>
           </div>
         </div>
+        <div class="code">write -> poll -> snapshot -> write -> poll
+
+<span class="key">session_write</span>(<span class="str">"uname -a\n"</span>)
+<span class="key">session_poll</span>(<span class="str">sessionId</span>, <span class="str">cursor</span>) -> <span class="str">snapshot</span>
+<span class="key">session_signal</span>(<span class="str">"SIGINT"</span>)
+<span class="key">session_close</span>(<span class="str">sessionId</span>)</div>
+        <div class="slide-footer">
+          <span>simple session contract</span>
+          <span>works over MCP + ContextVM + Nostr</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <p class="eyebrow">Slide 4 / demo path</p>
+        <h2>What we can demo right now</h2>
         <div class="code">Server
 scripts/contextvm-strfry-relay.sh start
 scripts/contextvm-private-demo.sh setup \
@@ -342,14 +380,24 @@ bun run demo:contextvm:interactive
 
 Browser
 bun run start:browser:contextvm</div>
+        <div class="grid-2">
+          <div class="card">
+            <h3>CLI demo</h3>
+            <p>typed shell, resize, interrupt, close, reconnect</p>
+          </div>
+          <div class="card">
+            <h3>Browser demo</h3>
+            <p>xterm UI, same shell contract, remote server over ContextVM</p>
+          </div>
+        </div>
         <div class="slide-footer">
-          <span>good proof commands: `hostname`, `pwd`, `uname -a`</span>
-          <span>interrupt / close / reconnect all exist</span>
+          <span>best proof commands: `hostname`, `pwd`, `uname -a`</span>
+          <span>`strfry` + `ssh -L` is the current default</span>
         </div>
       </section>
 
       <section class="slide">
-        <p class="eyebrow">Slide 4 / current state</p>
+        <p class="eyebrow">Slide 5 / current state</p>
         <h2>Current features</h2>
         <div class="grid-3">
           <div class="card">
@@ -388,7 +436,7 @@ bun run start:browser:contextvm</div>
       </section>
 
       <section class="slide">
-        <p class="eyebrow">Slide 5 / limits</p>
+        <p class="eyebrow">Slide 6 / limits</p>
         <h2>What is still rough</h2>
         <div class="grid-2">
           <div class="card">
@@ -415,7 +463,7 @@ bun run start:browser:contextvm</div>
       </section>
 
       <section class="slide">
-        <p class="eyebrow">Slide 6 / target</p>
+        <p class="eyebrow">Slide 7 / target</p>
         <h2>What we ideally want for the demo</h2>
         <div class="grid-2">
           <div class="card">
@@ -437,10 +485,7 @@ bun run start:browser:contextvm</div>
             </ul>
           </div>
         </div>
-        <p class="lede">
-          The key message for the demo: we already proved the remote shell model over ContextVM.
-          What remains is making it feel smoother, safer, and more product-shaped.
-        </p>
+        <p class="lede">The message: we already proved the remote shell model. Now it is about fidelity, polish, and product shape.</p>
         <div class="slide-footer">
           <span>csh is past “can this work?”</span>
           <span>it is now in “how polished should the demo be?”</span>
