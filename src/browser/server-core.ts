@@ -144,7 +144,7 @@ async function handleRequest(
     return new Response(new Blob([body]), {
       headers: {
         "content-type": asset.contentType,
-        "cache-control": "public, max-age=300",
+        "cache-control": "no-store",
       },
     });
   }
