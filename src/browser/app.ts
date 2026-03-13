@@ -89,51 +89,59 @@ const resizeObserver = new ResizeObserver(() => {
 
 resizeObserver.observe(ui.terminalContainer);
 
-ui.terminalContainer.addEventListener("keydown", (event) => {
-  if (!sessionId || stopping) {
-    return;
-  }
+document.addEventListener(
+  "keydown",
+  (event) => {
+    if (!sessionId || stopping || !isTerminalFocused()) {
+      return;
+    }
 
-  if (event.ctrlKey && event.key.toLowerCase() === "c") {
+    if (event.ctrlKey && event.key.toLowerCase() === "c") {
+      event.preventDefault();
+      void interruptRemote().catch(reportError);
+      return;
+    }
+
+    const input = toTerminalInput(event);
+    if (input === null) {
+      return;
+    }
+
     event.preventDefault();
-    void interruptRemote().catch(reportError);
-    return;
-  }
+    void queueRpc(async () => {
+      await postJson("session/write", {
+        sessionId,
+        input,
+        ownerId,
+      });
+    }).catch(reportError);
+  },
+  true,
+);
 
-  const input = toTerminalInput(event);
-  if (input === null) {
-    return;
-  }
+document.addEventListener(
+  "paste",
+  (event) => {
+    if (!sessionId || stopping || !isTerminalFocused()) {
+      return;
+    }
 
-  event.preventDefault();
-  void queueRpc(async () => {
-    await postJson("session/write", {
-      sessionId,
-      input,
-      ownerId,
-    });
-  }).catch(reportError);
-});
+    const pastedText = event.clipboardData?.getData("text");
+    if (!pastedText) {
+      return;
+    }
 
-ui.terminalContainer.addEventListener("paste", (event) => {
-  if (!sessionId || stopping) {
-    return;
-  }
-
-  const pastedText = event.clipboardData?.getData("text");
-  if (!pastedText) {
-    return;
-  }
-
-  event.preventDefault();
-  void queueRpc(async () => {
-    await postJson("session/write", {
-      sessionId,
-      input: pastedText,
-      ownerId,
-    });
-  }).catch(reportError);
-});
+    event.preventDefault();
+    void queueRpc(async () => {
+      await postJson("session/write", {
+        sessionId,
+        input: pastedText,
+        ownerId,
+      });
+    }).catch(reportError);
+  },
+  true,
+);
 
 ui.reconnectButton.addEventListener("click", () => {
   void restartSession().catch(reportError);
@@ -351,6 +359,15 @@ async function postJson<T = Record<string, unknown>>(
   }
 
   return payload as T;
+}
+
+function isTerminalFocused(): boolean {
+  const activeElement = document.activeElement;
+  if (!activeElement) {
+    return false;
+  }
+
+  return ui.terminalContainer.contains(activeElement) || activeElement === ui.terminalContainer;
 }
 
 function toTerminalInput(event: KeyboardEvent): string | null {
