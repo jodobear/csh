@@ -37,6 +37,8 @@
   - headless Playwright page verification for the browser-contextvm UI:
     page loaded, connected, `Interrupt` changed page status, `Close` moved the page to a closed
     session state, and `Reconnect` opened a fresh remote session
+  - `bun run demo:contextvm:interactive` still completed successfully on the current browser branch
+    against local `strfry`
 
 ## Open Questions
 
@@ -97,3 +99,5 @@
 - Running the scripted and interactive CLI demos in parallel with the same demo client key caused
   session confusion during verification; sequential verification against the tmux-managed gateway
   succeeded and is the correct current demo posture.
+- A standalone HTML overview for demo/explainer use now lives at
+  `docs/presentations/contextvm-demo-overview.html`.
