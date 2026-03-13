@@ -52,12 +52,15 @@ const terminal = new Terminal({
 const fitAddon = new FitAddon();
 terminal.loadAddon(fitAddon);
 terminal.open(ui.terminalContainer);
+ui.terminalContainer.tabIndex = 0;
 fitAddon.fit();
 terminal.focus();
 ui.terminalContainer.addEventListener("click", () => {
+  ui.terminalContainer.focus();
   terminal.focus();
 });
 window.addEventListener("focus", () => {
+  ui.terminalContainer.focus();
   terminal.focus();
 });
 
@@ -86,20 +89,47 @@ const resizeObserver = new ResizeObserver(() => {
 
 resizeObserver.observe(ui.terminalContainer);
 
-terminal.onData((input) => {
+ui.terminalContainer.addEventListener("keydown", (event) => {
   if (!sessionId || stopping) {
     return;
   }
 
-  if (input === "\u0003") {
+  if (event.ctrlKey && event.key.toLowerCase() === "c") {
+    event.preventDefault();
     void interruptRemote().catch(reportError);
     return;
   }
 
+  const input = toTerminalInput(event);
+  if (input === null) {
+    return;
+  }
+
+  event.preventDefault();
   void queueRpc(async () => {
     await postJson("session/write", {
       sessionId,
       input,
+      ownerId,
+    });
+  }).catch(reportError);
+});
+
+ui.terminalContainer.addEventListener("paste", (event) => {
+  if (!sessionId || stopping) {
+    return;
+  }
+
+  const pastedText = event.clipboardData?.getData("text");
+  if (!pastedText) {
+    return;
+  }
+
+  event.preventDefault();
+  void queueRpc(async () => {
+    await postJson("session/write", {
+      sessionId,
+      input: pastedText,
       ownerId,
     });
   }).catch(reportError);
@@ -144,6 +174,7 @@ async function restartSession(): Promise<void> {
   terminal.reset();
   fitAddon.fit();
   terminal.focus();
+  ui.terminalContainer.focus();
   setStatus("Connecting to shell bridge...");
   setSessionLabel("opening");
   setControlsDisabled(true);
@@ -161,6 +192,8 @@ async function restartSession(): Promise<void> {
   setStatus(`Connected to ${result.command}`);
   setSessionLabel(result.sessionId);
   setControlsDisabled(false);
+  ui.terminalContainer.focus();
+  terminal.focus();
   schedulePoll();
 }
 
@@ -254,8 +287,9 @@ async function pollRemote(): Promise<void> {
 }
 
 function renderSnapshot(snapshot: string): void {
-  terminal.write("\u001b[H\u001b[2J");
+  terminal.clear();
   terminal.write(snapshot);
+  terminal.scrollToBottom();
   lastSnapshot = snapshot;
 }
 
@@ -317,6 +351,52 @@ async function postJson<T = Record<string, unknown>>(
   }
 
   return payload as T;
+}
+
+function toTerminalInput(event: KeyboardEvent): string | null {
+  if (event.metaKey || event.altKey) {
+    return null;
+  }
+
+  switch (event.key) {
+    case "Enter":
+      return "\n";
+    case "Tab":
+      return "\t";
+    case "Backspace":
+      return "\u007f";
+    case "ArrowUp":
+      return "\u001b[A";
+    case "ArrowDown":
+      return "\u001b[B";
+    case "ArrowRight":
+      return "\u001b[C";
+    case "ArrowLeft":
+      return "\u001b[D";
+    case "Home":
+      return "\u001b[H";
+    case "End":
+      return "\u001b[F";
+    case "Delete":
+      return "\u001b[3~";
+    default:
+      break;
+  }
+
+  if (event.ctrlKey) {
+    const code = event.key.toUpperCase().charCodeAt(0);
+    if (code >= 65 && code <= 90) {
+      return String.fromCharCode(code - 64);
+    }
+
+    return null;
+  }
+
+  if (event.key.length === 1) {
+    return event.key;
+  }
+
+  return null;
 }
 
 function getUiElements(): UiElements {
