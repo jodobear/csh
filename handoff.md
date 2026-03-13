@@ -18,6 +18,9 @@
     unsandboxed tmux session
   - `bun run demo:contextvm` with `CSH_NOSTR_RELAY_URLS=wss://relay.contextvm.org` completed
     successfully with unsandboxed execution
+  - `scripts/contextvm-strfry-relay.sh start`
+  - `bun run demo:contextvm` with `CSH_NOSTR_RELAY_URLS=ws://127.0.0.1:10549` completed
+    successfully with unsandboxed execution against local `strfry`
 
 ## Open Questions
 
@@ -26,17 +29,20 @@
   grows more demanding?
 - Do we add a helper-level topology mode or relay probe so the split localhost relay setup is
   harder to misuse?
+- Should the skew-tolerant subscription lookback move upstream into the ContextVM SDK once the
+  relay timing evidence is summarized cleanly?
 
 ## Next Actions
 
 1. Mirror the current plan into `br` issues and use `br` for the next implementation slice.
-2. Standardize the first real demo path on `wss://relay.contextvm.org`, then repeat the demo with
-   the Haven split-url topology only after the public-relay path is stable.
-3. Update `scripts/contextvm-private-demo.sh` or its wrapper docs so localhost relay topologies
+2. Use local `strfry` plus SSH port forwarding as the primary cross-machine demo topology instead
+   of Haven or public relays.
+3. Capture the relay timing evidence behind the client timeout and decide whether to upstream the
+   client-side subscription lookback into ContextVM.
+4. Update `scripts/contextvm-private-demo.sh` or its wrapper docs so localhost relay topologies
    fail earlier when the client-side forwarded port is missing.
-4. Decide whether `tmux send-keys` is acceptable for the first remote demo or should be replaced
+5. Decide whether `tmux send-keys` is acceptable for the first remote demo or should be replaced
    before broader TUI testing.
-5. Keep the upstream SDK routing contribution as a parallel non-blocking track.
 
 ## Review Summary
 
@@ -48,8 +54,11 @@
   report closure and exit status, and `SIGINT` now interrupts the foreground terminal workload.
 - A Phase 2 private ContextVM path now exists via `NostrMCPGateway` in per-client mode, with
   required encryption, allowed public keys, and injected client pubkey ownership binding.
-- The live relay-backed proof now exists against `wss://relay.contextvm.org` with unsandboxed
-  execution in this Codex environment.
-- The remaining relay-specific gap is the private/Haven topology: the server-local relay path
-  exists, but the split client localhost forward needs to be made easier to validate before it is a
-  reliable default.
+- The live relay-backed proof now exists both against `wss://relay.contextvm.org` and against a
+  local `strfry` relay with unsandboxed execution in this Codex environment.
+- Haven is not a neutral default relay for this demo because its owner/whitelist policy is separate
+  from the demo keys.
+- The demo client now uses a bounded response lookback when subscribing for Nostr events so modest
+  clock skew does not drop valid relay responses before the client sees them.
+- `scripts/contextvm-private-demo.sh setup` now restarts an already-running gateway so relay
+  changes actually take effect.

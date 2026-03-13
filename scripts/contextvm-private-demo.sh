@@ -24,7 +24,7 @@ Usage:
 What it does:
   - generates demo Nostr keys with nak
   - writes server/client env files under .csh-runtime/contextvm-private-demo/
-  - starts the private ContextVM gateway in tmux
+  - starts or restarts the private ContextVM gateway in tmux
   - prints the exact demo command to run from this host or another client machine
 
 Notes:
@@ -123,6 +123,13 @@ EOF
   )
 
   tmux_cmd new-session -d -s "${TMUX_SESSION_NAME}" "${command}"
+}
+
+restart_gateway_if_running() {
+  if tmux_cmd has-session -t "${TMUX_SESSION_NAME}" 2>/dev/null; then
+    tmux_cmd kill-session -t "${TMUX_SESSION_NAME}"
+    echo "Restarting ${TMUX_SESSION_NAME} to apply updated relay configuration"
+  fi
 }
 
 print_status() {
@@ -240,6 +247,7 @@ setup_command() {
   client_relay_urls_csv="$(IFS=,; echo "${client_relay_urls[*]}")"
 
   write_env_files "${server_relay_urls_csv}" "${client_relay_urls_csv}"
+  restart_gateway_if_running
   start_gateway
   print_client_instructions
 }
