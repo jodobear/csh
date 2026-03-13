@@ -54,9 +54,15 @@ terminal.loadAddon(fitAddon);
 terminal.open(ui.terminalContainer);
 fitAddon.fit();
 terminal.focus();
+ui.terminalContainer.addEventListener("click", () => {
+  terminal.focus();
+});
+window.addEventListener("focus", () => {
+  terminal.focus();
+});
 
 let sessionId: string | null = null;
-let cursor = 0;
+let cursor: number | null = null;
 let lastSnapshot = "";
 let closed = false;
 let stopping = false;
@@ -133,11 +139,12 @@ async function restartSession(): Promise<void> {
   stopping = false;
   closed = false;
   lastSnapshot = "";
-  cursor = 0;
+  cursor = null;
   sessionId = null;
   terminal.reset();
   fitAddon.fit();
-  setStatus("Connecting to local shell bridge...");
+  terminal.focus();
+  setStatus("Connecting to shell bridge...");
   setSessionLabel("opening");
   setControlsDisabled(true);
 
@@ -150,7 +157,7 @@ async function restartSession(): Promise<void> {
   );
 
   sessionId = result.sessionId;
-  cursor = result.cursor;
+  cursor = null;
   setStatus(`Connected to ${result.command}`);
   setSessionLabel(result.sessionId);
   setControlsDisabled(false);
@@ -221,7 +228,7 @@ async function pollRemote(): Promise<void> {
   const result = await queueRpc(() =>
     postJson<PollResult>("session/poll", {
       sessionId: activeSessionId,
-      cursor,
+      ...(cursor === null ? {} : { cursor }),
       ownerId,
     }),
   );

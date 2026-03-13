@@ -2,6 +2,10 @@
 
 ## Current State
 
+- Environment boundary:
+  - agent operates on the server-side checkout/runtime
+  - user operates from the client side by default
+
 - Active phase: Phase 3 implementation
 - Current objective: land the ContextVM-backed browser bridge slice without regressing the local
   browser mode or the working ContextVM CLI demos

@@ -71,6 +71,9 @@ The agent may draft this file from a seed prompt and references before the opera
 
 ## Process Profile
 
+- Runtime boundary:
+  - the agent operates from the server-side checkout/runtime by default
+  - the user operates from the client side by default
 - Delivery phases:
   - Phase 0 research baseline
   - Phase 1 MCP terminal server prototype
