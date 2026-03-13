@@ -2,6 +2,7 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import {
   ApplesauceRelayPool,
   EncryptionMode,
+  GiftWrapMode,
   NostrClientTransport,
   PrivateKeySigner,
 } from "@contextvm/sdk";
@@ -37,6 +38,7 @@ const transport = new NostrClientTransport({
   relayHandler: new ApplesauceRelayPool(relayUrls),
   serverPubkey: env.CSH_SERVER_PUBKEY,
   encryptionMode: EncryptionMode.REQUIRED,
+  giftWrapMode: GiftWrapMode.EPHEMERAL,
 });
 
 let sessionId: string | undefined;

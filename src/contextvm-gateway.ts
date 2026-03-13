@@ -2,6 +2,7 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import {
   ApplesauceRelayPool,
   EncryptionMode,
+  GiftWrapMode,
   NostrMCPGateway,
   PrivateKeySigner,
 } from "@contextvm/sdk";
@@ -26,6 +27,7 @@ const gateway = new NostrMCPGateway({
     allowedPublicKeys: config.allowedPublicKeys,
     injectClientPubkey: true,
     encryptionMode: EncryptionMode.REQUIRED,
+    giftWrapMode: GiftWrapMode.EPHEMERAL,
     isPublicServer: false,
     publishRelayList: false,
     serverInfo: config.serverInfo,
