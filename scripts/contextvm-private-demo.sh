@@ -15,7 +15,7 @@ GATEWAY_LOG_FILE="${RUNTIME_DIR}/gateway.log"
 usage() {
   cat <<'EOF'
 Usage:
-  scripts/contextvm-private-demo.sh setup --relay-url <url> [--relay-url <url> ...] [--session-name <name>]
+  scripts/contextvm-private-demo.sh setup --relay-url <url> [--relay-url <url> ...] [--server-relay-url <url>] [--client-relay-url <url>] [--session-name <name>]
   scripts/contextvm-private-demo.sh start
   scripts/contextvm-private-demo.sh stop
   scripts/contextvm-private-demo.sh status
@@ -37,6 +37,18 @@ require_command() {
   local command_name="$1"
   if ! command -v "${command_name}" >/dev/null 2>&1; then
     echo "Missing required command: ${command_name}" >&2
+    exit 1
+  fi
+}
+
+validate_relay_url() {
+  local relay_url="$1"
+  if [[ ! "${relay_url}" =~ ^wss?://[^[:space:]]+$ ]]; then
+    echo "Invalid relay URL: ${relay_url}" >&2
+    exit 1
+  fi
+  if [[ "${relay_url}" =~ ^wss?://[^/]+:$ ]]; then
+    echo "Relay URL is missing a port after the colon: ${relay_url}" >&2
     exit 1
   fi
 }
@@ -63,7 +75,8 @@ get_file_contents() {
 }
 
 write_env_files() {
-  local relay_urls_csv="$1"
+  local server_relay_urls_csv="$1"
+  local client_relay_urls_csv="$2"
   local server_private_key client_private_key server_pubkey client_pubkey
 
   server_private_key="$(get_file_contents "${SERVER_KEY_FILE}")"
@@ -73,7 +86,7 @@ write_env_files() {
 
   cat > "${SERVER_ENV_FILE}" <<EOF
 export CSH_NOSTR_PRIVATE_KEY=${server_private_key}
-export CSH_NOSTR_RELAY_URLS=${relay_urls_csv}
+export CSH_NOSTR_RELAY_URLS=${server_relay_urls_csv}
 export CSH_ALLOWED_PUBLIC_KEYS=${client_pubkey}
 export CSH_SERVER_NAME="csh private shell"
 export CSH_SERVER_ABOUT="Private ContextVM shell gateway"
@@ -82,7 +95,7 @@ EOF
   cat > "${CLIENT_ENV_FILE}" <<EOF
 export CSH_CLIENT_PRIVATE_KEY=${client_private_key}
 export CSH_SERVER_PUBKEY=${server_pubkey}
-export CSH_NOSTR_RELAY_URLS=${relay_urls_csv}
+export CSH_NOSTR_RELAY_URLS=${client_relay_urls_csv}
 EOF
 
   chmod 600 "${SERVER_ENV_FILE}" "${CLIENT_ENV_FILE}"
@@ -162,11 +175,21 @@ EOF
 
 setup_command() {
   local relay_urls=()
+  local server_relay_urls=()
+  local client_relay_urls=()
 
   while [[ $# -gt 0 ]]; do
     case "$1" in
       --relay-url)
         relay_urls+=("$2")
+        shift 2
+        ;;
+      --server-relay-url)
+        server_relay_urls+=("$2")
+        shift 2
+        ;;
+      --client-relay-url)
+        client_relay_urls+=("$2")
         shift 2
         ;;
       --session-name)
@@ -186,19 +209,37 @@ setup_command() {
   done
 
   if [[ ${#relay_urls[@]} -eq 0 ]]; then
-    echo "setup requires at least one --relay-url" >&2
-    usage >&2
-    exit 1
+    if [[ ${#server_relay_urls[@]} -eq 0 || ${#client_relay_urls[@]} -eq 0 ]]; then
+      echo "setup requires either --relay-url or both --server-relay-url and --client-relay-url" >&2
+      usage >&2
+      exit 1
+    fi
+  else
+    if [[ ${#server_relay_urls[@]} -eq 0 ]]; then
+      server_relay_urls=("${relay_urls[@]}")
+    fi
+    if [[ ${#client_relay_urls[@]} -eq 0 ]]; then
+      client_relay_urls=("${relay_urls[@]}")
+    fi
   fi
 
   ensure_runtime_dir
   generate_key_if_missing "${SERVER_KEY_FILE}"
   generate_key_if_missing "${CLIENT_KEY_FILE}"
 
-  local relay_urls_csv
-  relay_urls_csv="$(IFS=,; echo "${relay_urls[*]}")"
+  local relay_url
+  for relay_url in "${server_relay_urls[@]}"; do
+    validate_relay_url "${relay_url}"
+  done
+  for relay_url in "${client_relay_urls[@]}"; do
+    validate_relay_url "${relay_url}"
+  done
 
-  write_env_files "${relay_urls_csv}"
+  local server_relay_urls_csv client_relay_urls_csv
+  server_relay_urls_csv="$(IFS=,; echo "${server_relay_urls[*]}")"
+  client_relay_urls_csv="$(IFS=,; echo "${client_relay_urls[*]}")"
+
+  write_env_files "${server_relay_urls_csv}" "${client_relay_urls_csv}"
   start_gateway
   print_client_instructions
 }

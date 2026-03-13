@@ -60,6 +60,17 @@ scripts/contextvm-private-demo.sh print-client
 scripts/contextvm-private-demo.sh stop
 ```
 
+For SSH-tunneled relay testing, use separate relay URLs:
+
+```bash
+scripts/contextvm-private-demo.sh setup \
+  --server-relay-url ws://127.0.0.1:<server-relay-port> \
+  --client-relay-url ws://127.0.0.1:<local-forwarded-port>
+```
+
+That is the correct shape when the relay is localhost-only on the server and the client reaches it
+through `ssh -L`.
+
 Manual server start remains available if you do not want the helper:
 
 Server:
