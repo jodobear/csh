@@ -110,6 +110,8 @@ Tracker target:
 - Review `git diff --check`
 - Commit one logical slice at a time with a non-ambiguous message
 - Do not leave unrelated staged changes mixed into the slice
+- If the slice is meant to be runnable from another machine or clone, pushing the verified commit is
+  part of the slice closeout, not optional follow-up.
 
 ## Major Checkpoints
 
@@ -158,6 +160,7 @@ Major checkpoints for this project:
 - If remote readiness is in scope for the session:
   - `git pull --rebase`
   - push after local verification succeeds
+  - state the pushed branch or say explicitly that the work is only local
 - If remote readiness is deferred, record that explicitly in `handoff.md`.
 
 ## Stop Conditions

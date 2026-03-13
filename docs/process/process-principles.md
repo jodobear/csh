@@ -15,3 +15,5 @@
 - `P04` Rule: defaults change only through explicit decisions.
 - `P05` Rule: update `handoff.md` after meaningful progress.
 - `P06` Rule: keep research notes structured so they can later stay local or be promoted.
+- `P07` Rule: when another machine or collaborator is expected to run the new slice, git push status
+  is part of done.
