@@ -73,6 +73,7 @@ type PollResult = {
 let sessionId: string | undefined;
 let cursor = 0;
 let lastSnapshot = "";
+let screenInitialized = false;
 let pollLoopFailed = false;
 let localExitRequested = false;
 let rpcChain = Promise.resolve();
@@ -244,6 +245,10 @@ function configureTerminal(): () => void {
   stdin.setRawMode(true);
 
   return () => {
+    if (screenInitialized) {
+      stdout.write("\x1b[?1049l");
+      screenInitialized = false;
+    }
     if (stdin.isTTY) {
       stdin.setRawMode(false);
     }
@@ -259,13 +264,13 @@ function getTerminalSize(): { cols: number; rows: number } {
 }
 
 function renderSnapshot(nextSnapshot: string): void {
-  const prefixLength = sharedPrefixLength(lastSnapshot, nextSnapshot);
-  const delta = nextSnapshot.slice(prefixLength);
-
-  if (delta.length > 0) {
-    stdout.write(delta);
+  if (!screenInitialized) {
+    stdout.write("\x1b[?1049h");
+    screenInitialized = true;
   }
 
+  stdout.write("\x1b[H\x1b[2J");
+  stdout.write(nextSnapshot);
   lastSnapshot = nextSnapshot;
 }
 
@@ -300,17 +305,6 @@ function queueRpc<T>(operation: () => Promise<T>): Promise<T> {
     () => undefined,
   );
   return next;
-}
-
-function sharedPrefixLength(left: string, right: string): number {
-  const maxLength = Math.min(left.length, right.length);
-  let index = 0;
-
-  while (index < maxLength && left[index] === right[index]) {
-    index += 1;
-  }
-
-  return index;
 }
 
 function clampDimension(value: number | undefined, fallback: number): number {
