@@ -3,394 +3,332 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>csh Demo Overview</title>
+    <title>csh Demo Deck</title>
     <style>
       :root {
-        --bg: #f4efe5;
-        --paper: rgba(255, 250, 242, 0.86);
-        --ink: #1d1a17;
-        --muted: #5b554d;
-        --line: rgba(29, 26, 23, 0.12);
-        --accent: #bf3b17;
-        --accent-2: #0f6c7a;
-        --accent-3: #d2a11d;
-        --shadow: 0 20px 60px rgba(51, 37, 19, 0.12);
+        --bg: #f5efe6;
+        --ink: #181411;
+        --muted: #5b544c;
+        --card: rgba(255, 251, 245, 0.86);
+        --line: rgba(24, 20, 17, 0.12);
+        --accent: #c1461d;
+        --accent-2: #0d6b75;
+        --accent-3: #d39b12;
+        --shadow: 0 24px 80px rgba(34, 24, 15, 0.14);
       }
 
       * {
         box-sizing: border-box;
       }
 
+      html {
+        scroll-snap-type: y mandatory;
+      }
+
       body {
         margin: 0;
-        font-family: Georgia, "Times New Roman", serif;
         color: var(--ink);
+        font-family: Georgia, "Times New Roman", serif;
         background:
-          radial-gradient(circle at top left, rgba(191, 59, 23, 0.18), transparent 28%),
-          radial-gradient(circle at top right, rgba(15, 108, 122, 0.18), transparent 24%),
-          linear-gradient(180deg, #f7f2e9 0%, var(--bg) 100%);
+          radial-gradient(circle at top left, rgba(193, 70, 29, 0.2), transparent 28%),
+          radial-gradient(circle at top right, rgba(13, 107, 117, 0.18), transparent 22%),
+          linear-gradient(180deg, #f9f4ec 0%, var(--bg) 100%);
       }
 
-      main {
-        width: min(1180px, calc(100vw - 32px));
+      .deck {
+        width: min(1220px, calc(100vw - 28px));
         margin: 0 auto;
-        padding: 40px 0 64px;
+        padding: 14px 0 40px;
       }
 
-      .hero,
-      .panel {
-        background: var(--paper);
+      .slide {
+        min-height: calc(100vh - 28px);
+        margin: 14px 0;
+        padding: 28px;
+        display: grid;
+        gap: 20px;
+        align-content: center;
+        scroll-snap-align: start;
+        background: var(--card);
         border: 1px solid var(--line);
+        border-radius: 28px;
         box-shadow: var(--shadow);
         backdrop-filter: blur(10px);
       }
 
-      .hero {
-        display: grid;
-        grid-template-columns: 1.2fr 0.8fr;
-        gap: 24px;
-        padding: 28px;
-        border-radius: 28px;
-      }
-
       .eyebrow {
-        margin: 0 0 10px;
-        font-size: 12px;
-        letter-spacing: 0.18em;
-        text-transform: uppercase;
+        margin: 0;
         color: var(--accent-2);
+        font-family: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
+        font-size: 12px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
       }
 
       h1,
       h2,
-      h3 {
+      h3,
+      p {
         margin: 0;
-        font-weight: 600;
-        line-height: 1;
       }
 
       h1 {
-        font-size: clamp(2.8rem, 5vw, 5.2rem);
+        font-size: clamp(3rem, 8vw, 6.5rem);
+        line-height: 0.92;
+        letter-spacing: -0.06em;
+      }
+
+      h2 {
+        font-size: clamp(2.1rem, 4vw, 4rem);
+        line-height: 0.95;
         letter-spacing: -0.05em;
       }
 
-      .hero p {
-        margin: 18px 0 0;
-        max-width: 58ch;
-        font-size: 1.08rem;
-        line-height: 1.6;
-        color: var(--muted);
-      }
-
-      .hero-badges {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-        margin-top: 22px;
-      }
-
-      .badge {
-        padding: 8px 12px;
-        border-radius: 999px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.7);
-        font-family: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
-        font-size: 0.82rem;
-      }
-
-      .hero-callout {
-        display: grid;
-        gap: 16px;
-        align-content: start;
-      }
-
-      .callout-box {
-        padding: 18px;
-        border-radius: 20px;
-        border: 1px solid var(--line);
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(255, 245, 235, 0.8));
-      }
-
-      .callout-box strong {
-        display: block;
-        margin-bottom: 8px;
-        font-size: 0.95rem;
-        color: var(--accent);
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-      }
-
-      .callout-box p,
-      .callout-box ul {
-        margin: 0;
-        color: var(--muted);
-        line-height: 1.55;
-      }
-
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(12, 1fr);
-        gap: 18px;
-        margin-top: 18px;
-      }
-
-      .span-7 { grid-column: span 7; }
-      .span-5 { grid-column: span 5; }
-      .span-6 { grid-column: span 6; }
-      .span-12 { grid-column: span 12; }
-
-      .panel {
-        padding: 22px;
-        border-radius: 24px;
-      }
-
-      .panel h2 {
-        font-size: 1.7rem;
+      h3 {
+        font-size: 1.1rem;
+        line-height: 1.1;
         letter-spacing: -0.03em;
       }
 
-      .panel-intro {
-        margin: 10px 0 0;
+      .lede {
+        max-width: 18ch;
+        font-size: clamp(1.2rem, 2vw, 1.8rem);
+        line-height: 1.3;
         color: var(--muted);
-        line-height: 1.6;
       }
 
-      .stack {
+      .grid-2,
+      .grid-3,
+      .grid-4 {
         display: grid;
-        gap: 12px;
-        margin-top: 20px;
+        gap: 16px;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-3 {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .card {
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.74);
+      }
+
+      .card p {
+        margin-top: 10px;
+        line-height: 1.5;
+        color: var(--muted);
+      }
+
+      .kpi {
+        padding: 18px;
+        border-radius: 22px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.78);
+      }
+
+      .kpi .value {
+        display: block;
+        font-size: clamp(1.7rem, 3vw, 2.8rem);
+        line-height: 0.95;
+        letter-spacing: -0.05em;
+      }
+
+      .kpi .label {
+        display: block;
+        margin-top: 8px;
+        color: var(--muted);
+        font-size: 0.96rem;
+        line-height: 1.35;
+      }
+
+      .flow {
+        display: grid;
+        gap: 14px;
       }
 
       .node {
-        position: relative;
-        padding: 16px 18px;
-        border-radius: 18px;
+        padding: 18px 20px;
+        border-radius: 20px;
         border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.75);
-      }
-
-      .node::after {
-        content: "";
-        position: absolute;
-        left: 32px;
-        bottom: -14px;
-        width: 2px;
-        height: 14px;
-        background: linear-gradient(180deg, var(--accent), rgba(191, 59, 23, 0.1));
-      }
-
-      .node:last-child::after {
-        display: none;
+        background: rgba(255, 255, 255, 0.76);
       }
 
       .node strong {
         display: block;
-        margin-bottom: 6px;
-        font-size: 1rem;
+        margin-bottom: 8px;
+        font-size: 1.12rem;
       }
 
-      .node p {
-        margin: 0;
+      .node span {
         color: var(--muted);
-        line-height: 1.5;
+        line-height: 1.45;
+      }
+
+      .arrow {
+        padding-left: 12px;
+        color: var(--accent);
+        font-family: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
+        font-size: 1.1rem;
       }
 
       ul {
-        margin: 16px 0 0;
+        margin: 0;
         padding-left: 20px;
         color: var(--muted);
-        line-height: 1.65;
+        line-height: 1.6;
+        font-size: 1.02rem;
       }
 
       li + li {
         margin-top: 8px;
       }
 
-      .command-block {
-        margin-top: 18px;
-        padding: 16px 18px;
-        border-radius: 18px;
-        background: #1c1917;
-        color: #fef6e7;
+      .code {
+        padding: 18px 20px;
+        border-radius: 22px;
+        background: #171412;
+        color: #fff4e7;
         font-family: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
-        font-size: 0.85rem;
-        line-height: 1.7;
+        font-size: 0.95rem;
+        line-height: 1.75;
         overflow: auto;
       }
 
-      .split {
-        display: grid;
-        gap: 18px;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        margin-top: 18px;
+      .accent {
+        color: var(--accent);
       }
 
-      .metric-strip {
-        display: grid;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 12px;
-        margin-top: 18px;
+      .accent-2 {
+        color: var(--accent-2);
       }
 
-      .metric {
-        padding: 16px;
-        border-radius: 18px;
-        border: 1px solid var(--line);
-        background: rgba(255, 255, 255, 0.72);
+      .accent-3 {
+        color: var(--accent-3);
       }
 
-      .metric .value {
-        display: block;
-        font-size: 1.4rem;
-        letter-spacing: -0.04em;
-      }
-
-      .metric .label {
-        display: block;
-        margin-top: 6px;
+      .slide-footer {
+        display: flex;
+        justify-content: space-between;
+        gap: 16px;
         color: var(--muted);
-        font-size: 0.92rem;
-      }
-
-      .footer-note {
-        margin-top: 18px;
-        color: var(--muted);
-        font-size: 0.95rem;
-        line-height: 1.6;
+        font-size: 0.9rem;
+        font-family: "SFMono-Regular", "Cascadia Code", "Liberation Mono", monospace;
       }
 
       @media (max-width: 920px) {
-        .hero,
-        .split,
-        .metric-strip {
+        .grid-2,
+        .grid-3,
+        .grid-4 {
           grid-template-columns: 1fr;
         }
 
-        .span-7,
-        .span-5,
-        .span-6 {
-          grid-column: span 12;
+        .slide {
+          min-height: auto;
         }
       }
     </style>
   </head>
   <body>
-    <main>
-      <section class="hero">
-        <div>
-          <p class="eyebrow">csh / ssh over nostr / contextvm</p>
-          <h1>Remote shell over ContextVM, with a browser path now in play.</h1>
-          <p>
-            We are proving an SSH-like shell flow over Nostr using ContextVM. Today the project has
-            a working remote interactive shell demo, a working browser terminal UI, and a working
-            browser-to-ContextVM bridge. The demo focus is not raw SSH packet parity. It is a
-            durable shell session model with authenticated access, reconnectable state, and a clean
-            path to browser use.
-          </p>
-          <div class="hero-badges">
-            <span class="badge">Private ContextVM gateway</span>
-            <span class="badge">tmux-backed shell sessions</span>
-            <span class="badge">Nostr relay transport</span>
-            <span class="badge">Browser UI + local bridge</span>
+    <main class="deck">
+      <section class="slide">
+        <p class="eyebrow">Slide 1 / csh demo</p>
+        <h1>
+          <span class="accent">SSH-like shell</span><br />
+          over <span class="accent-2">Nostr</span><br />
+          with <span class="accent-3">ContextVM</span>
+        </h1>
+        <p class="lede">
+          We already have a working remote shell demo, a browser terminal, and a browser-to-remote
+          ContextVM bridge.
+        </p>
+        <div class="grid-4">
+          <div class="kpi">
+            <span class="value">CLI</span>
+            <span class="label">remote interactive demo works</span>
+          </div>
+          <div class="kpi">
+            <span class="value">Browser</span>
+            <span class="label">terminal UI works</span>
+          </div>
+          <div class="kpi">
+            <span class="value">Bridge</span>
+            <span class="label">browser can reach remote ContextVM server</span>
+          </div>
+          <div class="kpi">
+            <span class="value">Private</span>
+            <span class="label">pubkey-gated and encrypted</span>
           </div>
         </div>
-
-        <div class="hero-callout">
-          <div class="callout-box">
-            <strong>Working Demo Topology</strong>
-            <p>
-              `strfry` on the server, `ssh -L` relay forwarding to the client, ContextVM gateway on
-              the server, interactive client and browser bridge on the client.
-            </p>
-          </div>
-
-          <div class="callout-box">
-            <strong>What We Can Show Right Now</strong>
-            <ul>
-              <li>remote interactive shell from a client machine over ContextVM</li>
-              <li>browser terminal UI backed by the same `session_*` contract</li>
-              <li>remote `Interrupt`, `Close`, and `Reconnect` flows</li>
-            </ul>
-          </div>
+        <div class="slide-footer">
+          <span>csh / Phase 3</span>
+          <span>remote shell first, polish later</span>
         </div>
       </section>
 
-      <section class="grid">
-        <article class="panel span-7">
-          <h2>Architecture And Plumbing</h2>
-          <p class="panel-intro">
-            The shell backend is still one stable contract. We are layering transports and clients
-            around it rather than replacing it.
-          </p>
-          <div class="stack">
-            <div class="node">
-              <strong>1. Browser or CLI client</strong>
-              <p>
-                Either the interactive terminal demo or the browser terminal UI initiates shell
-                control through `session_open`, `session_write`, `session_resize`, `session_signal`,
-                `session_poll`, and `session_close`.
-              </p>
-            </div>
-            <div class="node">
-              <strong>2. Client-side bridge</strong>
-              <p>
-                CLI uses a direct ContextVM MCP client. Browser currently talks to a local Bun HTTP
-                bridge, which can connect to a local stdio MCP server or to the remote server over
-                ContextVM.
-              </p>
-            </div>
-            <div class="node">
-              <strong>3. ContextVM over Nostr</strong>
-              <p>
-                The remote path uses a private gateway, encrypted Nostr events, whitelisted pubkeys,
-                and a skew-tolerant client subscription lookback to avoid dropping valid relay
-                responses.
-              </p>
-            </div>
-            <div class="node">
-              <strong>4. Remote gateway and shell runtime</strong>
-              <p>
-                The gateway launches the existing stdio MCP shell server, which runs tmux-backed
-                shell sessions and exposes deterministic poll/ack screen snapshots.
-              </p>
-            </div>
+      <section class="slide">
+        <p class="eyebrow">Slide 2 / architecture</p>
+        <h2>The plumbing is layered, not reinvented.</h2>
+        <div class="flow">
+          <div class="node">
+            <strong>Browser or CLI client</strong>
+            <span>shell input, resize, interrupt, reconnect</span>
           </div>
-        </article>
-
-        <article class="panel span-5">
-          <h2>Current Feature Set</h2>
-          <ul>
-            <li>private pubkey-gated shell sessions over ContextVM</li>
-            <li>interactive terminal input, resize, interrupt, close, and reconnect</li>
-            <li>browser terminal UI using xterm</li>
-            <li>browser bridge mode that can talk to the remote ContextVM deployment</li>
-            <li>relay-backed proof on `relay.contextvm.org` for same-host smoke</li>
-            <li>`strfry` plus `ssh -L` as the primary cross-machine demo path</li>
-          </ul>
-
-          <div class="metric-strip">
-            <div class="metric">
-              <span class="value">Phase 3</span>
-              <span class="label">Current implementation phase</span>
-            </div>
-            <div class="metric">
-              <span class="value">CLI</span>
-              <span class="label">Remote interactive demo works</span>
-            </div>
-            <div class="metric">
-              <span class="value">Browser</span>
-              <span class="label">UI and ContextVM bridge exist</span>
-            </div>
-            <div class="metric">
-              <span class="value">tmux</span>
-              <span class="label">Session durability primitive today</span>
-            </div>
+          <div class="arrow">v</div>
+          <div class="node">
+            <strong>Client-side bridge</strong>
+            <span>local Bun server for browser, direct MCP client for CLI</span>
           </div>
-        </article>
+          <div class="arrow">v</div>
+          <div class="node">
+            <strong>ContextVM over Nostr</strong>
+            <span>encrypted Nostr events, allowed pubkeys, skew-tolerant client subscription</span>
+          </div>
+          <div class="arrow">v</div>
+          <div class="node">
+            <strong>Remote gateway</strong>
+            <span>ContextVM gateway launching the existing stdio MCP shell server</span>
+          </div>
+          <div class="arrow">v</div>
+          <div class="node">
+            <strong>tmux-backed shell runtime</strong>
+            <span>durable shell session with `session_*` tools and poll/ack snapshots</span>
+          </div>
+        </div>
+        <div class="slide-footer">
+          <span>one backend contract</span>
+          <span>multiple client surfaces</span>
+        </div>
+      </section>
 
-        <article class="panel span-6">
-          <h2>What We Demo Today</h2>
-          <div class="command-block">Server
+      <section class="slide">
+        <p class="eyebrow">Slide 3 / demo path</p>
+        <h2>What we can demo right now</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Remote CLI shell</h3>
+            <p>
+              Proven from a separate client machine using local `strfry` on the server plus
+              `ssh -L`.
+            </p>
+          </div>
+          <div class="card">
+            <h3>Browser terminal UI</h3>
+            <p>
+              Works locally and now has a ContextVM-backed browser bridge for the remote shell path.
+            </p>
+          </div>
+        </div>
+        <div class="code">Server
 scripts/contextvm-strfry-relay.sh start
 scripts/contextvm-private-demo.sh setup \
   --server-relay-url ws://127.0.0.1:10549 \
@@ -399,58 +337,114 @@ scripts/contextvm-private-demo.sh setup \
 Client
 ssh -N -L 10549:127.0.0.1:10549 &lt;user&gt;@&lt;server&gt;
 
-CLI remote demo
+CLI
 bun run demo:contextvm:interactive
 
-Browser remote bridge
+Browser
 bun run start:browser:contextvm</div>
-          <p class="footer-note">
-            Good proof commands: `hostname`, `pwd`, `uname -a`, then use `Interrupt`, `Close`, and
-            `Reconnect`.
-          </p>
-        </article>
+        <div class="slide-footer">
+          <span>good proof commands: `hostname`, `pwd`, `uname -a`</span>
+          <span>interrupt / close / reconnect all exist</span>
+        </div>
+      </section>
 
-        <article class="panel span-6">
-          <h2>Current Limits</h2>
-          <ul>
-            <li>shell input still rides `tmux send-keys`, which is practical but not ideal PTY fidelity</li>
-            <li>browser rendering is still snapshot/poll based, not true incremental terminal streaming</li>
-            <li>the browser path still uses a local Bun bridge instead of browser-native ContextVM</li>
-            <li>same-key multi-client concurrency still needs clearer hardening/documentation</li>
-            <li>file upload/download is not yet a first-class browser capability</li>
-          </ul>
-        </article>
-
-        <article class="panel span-12">
-          <h2>What We Ideally Want For Demo-Quality SSH Over Nostr</h2>
-          <div class="split">
-            <div>
-              <h3 style="font-size: 1.35rem; margin-bottom: 12px;">Near-Term Ideal</h3>
-              <ul>
-                <li>browser and CLI both talking to the real remote shell over ContextVM</li>
-                <li>stable interactive typing for common terminal workflows</li>
-                <li>clean reconnect and session recovery story</li>
-                <li>simple one-command demo bootstrap for server and client</li>
-                <li>demo-safe private topology with a reliable relay path</li>
-              </ul>
-            </div>
-            <div>
-              <h3 style="font-size: 1.35rem; margin-bottom: 12px;">Longer-Term Ideal</h3>
-              <ul>
-                <li>better PTY fidelity than `tmux send-keys` for deeper TUI compatibility</li>
-                <li>incremental or push-assisted terminal updates where transport behavior allows it</li>
-                <li>browser-native auth/signing when the deployment model justifies it</li>
-                <li>structured file upload/download for browser users</li>
-                <li>latency and reconnect polish that gets closer to mosh-like resilience</li>
-              </ul>
-            </div>
+      <section class="slide">
+        <p class="eyebrow">Slide 4 / current state</p>
+        <h2>Current features</h2>
+        <div class="grid-3">
+          <div class="card">
+            <h3>Access model</h3>
+            <ul>
+              <li>private gateway</li>
+              <li>allowed pubkeys</li>
+              <li>required encryption</li>
+            </ul>
           </div>
-          <p class="footer-note">
-            The important framing for the demo: the project already proves the hard part, which is a
-            real authenticated remote shell model over ContextVM. The next steps are about fidelity,
-            UX, and deployment shape, not whether the architecture works at all.
-          </p>
-        </article>
+          <div class="card">
+            <h3>Shell controls</h3>
+            <ul>
+              <li>open</li>
+              <li>write</li>
+              <li>resize</li>
+              <li>signal</li>
+              <li>poll</li>
+              <li>close</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Client surfaces</h3>
+            <ul>
+              <li>scripted CLI demo</li>
+              <li>interactive CLI demo</li>
+              <li>browser terminal</li>
+              <li>browser ContextVM bridge</li>
+            </ul>
+          </div>
+        </div>
+        <div class="slide-footer">
+          <span>same-host smoke path also works on `relay.contextvm.org`</span>
+          <span>cross-machine default is `strfry` + `ssh -L`</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <p class="eyebrow">Slide 5 / limits</p>
+        <h2>What is still rough</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Terminal fidelity</h3>
+            <ul>
+              <li>`tmux send-keys` is practical, not ideal</li>
+              <li>deep TUI edge cases still need harder testing</li>
+              <li>browser rendering is still poll/snapshot based</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Deployment shape</h3>
+            <ul>
+              <li>browser still uses a local Bun bridge</li>
+              <li>file transfer is not first-class yet</li>
+              <li>same-key multi-client behavior needs clearer rules</li>
+            </ul>
+          </div>
+        </div>
+        <div class="slide-footer">
+          <span>the architecture works</span>
+          <span>the next work is mostly fidelity and UX</span>
+        </div>
+      </section>
+
+      <section class="slide">
+        <p class="eyebrow">Slide 6 / target</p>
+        <h2>What we ideally want for the demo</h2>
+        <div class="grid-2">
+          <div class="card">
+            <h3>Near-term ideal</h3>
+            <ul>
+              <li>CLI and browser both driving the real remote shell</li>
+              <li>clean reconnect story</li>
+              <li>simple bootstrap for operator and viewer</li>
+              <li>stable interrupt / close / reopen behavior</li>
+            </ul>
+          </div>
+          <div class="card">
+            <h3>Longer-term ideal</h3>
+            <ul>
+              <li>better PTY fidelity than `tmux send-keys`</li>
+              <li>incremental or push-assisted terminal updates</li>
+              <li>browser-native auth/signing if worth it</li>
+              <li>structured file upload / download</li>
+            </ul>
+          </div>
+        </div>
+        <p class="lede">
+          The key message for the demo: we already proved the remote shell model over ContextVM.
+          What remains is making it feel smoother, safer, and more product-shaped.
+        </p>
+        <div class="slide-footer">
+          <span>csh is past “can this work?”</span>
+          <span>it is now in “how polished should the demo be?”</span>
+        </div>
       </section>
     </main>
   </body>
