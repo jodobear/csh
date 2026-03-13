@@ -165,3 +165,17 @@
   and private relay validation moves to the next step rather than the first one.
   Reversal Trigger: if a private relay path is verified to be equally reliable and becomes the
   higher-priority deployment target than a public-relay proof.
+
+- Date: 2026-03-13
+  Status: accepted
+  Decision: the primary cross-machine demo topology uses local `strfry` on the server plus `ssh -L`
+  port forwarding to the client, while `wss://relay.contextvm.org` remains a same-host smoke path.
+  Why: the repo verified both the scripted and interactive demo clients end-to-end against the
+  `strfry` topology, while the public-relay path was reliable as a same-host proof but introduced
+  timing and relay-history variables in the cross-machine case. Haven also remained the wrong
+  default for this demo because its owner/whitelist policy surface is separate from the demo keys.
+  Tradeoff: the default demo now depends on a repo-local relay helper and an SSH tunnel rather than
+  a single public relay URL, so setup is slightly more operationally involved even though it is
+  more deterministic.
+  Reversal Trigger: if a public or private non-`strfry` relay path is proven to be equally
+  deterministic for cross-machine demos without adding the SSH-tunnel relay hop.

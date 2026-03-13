@@ -3,8 +3,8 @@
 ## Current State
 
 - Active phase: Phase 2 implementation
-- Current objective: validate the new private ContextVM gateway path against a real relay-backed
-  demo
+- Current objective: document and harden the first working cross-machine private ContextVM demo
+  path
 - Last verified commands:
   - `bun run typecheck`
   - `bun run src/main.ts </dev/null`
@@ -58,6 +58,8 @@
   required encryption, allowed public keys, and injected client pubkey ownership binding.
 - The live relay-backed proof now exists both against `wss://relay.contextvm.org` and against a
   local `strfry` relay with unsandboxed execution in this Codex environment.
+- The repo has now verified the remote interactive shell path from a separate client machine using
+  local `strfry` plus `ssh -L`, not just same-host scripted proofs.
 - Haven is not a neutral default relay for this demo because its owner/whitelist policy is separate
   from the demo keys.
 - The demo client now uses a bounded response lookback when subscribing for Nostr events so modest

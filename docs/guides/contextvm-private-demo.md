@@ -5,7 +5,8 @@ This is the first Phase 2 path for running `csh` privately over ContextVM.
 ## What Exists
 
 - Gateway entrypoint: `bun run start:contextvm`
-- Remote client demo: `bun run demo:contextvm`
+- Scripted remote client demo: `bun run demo:contextvm`
+- Interactive remote client demo: `bun run demo:contextvm:interactive`
 - Private access control:
   - required encryption
   - allowed pubkey whitelist
@@ -37,41 +38,53 @@ export CSH_SERVER_PUBKEY=<server-pubkey-hex>
 export CSH_NOSTR_RELAY_URLS=wss://your-relay.example
 ```
 
-## Recommended Relay Choice
+## Recommended Demo Topology
 
-Use `wss://relay.contextvm.org` for the first real end-to-end test.
+Use local `strfry` on the server plus `ssh -L` from the client as the primary cross-machine demo
+path.
 
 Why this is the current default:
 
-- it is the default relay named by the local ContextVM deployment guidance
-- this repo verified a full gateway-to-client demo against it on 2026-03-13
-- it keeps the first proof aligned with ContextVM's normal relay path before introducing private
-  relay topology variables
+- it is the first cross-machine topology verified end-to-end for both the scripted and interactive
+  demo clients on 2026-03-13
+- it avoids Haven's owner/whitelist policy surface
+- it avoids public-relay timing variability while we validate the shell path
+- it keeps the relay behavior simple and inspectable
 
-After the single-relay proof works, add `wss://cvm.otherstuff.ai` as a secondary relay if you want
-redundancy:
+Use `wss://relay.contextvm.org` as a same-host or single-machine smoke path, not the main
+cross-machine demo path.
 
-```bash
-export CSH_NOSTR_RELAY_URLS=wss://relay.contextvm.org,wss://cvm.otherstuff.ai
-```
-
-Treat a Haven relay as a separate test topology, not the first default. It is appropriate when the
-relay is private or localhost-only on the server and the client reaches it through `ssh -L`.
+Treat a Haven relay as a separate private-topology follow-on. It is appropriate only when the relay
+is intentionally localhost-only on the server and the client reaches it through `ssh -L`.
 
 ## Run
 
-Bootstrap everything on the server:
+Start `strfry` on the server:
 
 ```bash
-scripts/contextvm-private-demo.sh setup --relay-url wss://relay.contextvm.org
+scripts/contextvm-strfry-relay.sh start
+```
+
+Bootstrap the gateway on the server against that relay:
+
+```bash
+scripts/contextvm-private-demo.sh setup \
+  --server-relay-url ws://127.0.0.1:10549 \
+  --client-relay-url ws://127.0.0.1:10549
 ```
 
 That script:
 
 - generates demo server/client keys with `nak`
 - writes env files under `.csh-runtime/contextvm-private-demo/`
-- starts the private gateway in `tmux`
+- starts or restarts the private gateway in `tmux`
 - prints the exact client-side demo command
+
+If you only want to recover the running gateway later:
+
+```bash
+scripts/contextvm-private-demo.sh start
+```
 
 Other helper commands:
 
@@ -79,9 +92,60 @@ Other helper commands:
 scripts/contextvm-private-demo.sh status
 scripts/contextvm-private-demo.sh print-client
 scripts/contextvm-private-demo.sh stop
+scripts/contextvm-strfry-relay.sh status
+scripts/contextvm-strfry-relay.sh logs
 ```
 
-For SSH-tunneled relay testing, use separate relay URLs:
+From the client machine, keep the SSH tunnel open:
+
+```bash
+ssh -N -L 10549:127.0.0.1:10549 <user>@<server>
+```
+
+Then in another client shell:
+
+```bash
+git pull origin master
+unset CSH_CLIENT_PRIVATE_KEY CSH_SERVER_PUBKEY CSH_NOSTR_RELAY_URLS CSH_NOSTR_RESPONSE_LOOKBACK_SECONDS
+
+export CSH_CLIENT_PRIVATE_KEY=<printed-client-private-key>
+export CSH_SERVER_PUBKEY=<printed-server-pubkey>
+export CSH_NOSTR_RELAY_URLS=ws://127.0.0.1:10549
+export CSH_NOSTR_RESPONSE_LOOKBACK_SECONDS=300
+```
+
+Run the scripted smoke demo:
+
+```bash
+bun run demo:contextvm
+```
+
+Run the interactive shell demo:
+
+```bash
+bun run demo:contextvm:interactive
+```
+
+Interactive controls:
+
+- `Ctrl-C` sends `SIGINT` to the remote shell
+- `Ctrl-]` closes the client locally
+- `exit` or `Ctrl-D` closes the remote shell session
+
+### Public-relay Smoke Path
+
+If you want the public-relay same-host proof instead, use:
+
+```bash
+scripts/contextvm-private-demo.sh setup --relay-url wss://relay.contextvm.org
+```
+
+That path is useful as a quick relay-backed smoke test, but it is not the recommended
+cross-machine demo topology anymore.
+
+### Haven-style Split URLs
+
+For a localhost-only relay on the server with a forwarded client port, use separate relay URLs:
 
 ```bash
 scripts/contextvm-private-demo.sh setup \
@@ -89,11 +153,7 @@ scripts/contextvm-private-demo.sh setup \
   --client-relay-url ws://127.0.0.1:<local-forwarded-port>
 ```
 
-That is the correct shape when the relay is localhost-only on the server and the client reaches it
-through `ssh -L`.
-
-Use that split-url form for Haven-style localhost relays. Do not use it unless the client-side
-forwarded port is actually listening.
+Use that shape only when the client-side forwarded port is actually listening.
 
 Manual server start remains available if you do not want the helper:
 
@@ -107,10 +167,15 @@ Client demo:
 
 ```bash
 bun run demo:contextvm
+bun run demo:contextvm:interactive
 ```
 
-The client demo opens a remote shell session over ContextVM, runs a few commands, polls for output,
-prints the resulting terminal snapshot, and closes the session.
+The scripted demo opens a remote shell session over ContextVM, runs a few commands, polls for
+output, prints the resulting terminal snapshot, and closes the session.
+
+The interactive demo opens a remote shell session over ContextVM, forwards local terminal input to
+the remote shell, polls the tmux snapshot for screen updates, resizes with the local terminal, and
+closes cleanly when the remote shell exits.
 
 ## Current Limits
 
@@ -118,5 +183,6 @@ prints the resulting terminal snapshot, and closes the session.
   terminal input is still routed through `tmux send-keys`.
 - The gateway pattern preserves the working stdio MCP server rather than replacing it with a
   one-process Nostr transport.
-- The first verified live relay-backed demo used `wss://relay.contextvm.org` on 2026-03-13.
+- The first same-host live relay-backed demo used `wss://relay.contextvm.org` on 2026-03-13.
+- The first verified cross-machine demo used local `strfry` plus `ssh -L` on 2026-03-13.
 - In this Codex environment, the live relay-backed demo required unsandboxed execution.
