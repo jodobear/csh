@@ -150,3 +150,10 @@ Append-only project communication history.
 - When: 2026-03-15 22:18 WET
 - What: Completed the remaining posture audits. Added `operator-workflow-2026-03-15.md` and `deployment-resilience-2026-03-15.md`, covering `csh exec` silent timeout/termination, browser reconnect and close state loss, redraw-driven scrollback loss, non-deterministic disconnect on slow links, verification false-green behavior, env-file parsing drift between validation and startup, passive-poll session pinning, and runtime browser bundling. Updated `handoff.md` so the next work is driven by the live audit set in `docs/audits/`.
 - Session: local repo execution
+
+### 2026-03-15 23:20 WET
+
+- Who: Codex
+- When: 2026-03-15 23:20 WET
+- What: Applied the first audit-remediation pass. Startup no longer sources env files as shell, host/runtime paths now force private file modes, remote browser mode now requires HTTP Basic Auth, bootstrap defaults now match the private-relay/required-encryption posture, `csh exec` now fails loudly while preserving timed-out sessions, browser reconnect/close behavior is explicit, polling no longer pins idle sessions, verification now fails if proxy verification fails, and browser startup now prefers prebuilt assets. Local proofs covered config validation, browser auth (`401`/`200`), private session-state permissions (`700`/`600`), and passive-poll TTL behavior.
+- Session: local repo execution

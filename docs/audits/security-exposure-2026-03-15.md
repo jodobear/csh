@@ -18,48 +18,58 @@ Question: where can this repo expose a shell, identity, or secret more broadly t
 ### `security-exposure-browser-01`
 
 - Severity: high
-- Summary: remote browser mode is effectively unauthenticated. `GET /` serves the browser app and embeds the live API token, while POST access is gated only by that token. If `CSH_BROWSER_ALLOW_REMOTE=1` is enabled, any reachable client can fetch the page, recover the token, and drive the shell.
+- Summary: remote browser mode previously exposed the browser app and embedded API token to any reachable client. Remote mode now requires explicit Basic Auth credentials before any page, asset, or API request is served.
 - Evidence:
   - [server-core.ts](/workspace/projects/csh/src/browser/server-core.ts#L68)
   - [server-core.ts](/workspace/projects/csh/src/browser/server-core.ts#L135)
   - [server-core.ts](/workspace/projects/csh/src/browser/server-core.ts#L272)
   - [server-core.ts](/workspace/projects/csh/src/browser/server-core.ts#L332)
-- Status: open
+- Status: closed 2026-03-15
+- Resolution: `CSH_BROWSER_ALLOW_REMOTE=1` now requires `CSH_BROWSER_AUTH_USER` and `CSH_BROWSER_AUTH_PASSWORD`, and the browser server enforces HTTP Basic Auth before serving `/`, assets, or `/api/*`.
+- Proof: local in-process browser auth check returned `401` for unauthenticated and wrong-password requests and `200` for correct credentials.
 
 ### `security-exposure-runtime-01`
 
 - Severity: high
-- Summary: persisted tmux session metadata is written with process-umask permissions only, and the normal manual host path does not tighten `umask`. On a typical `022` umask, `.csh-runtime/sessions/*.json` can become group/world-readable and expose session IDs, owner IDs, cwd, command, and captured shell output.
+- Summary: persisted tmux session metadata previously relied on process umask and could become too permissive. The host path and session persistence path now force private permissions.
 - Evidence:
   - [tmux-session-manager.ts](/workspace/projects/csh/src/server/tmux-session-manager.ts#L404)
   - [start-host.sh](/workspace/projects/csh/scripts/start-host.sh#L37)
-- Status: open
+- Status: closed 2026-03-15
+- Resolution: host startup now applies `umask 077`; runtime/session directories are forced to `0700`; persisted session files are forced to `0600`.
+- Proof: isolated session-manager check in `/tmp` confirmed session dir mode `700` and state-file mode `600`.
 
 ### `security-exposure-config-01`
 
 - Severity: medium
-- Summary: startup scripts `source` the env file directly, so the config file is executable shell, not data-only config. Manual edits can trigger shell expansion or command execution at startup.
+- Summary: startup scripts previously `source`d env files directly, so config was treated as executable shell. Startup now parses env files as data in TypeScript wrappers instead.
 - Evidence:
   - [start-host.sh](/workspace/projects/csh/scripts/start-host.sh#L15)
   - [start-proxy.sh](/workspace/projects/csh/scripts/start-proxy.sh#L12)
-- Status: open
+- Status: closed 2026-03-15
+- Resolution: `scripts/start-host.sh` and `scripts/start-proxy.sh` now exec Bun wrappers that use `parseEnvFile()` instead of shell-sourcing the config.
+- Proof: repo grep no longer finds env sourcing in live startup paths under `scripts/` or `src/`.
 
 ### `security-exposure-transport-01`
 
 - Severity: medium
-- Summary: host transport still falls back to `optional` encryption when the mode is omitted from a manually created env or inherited environment. For a private remote shell, silently allowing unencrypted transport is a risky default.
+- Summary: transport previously fell back to `optional` encryption when the mode was omitted. Default transport posture is now `required`.
 - Evidence:
   - [config.ts](/workspace/projects/csh/scripts/config.ts#L116)
   - [start-host.sh](/workspace/projects/csh/scripts/start-host.sh#L47)
   - [config.ts](/workspace/projects/csh/src/contextvm/config.ts#L71)
   - [config.ts](/workspace/projects/csh/src/contextvm/config.ts#L90)
-- Status: open
+- Status: closed 2026-03-15
+- Resolution: config defaults, bootstrap output, client config, and host config all now default omitted encryption mode values to `required`.
+- Proof: new bootstrap envs emit `GW_ENCRYPTION_MODE="required"` and `CVM_PROXY_ENCRYPTION_MODE="required"`; config loaders now parse missing mode as `REQUIRED`.
 
 ### `security-exposure-transport-02`
 
 - Severity: medium
-- Summary: both bootstrap paths still default fresh configs to `wss://relay.contextvm.org`, even though the current product posture is private relay first. That nudges private-shell deployments toward a public third-party relay unless the operator overrides it manually.
+- Summary: bootstrap previously defaulted to the public ContextVM relay despite the repo's private-relay-first posture. Fresh configs now default to a local/private relay URL.
 - Evidence:
   - [config.ts](/workspace/projects/csh/scripts/config.ts#L229)
   - [bootstrap-env.sh](/workspace/projects/csh/scripts/bootstrap-env.sh#L15)
-- Status: open
+- Status: closed 2026-03-15
+- Resolution: both bootstrap paths now generate `CVM_RELAYS="ws://127.0.0.1:10552"` by default.
+- Proof: `bin/csh bootstrap /tmp/csh-audit-fix.env` produced a private-relay-first config.

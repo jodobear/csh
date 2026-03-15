@@ -72,6 +72,14 @@ try {
       2,
     ),
   );
+  await parseToolResult(
+    client.callTool({
+      name: "session_close",
+      arguments: {
+        sessionId: openResult.sessionId,
+      },
+    }),
+  ).catch(() => undefined);
 } catch (error) {
   console.error("proxy-cli path failed");
   if (stderrBuffer) {

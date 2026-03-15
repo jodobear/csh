@@ -22,6 +22,7 @@ echo "Installing JavaScript dependencies"
 (
   cd "$ROOT_DIR"
   bun install
+  bun run csh:build-browser
 )
 
 echo "Runtime installed."

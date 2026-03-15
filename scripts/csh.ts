@@ -261,6 +261,7 @@ async function commandExec(parsed: ParsedArgs): Promise<void> {
     cols: 120,
     rows: 40,
   });
+  let shouldCloseSession = true;
 
   try {
     await writeSession(client, session.sessionId, `${remoteCommand}\nexit\n`);
@@ -269,6 +270,7 @@ async function commandExec(parsed: ParsedArgs): Promise<void> {
     const startedAt = Date.now();
     let cursor = session.cursor;
     let lastSnapshot: string | null = null;
+    let remoteClosed = false;
 
     while (Date.now() - startedAt < timeoutMs) {
       const result = await pollSession(client, session.sessionId, cursor);
@@ -279,10 +281,23 @@ async function commandExec(parsed: ParsedArgs): Promise<void> {
       }
 
       if (result.closedAt) {
+        remoteClosed = true;
         break;
       }
 
       await sleep(60);
+    }
+
+    if (!remoteClosed) {
+      shouldCloseSession = false;
+      const reconnectHint = `bin/csh shell --session ${session.sessionId} --config ${configPath}`;
+      if (lastSnapshot) {
+        process.stderr.write(stripDeadPaneFooter(lastSnapshot).trimEnd());
+        process.stderr.write("\n");
+      }
+      throw new Error(
+        `Remote command did not finish within ${timeoutMs}ms. Session left open for inspection: ${reconnectHint}`,
+      );
     }
 
     if (lastSnapshot) {
@@ -290,7 +305,9 @@ async function commandExec(parsed: ParsedArgs): Promise<void> {
       process.stdout.write("\n");
     }
   } finally {
-    await closeSession(client, session.sessionId).catch(() => undefined);
+    if (shouldCloseSession) {
+      await closeSession(client, session.sessionId).catch(() => undefined);
+    }
     await client.close();
   }
 }
@@ -332,6 +349,7 @@ async function commandBrowserLocal(): Promise<void> {
 
 async function commandVerify(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
+  requireHealthyConfig(configPath, "full");
   const code = await runCommand("bash", ["scripts/run-autonomous-loop.sh", configPath]);
   process.exit(code);
 }

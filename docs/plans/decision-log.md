@@ -279,3 +279,29 @@
   larger ceremony.
 - Reversal trigger: none planned; this is a minimal workflow safeguard rather than a phase-local
   preference.
+
+### 2026-03-15
+
+- Status: accepted
+- Decision: Treat env files as data-only config in live startup paths, require private file modes,
+  and default new configs to a private relay plus required encryption.
+- Why: the audit found that startup still sourced env files as shell, env files could be too open
+  on disk, and fresh configs still nudged operators toward a public relay with looser transport
+  defaults than the repo's stated private-shell posture.
+- Tradeoff: manual startup now depends on the repo's TypeScript wrappers instead of shell-sourcing,
+  and operators who want non-default relay or encryption behavior must set it explicitly.
+- Reversal trigger: reverse only if the runtime moves away from env-file-driven startup entirely or
+  the deployment model changes enough to make shell-compatible config files a hard requirement.
+
+### 2026-03-15
+
+- Status: accepted
+- Decision: Require HTTP Basic Auth for remote browser mode and keep the browser loopback-bound by
+  default.
+- Why: the audit correctly found that serving the browser app remotely while embedding the live API
+  token made `CSH_BROWSER_ALLOW_REMOTE=1` effectively unauthenticated. The browser path is an
+  operator tool, not a public anonymous shell surface.
+- Tradeoff: remote browser mode now requires credential provisioning and is slightly less convenient
+  for ad hoc demos, but its trust boundary is explicit.
+- Reversal trigger: reverse only if the browser client gains a stronger first-class auth model that
+  replaces Basic Auth while keeping remote exposure clearly bounded.

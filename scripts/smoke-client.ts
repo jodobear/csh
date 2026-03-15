@@ -1,4 +1,5 @@
 import {
+  closeSession,
   createDirectClient,
   loadEnvFile,
   openSession,
@@ -35,5 +36,6 @@ result = await waitForSnapshot(
 );
 console.log(JSON.stringify({ command: "cd /tmp && pwd", result }, null, 2));
 
+await closeSession(client, session.sessionId).catch(() => undefined);
 await client.close();
 process.exit(0);

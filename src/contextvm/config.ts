@@ -94,8 +94,9 @@ function parseEncryptionMode(value: string | undefined): EncryptionMode {
     case "required":
       return EncryptionMode.REQUIRED;
     case "optional":
-    case undefined:
       return EncryptionMode.OPTIONAL;
+    case undefined:
+      return EncryptionMode.REQUIRED;
     default:
       throw new Error(`Unsupported encryption mode: ${value}`);
   }

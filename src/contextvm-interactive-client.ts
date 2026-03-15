@@ -57,6 +57,7 @@ let localExitRequested = false;
 let shuttingDown = false;
 let rpcChain = Promise.resolve();
 const closeOnExit = process.env.CSH_CLOSE_ON_EXIT === "1";
+const shutdownGraceMs = Number.parseInt(process.env.CSH_SHUTDOWN_GRACE_MS || "5000", 10);
 
 const stdin = process.stdin;
 const stdout = process.stdout;
@@ -164,7 +165,7 @@ async function runInteractiveClient(): Promise<void> {
     if (closeOnExit) {
       await closeSessionIfNeeded();
     } else if (sessionId) {
-      console.error(`Disconnected. Reconnect with: bin/csh shell --session ${sessionId}`);
+      console.error(`Disconnected. Reconnect with: ${reconnectHint(sessionId)}`);
     }
 
     await settleRpcChain();
@@ -303,8 +304,12 @@ function renderSnapshot(nextSnapshot: string): void {
     screenInitialized = true;
   }
 
-  stdout.write("\x1b[H\x1b[2J");
-  stdout.write(nextSnapshot);
+  if (lastSnapshot && nextSnapshot.startsWith(lastSnapshot)) {
+    stdout.write(nextSnapshot.slice(lastSnapshot.length));
+  } else {
+    stdout.write("\x1b[H\x1b[2J");
+    stdout.write(nextSnapshot);
+  }
   lastSnapshot = nextSnapshot;
 }
 
@@ -371,8 +376,16 @@ function reportBackgroundError(error: unknown): void {
 async function settleRpcChain(): Promise<void> {
   await Promise.race([
     rpcChain.catch(() => undefined),
-    Bun.sleep(300),
+    Bun.sleep(Number.isFinite(shutdownGraceMs) && shutdownGraceMs > 0 ? shutdownGraceMs : 5000),
   ]);
+}
+
+function reconnectHint(activeSessionId: string): string {
+  const envFile = process.env.CVM_ENV_FILE;
+  if (envFile) {
+    return `bin/csh shell --session ${activeSessionId} --config ${envFile}`;
+  }
+  return `bin/csh shell --session ${activeSessionId}`;
 }
 
 function isUnknownSessionError(error: unknown): boolean {

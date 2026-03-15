@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { execFile } from "node:child_process";
 import {
+  chmod,
   mkdir,
   readdir,
   readFile,
@@ -214,7 +215,6 @@ export class TmuxSessionManager {
       session.lastSnapshot = snapshot;
     }
 
-    session.lastActivityAt = new Date().toISOString();
     await this.persistSession(session);
 
     const requestedRevision = cursor ?? -1;
@@ -402,8 +402,11 @@ export class TmuxSessionManager {
   }
 
   private async persistSession(session: ShellSession): Promise<void> {
-    await mkdir(SESSION_STATE_DIR, { recursive: true });
-    await writeFile(this.sessionStatePath(session.sessionId), JSON.stringify(session, null, 2), "utf8");
+    await mkdir(SESSION_STATE_DIR, { recursive: true, mode: 0o700 });
+    await chmod(SESSION_STATE_DIR, 0o700).catch(() => undefined);
+    const outputPath = this.sessionStatePath(session.sessionId);
+    await writeFile(outputPath, JSON.stringify(session, null, 2), "utf8");
+    await chmod(outputPath, 0o600).catch(() => undefined);
   }
 
   private async deletePersistedSession(sessionId: string): Promise<void> {

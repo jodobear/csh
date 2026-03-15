@@ -59,3 +59,7 @@ printf 'proxy_operator_path=%s\n' "local-sdk-proxy"
 printf 'proxy_status=%s\n' "$proxy_status"
 printf 'host_log=%s\n' "$HOST_LOG"
 printf 'proxy_log=%s\n' "$PROXY_LOG"
+
+if [[ "$proxy_status" != "0" ]]; then
+  exit "$proxy_status"
+fi

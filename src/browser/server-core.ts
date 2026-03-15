@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { z } from "zod";
 import type { ShellBridge } from "./shell-bridge.js";
@@ -11,6 +12,8 @@ const envSchema = z.object({
     .trim()
     .optional()
     .transform((value) => value === "1" || value?.toLowerCase() === "true"),
+  CSH_BROWSER_AUTH_USER: z.string().trim().optional(),
+  CSH_BROWSER_AUTH_PASSWORD: z.string().trim().optional(),
 });
 
 const openSchema = z.object({
@@ -63,6 +66,11 @@ type BundledAssets = {
   byPath: Map<string, BundledAsset>;
 };
 
+type BrowserAuth = {
+  username: string;
+  password: string;
+};
+
 export async function startBrowserServer(options: BrowserServerOptions): Promise<void> {
   const env = envSchema.parse(process.env);
   if (!env.CSH_BROWSER_ALLOW_REMOTE && !isLoopbackHost(env.CSH_BROWSER_HOST)) {
@@ -70,6 +78,7 @@ export async function startBrowserServer(options: BrowserServerOptions): Promise
       `Refusing to bind browser UI to non-loopback host ${env.CSH_BROWSER_HOST} without CSH_BROWSER_ALLOW_REMOTE=1`,
     );
   }
+  const browserAuth = resolveBrowserAuth(env);
 
   const apiToken = (process.env.CSH_BROWSER_TOKEN || randomUUID()).trim();
   const assets = await buildBrowserAssets();
@@ -82,7 +91,8 @@ export async function startBrowserServer(options: BrowserServerOptions): Promise
     hostname: env.CSH_BROWSER_HOST,
     port: env.CSH_BROWSER_PORT,
     idleTimeout: 30,
-    fetch: (request) => handleRequest(request, shellBridge, assets, noStoreHeaders, options, apiToken),
+    fetch: (request) =>
+      handleRequest(request, shellBridge, assets, noStoreHeaders, options, apiToken, browserAuth),
     error(error) {
       console.error(error);
       return Response.json(
@@ -129,8 +139,19 @@ async function handleRequest(
   noStoreHeaders: HeadersInit,
   options: BrowserServerOptions,
   apiToken: string,
+  browserAuth: BrowserAuth | null,
 ): Promise<Response> {
   const url = new URL(request.url);
+  const authError = authorizeBrowserRequest(request, browserAuth);
+  if (authError) {
+    return new Response(authError, {
+      status: 401,
+      headers: {
+        "cache-control": "no-store",
+        "www-authenticate": 'Basic realm="csh browser"',
+      },
+    });
+  }
 
   if (request.method === "GET" && url.pathname === "/") {
     return new Response(renderHtml(bundledAssets, options, apiToken), {
@@ -223,6 +244,11 @@ function json(value: unknown, headers: HeadersInit, status = 200): Response {
 }
 
 async function buildBrowserAssets(): Promise<BundledAssets> {
+  const prebuilt = await readPrebuiltBrowserAssets();
+  if (prebuilt) {
+    return prebuilt;
+  }
+
   const entrypoint = path.join(process.cwd(), "src", "browser", "app.ts");
   const build = await Bun.build({
     entrypoints: [entrypoint],
@@ -260,6 +286,40 @@ async function buildBrowserAssets(): Promise<BundledAssets> {
 
   if (!scriptPath) {
     throw new Error("Browser UI bundle did not emit a JavaScript asset");
+  }
+
+  return {
+    scriptPath,
+    stylesheetPaths,
+    byPath,
+  };
+}
+
+async function readPrebuiltBrowserAssets(): Promise<BundledAssets | null> {
+  const prebuiltDir = path.join(process.cwd(), "dist", "browser");
+  const scriptCandidate = path.join(prebuiltDir, "app.js");
+  if (!(await Bun.file(scriptCandidate).exists())) {
+    return null;
+  }
+
+  const byPath = new Map<string, BundledAsset>();
+  const scriptPath = "/assets/app.js";
+  const stylesheetPaths: string[] = [];
+
+  const scriptContents = new Uint8Array(await readFile(scriptCandidate));
+  byPath.set(scriptPath, {
+    contents: scriptContents,
+    contentType: mimeTypeForPath(scriptPath),
+  });
+
+  const stylesheetCandidate = path.join(prebuiltDir, "app.css");
+  if (await Bun.file(stylesheetCandidate).exists()) {
+    const stylesheetPath = "/assets/app.css";
+    stylesheetPaths.push(stylesheetPath);
+    byPath.set(stylesheetPath, {
+      contents: new Uint8Array(await readFile(stylesheetCandidate)),
+      contentType: mimeTypeForPath(stylesheetPath),
+    });
   }
 
   return {
@@ -341,6 +401,45 @@ function authorizeApiRequest(request: Request, expectedToken: string): string | 
     if (origin !== requestOrigin) {
       return "Cross-origin browser API request rejected";
     }
+  }
+
+  return null;
+}
+
+function resolveBrowserAuth(env: z.infer<typeof envSchema>): BrowserAuth | null {
+  const username = env.CSH_BROWSER_AUTH_USER?.trim() ?? "";
+  const password = env.CSH_BROWSER_AUTH_PASSWORD?.trim() ?? "";
+  if (!env.CSH_BROWSER_ALLOW_REMOTE && !username && !password) {
+    return null;
+  }
+  if (!username || !password) {
+    throw new Error(
+      "Remote browser mode requires CSH_BROWSER_AUTH_USER and CSH_BROWSER_AUTH_PASSWORD",
+    );
+  }
+  return { username, password };
+}
+
+function authorizeBrowserRequest(request: Request, auth: BrowserAuth | null): string | null {
+  if (!auth) {
+    return null;
+  }
+
+  const header = request.headers.get("authorization");
+  if (!header?.startsWith("Basic ")) {
+    return "Browser authentication required";
+  }
+
+  const decoded = Buffer.from(header.slice("Basic ".length), "base64").toString("utf8");
+  const separator = decoded.indexOf(":");
+  if (separator === -1) {
+    return "Browser authentication required";
+  }
+
+  const username = decoded.slice(0, separator);
+  const password = decoded.slice(separator + 1);
+  if (username !== auth.username || password !== auth.password) {
+    return "Browser authentication required";
   }
 
   return null;

@@ -75,6 +75,7 @@ let closed = false;
 let stopping = false;
 let pollTimer: number | null = null;
 let rpcChain = Promise.resolve();
+let reconnectFallbackMessage: string | null = null;
 
 const resizeObserver = new ResizeObserver(() => {
   fitAddon.fit();
@@ -137,6 +138,7 @@ async function reconnectOrOpenSession(): Promise<void> {
       return;
     } catch (error) {
       console.warn("Reattach failed, opening a fresh session", error);
+      reconnectFallbackMessage = `Opened a new session because ${sessionId} could not be reattached`;
       sessionId = null;
       clearStoredSessionId();
     }
@@ -155,7 +157,8 @@ async function reconnectOrOpenSession(): Promise<void> {
   sessionId = result.sessionId;
   cursor = null;
   writeStoredSessionId(result.sessionId);
-  setStatus(`Connected to ${result.command}`);
+  setStatus(reconnectFallbackMessage ?? `Connected to ${result.command}`);
+  reconnectFallbackMessage = null;
   setSessionLabel(result.sessionId);
   setControlsDisabled(false);
   focusKeyboardCapture();
@@ -198,8 +201,6 @@ async function closeSession(statusMessage: string): Promise<void> {
   cancelPollLoop();
 
   const activeSessionId = sessionId;
-  sessionId = null;
-  clearStoredSessionId();
 
   try {
     await queueRpc(() =>
@@ -207,10 +208,20 @@ async function closeSession(statusMessage: string): Promise<void> {
         sessionId: activeSessionId,
       }),
     );
-  } finally {
+    sessionId = null;
+    clearStoredSessionId();
+    closed = true;
     setStatus(statusMessage);
     setSessionLabel("closed");
     setControlsDisabled(false, true);
+  } catch (error) {
+    setStatus(
+      `Close failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    setControlsDisabled(false);
+    schedulePoll();
+    throw error;
+  } finally {
     stopping = false;
   }
 }
@@ -264,8 +275,13 @@ async function pollRemote(): Promise<void> {
 }
 
 function renderSnapshot(snapshot: string): void {
-  terminal.write("\x1b[H\x1b[2J");
-  terminal.write(normalizeSnapshot(snapshot));
+  const normalized = normalizeSnapshot(snapshot);
+  if (lastSnapshot && snapshot.startsWith(lastSnapshot)) {
+    terminal.write(normalized.slice(normalizeSnapshot(lastSnapshot).length));
+  } else {
+    terminal.write("\x1b[H\x1b[2J");
+    terminal.write(normalized);
+  }
   lastSnapshot = snapshot;
 }
 

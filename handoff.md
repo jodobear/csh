@@ -3,7 +3,7 @@
 ## Current Status
 
 - Active phase: none
-- Current objective: deployment polish, packaging decisions, and operator UX cleanup
+- Current objective: deployment polish, packaging decisions, and operator UX cleanup after the 2026-03-15 audit-remediation pass
 - Repo state:
   - Git repository initialized on `master`
   - `master` is pushed to `origin/master`
@@ -33,6 +33,8 @@
   - SSH tunnel fallback
   - `relay.contextvm.org` only as a secondary compatibility check
 - Browser UI remains loopback-bound by default and token-gated for POST requests.
+- Remote browser mode now requires explicit Basic Auth credentials before any page, asset, or API response is served.
+- Startup paths now treat env files as data-only config, not shell code.
 
 ## Claims Vs Proof
 
@@ -43,6 +45,8 @@
 | Browser-over-ContextVM works on a controlled relay | `bin/csh browser /tmp/csh-browser-test.env` plus token-gated `POST /api/session/write` rendered `__BROWSER__/workspace/projects/csh` and the Playwright snapshot captured it | proven | browser remains operator-local, not public multi-user |
 | Ownership and browser auth are enforced server-side | unauthenticated `session_open`, wrong-owner polling, non-loopback bind, and missing-token browser POSTs all fail | proven | transport-specific identity assumptions still matter for authenticated remote paths |
 | Restart recovery and cleanup exist | local restart and TTL cleanup tests with shared `CSH_SESSION_STATE_DIR` and `CSH_TMUX_SOCKET` passed | proven locally | relay-backed restart was not rerun separately |
+| Remote browser auth is enforced before page load | in-process browser auth check returned `401` for unauthenticated/wrong-password requests and `200` for correct credentials | proven locally | remote browser mode is still an explicitly opt-in operator workflow |
+| Session metadata stays private on disk | isolated session-manager check produced session dir mode `700`, file mode `600`, and unchanged `lastActivityAt` across polling | proven locally | runtime depends on host filesystem honoring POSIX modes |
 | Public relay is acceptable as primary transport | latest `bin/csh exec ... /tmp/csh-live-test.env` against `wss://relay.contextvm.org` | not proven; failed with relay connection errors and `Publish event timed out` before `initialize` | could improve later, but not the default path now |
 
 ## Open Risks
@@ -50,6 +54,7 @@
 - `relay.contextvm.org` remains flaky in this environment and should not be the primary operator relay.
 - The backend is still `tmux send-keys` plus snapshot capture, so fidelity is below a raw PTY byte stream.
 - The browser UI is an operator-side bridge, not a public multi-user shell surface.
+- Interactive disconnect still uses a bounded grace window, not a hard delivery guarantee under a broken transport.
 
 ## Unsupported Behaviors
 
@@ -59,8 +64,7 @@
 
 ## Next Actions
 
-1. Triage and fix the live findings in the audit set under [docs/audits/](/workspace/projects/csh/docs/audits/).
-2. Prioritize the high-severity items first: remote browser exposure, sourced env-file execution, and `csh exec` silent timeout/termination.
-3. Then address the deployment-resilience findings around runtime path stability, singleton protection, verification readiness, and `systemd` path handling.
-4. Expand the user-facing setup guide around the now-proven private-relay workflow after those fixes land.
-5. Keep public-relay testing opportunistic and secondary.
+1. Re-run end-to-end shell and browser flows against a private relay in a clean network environment after this remediation pass.
+2. Decide whether to package `csh` beyond the current Bun-backed repo CLI.
+3. Expand the user-facing setup guide around the now-proven private-relay workflow.
+4. Keep public-relay testing opportunistic and secondary.

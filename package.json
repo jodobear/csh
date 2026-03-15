@@ -14,6 +14,7 @@
     "demo:contextvm:interactive": "bun run src/contextvm-interactive-client.ts",
     "csh:operator": "bash scripts/operator.sh",
     "csh:keys": "bun run scripts/generate-keypair.ts",
+    "csh:build-browser": "bun run scripts/build-browser-assets.ts",
     "csh:smoke": "bun run scripts/smoke-client.ts",
     "csh:lifecycle": "bun run scripts/lifecycle-client.ts",
     "csh:proxy-smoke": "bun run scripts/proxy-smoke.ts"
