@@ -1,4 +1,5 @@
 .csh-runtime/
 node_modules/
-.env.phase1.local
+.env.local
+.env.*.local
 .playwright-cli/
