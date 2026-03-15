@@ -12,6 +12,8 @@
   - `security-exposure`
   - `operator-workflow`
   - `deployment-resilience`
+- Latest live audit:
+  - [security-exposure-2026-03-15.md](/workspace/projects/csh/docs/audits/security-exposure-2026-03-15.md)
 
 ## Read First
 
@@ -54,7 +56,8 @@
 
 ## Next Actions
 
-1. Decide whether `bin/csh` remains a Bun-backed repo CLI or becomes a packaged binary.
-2. Expand the user-facing setup guide around the now-proven private-relay workflow.
-3. Improve operator UX where it matters most: shell ergonomics, browser reconnect affordances, and one-shot output handling.
-4. Keep public-relay testing opportunistic and secondary.
+1. Triage and fix the live findings in [security-exposure-2026-03-15.md](/workspace/projects/csh/docs/audits/security-exposure-2026-03-15.md).
+2. Decide whether `bin/csh` remains a Bun-backed repo CLI or becomes a packaged binary.
+3. Expand the user-facing setup guide around the now-proven private-relay workflow.
+4. Improve operator UX where it matters most: shell ergonomics, browser reconnect affordances, and one-shot output handling.
+5. Keep public-relay testing opportunistic and secondary.

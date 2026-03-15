@@ -136,3 +136,10 @@ Append-only project communication history.
 - When: 2026-03-15 21:53 WET
 - What: Pulled over the next refinement from the updated `nzdk` playbook: explicit repo-default audit postures. `csh` now names `security-exposure`, `operator-workflow`, and `deployment-resilience` as its default refinement lenses, records the finding-ID pattern in the implementation gate, and exposes those postures in `handoff.md` so future refinement work stays precise without reopening doc bloat.
 - Session: local repo execution
+
+### 2026-03-15 22:05 WET
+
+- Who: Codex
+- When: 2026-03-15 22:05 WET
+- What: Created repo-local audit docs under `docs/audits/` and completed the first posture-specific audit for `security-exposure`. The live findings cover remote browser exposure, session metadata file permissions, permissive env-file secret handling, optional-encryption fallback, and the lingering public-relay bootstrap default.
+- Session: local repo execution

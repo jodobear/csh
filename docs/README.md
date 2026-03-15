@@ -62,6 +62,8 @@ Do not bulk-read the rest of `docs/` unless the active work needs it.
   High-level project trajectory.
 - `docs/plans/phased-implementation-plan.md`
   Phase structure and sequencing.
+- `docs/audits/*.md`
+  Posture-specific audit findings and refinement targets.
 - `docs/process/*.md`
   Stable process references and templates.
 - `docs/guides/*.md`
