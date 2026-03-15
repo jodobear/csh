@@ -143,3 +143,10 @@ Append-only project communication history.
 - When: 2026-03-15 22:05 WET
 - What: Created repo-local audit docs under `docs/audits/` and completed the first posture-specific audit for `security-exposure`. The live findings cover remote browser exposure, session metadata file permissions, permissive env-file secret handling, optional-encryption fallback, and the lingering public-relay bootstrap default.
 - Session: local repo execution
+
+### 2026-03-15 22:18 WET
+
+- Who: Codex
+- When: 2026-03-15 22:18 WET
+- What: Completed the remaining posture audits. Added `operator-workflow-2026-03-15.md` and `deployment-resilience-2026-03-15.md`, covering `csh exec` silent timeout/termination, browser reconnect and close state loss, redraw-driven scrollback loss, non-deterministic disconnect on slow links, verification false-green behavior, env-file parsing drift between validation and startup, passive-poll session pinning, and runtime browser bundling. Updated `handoff.md` so the next work is driven by the live audit set in `docs/audits/`.
+- Session: local repo execution

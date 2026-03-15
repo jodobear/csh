@@ -1,19 +1,28 @@
-# Audit Lenses
+---
+title: Audit Index
+doc_type: audit
+status: active
+owner: csh
+read_when:
+  - auditing_repo
+  - planning_refinement
+---
 
-Repo-local audit lenses for `csh`.
+# Audit Index
 
-## Active Lenses
+This directory holds live posture-specific audit docs.
 
-- `security-exposure`
-  Question: does this change widen shell exposure, weaken identity/authz, mishandle secrets, or rely on unsafe trust assumptions?
-  Finding ID prefix: `security-exposure-*`
-- `operator-workflow`
-  Question: does this change make the real operator flow fragile, misleading, noisy, or hard to recover?
-  Finding ID prefix: `operator-workflow-*`
-- `deployment-resilience`
-  Question: does this change make startup, restart, persistence, cleanup, or network-path behavior less reliable in production?
-  Finding ID prefix: `deployment-resilience-*`
-
-## Active Audits
+Current repo-default postures:
 
 - [security-exposure-2026-03-15.md](/workspace/projects/csh/docs/audits/security-exposure-2026-03-15.md)
+  Identity, authorization, shell exposure, browser exposure, secret handling, and risky defaults.
+- [operator-workflow-2026-03-15.md](/workspace/projects/csh/docs/audits/operator-workflow-2026-03-15.md)
+  Real operator flow quality: shell UX, reconnect behavior, browser UX, output handling, and verification trust.
+- [deployment-resilience-2026-03-15.md](/workspace/projects/csh/docs/audits/deployment-resilience-2026-03-15.md)
+  Startup, restart, persistence, cleanup, network assumptions, and verification reliability.
+
+Finding IDs use:
+
+- `<posture>-<area>-<number>`
+
+These are live audit docs, not one-off historical reports. Resolve findings in place or mark them closed explicitly.

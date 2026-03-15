@@ -14,6 +14,8 @@
   - `deployment-resilience`
 - Latest live audit:
   - [security-exposure-2026-03-15.md](/workspace/projects/csh/docs/audits/security-exposure-2026-03-15.md)
+  - [operator-workflow-2026-03-15.md](/workspace/projects/csh/docs/audits/operator-workflow-2026-03-15.md)
+  - [deployment-resilience-2026-03-15.md](/workspace/projects/csh/docs/audits/deployment-resilience-2026-03-15.md)
 
 ## Read First
 
@@ -21,6 +23,7 @@
 - [README.md](/workspace/projects/csh/README.md)
 - [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md)
 - [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md)
+- [docs/audits/README.md](/workspace/projects/csh/docs/audits/README.md)
 
 ## Current Product State
 
@@ -56,8 +59,8 @@
 
 ## Next Actions
 
-1. Triage and fix the live findings in [security-exposure-2026-03-15.md](/workspace/projects/csh/docs/audits/security-exposure-2026-03-15.md).
-2. Decide whether `bin/csh` remains a Bun-backed repo CLI or becomes a packaged binary.
-3. Expand the user-facing setup guide around the now-proven private-relay workflow.
-4. Improve operator UX where it matters most: shell ergonomics, browser reconnect affordances, and one-shot output handling.
+1. Triage and fix the live findings in the audit set under [docs/audits/](/workspace/projects/csh/docs/audits/).
+2. Prioritize the high-severity items first: remote browser exposure, sourced env-file execution, and `csh exec` silent timeout/termination.
+3. Then address the deployment-resilience findings around runtime path stability, singleton protection, verification readiness, and `systemd` path handling.
+4. Expand the user-facing setup guide around the now-proven private-relay workflow after those fixes land.
 5. Keep public-relay testing opportunistic and secondary.
