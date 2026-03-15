@@ -1,8 +1,8 @@
 # Phase Prompts
 
+- Current active prompt: none.
+- Completed prompts in this directory are provenance, not startup docs, unless one is explicitly reactivated.
 - Use one prompt per phase.
-- Do not combine phases in one run.
 - Keep outputs phase-local.
 - Record tradeoffs for material decisions.
-- Run an ambiguity checkpoint before closing a phase.
-- Active implementation phases must have a checked-in phase prompt before closure.
+- Active implementation phases must have a checked-in prompt before closure.

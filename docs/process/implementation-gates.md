@@ -127,14 +127,44 @@ Before phase closure, run an explicit review focused on:
 
 This audit happens after implementation and before the phase is called complete.
 
+### 8. Audit Posture And Finding IDs
+
+For any non-trivial refinement or hardening slice, record:
+
+- which audit posture(s) are being applied
+- stable finding IDs for the targeted issues
+
+Examples of posture labels:
+
+- security
+- operations
+- operator-ux
+- interoperability
+- deployment
+
+Finding IDs do not need a complex scheme, but they must be stable enough to reference in prompts,
+handoff, and closeout.
+
+### 9. Closeout Consistency
+
+Before calling the phase complete, restore the docs surface to steady state:
+
+- update the targeted findings or note that they are resolved
+- update `handoff.md` to reflect the new next work, not the slice that just closed
+- update the docs index if the active/control surface changed
+- update operator guides if the public workflow changed
+- remove finished prompts from the startup path unless they are still active
+
 ## Minimum Exit Record
 
 Every implementation phase should leave behind:
 
 - phase prompt with explicit exit criteria
 - claims-vs-proof table in the phase artifact or handoff
+- named audit posture(s) and target finding IDs for non-trivial refinement work
 - recorded open risks
 - recorded unsupported behaviors
+- docs surface restored to the lean post-closeout state
 - updated `handoff.md`
 
 The phase is not closed until those records exist in the repo.

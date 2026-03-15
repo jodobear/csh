@@ -10,6 +10,8 @@
   starter files.
 - `D-006` Prefer buy/adapt over build when existing tools already cover the core requirement.
 - `D-007` Implementation phases must satisfy explicit acceptance gates before being called complete.
+- `D-008` Keep one canonical doc per rule set and make most other docs delta-oriented.
+- `D-009` Separate startup/control docs from reference docs and historical provenance.
 
 ## Decisions
 
@@ -31,3 +33,8 @@
 - `P11` Rule: surface basic git state at startup without ceremony: whether the repo is initialized,
   current branch, HEAD commit or no-commit state, remotes present or absent, and whether work is
   still only local.
+- `P12` Rule: `handoff.md` carries current state and next work; historical narrative belongs in
+  `docs/comms/transcript.md`.
+- `P13` Rule: when the gate gets smarter, re-audit already-landed work before continuing.
+- `P14` Rule: closeout includes restoring the docs surface to steady state so startup reading does
+  not keep growing after the slice is done.

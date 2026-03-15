@@ -65,17 +65,7 @@ bin/csh verify /tmp/csh-verify.env
 - default log level is `error` to reduce transport noise in normal operation
 - interactive sessions are owner-bound when the ContextVM gateway injects the authenticated client pubkey
 - the `systemd` unit uses `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=read-only`, and `UMask=0077`
-- the preferred operator transport is a private relay over VPN/private network; use SSH tunneling if direct relay reachability is uncertain
-
-## Transport Posture
-
-Recommended:
-
-1. private relay you control
-2. SSH tunnel to that relay when firewall or VPN rules are unclear
-3. `relay.contextvm.org` only as a secondary compatibility check
-
-For a full server/client walkthrough, see [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md).
+- transport posture and deployment guidance live in [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md)
 
 ## systemd
 

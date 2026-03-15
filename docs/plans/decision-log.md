@@ -245,6 +245,19 @@
 ### 2026-03-15
 
 - Status: accepted
+- Decision: Use `docs/README.md` as the docs routing surface, shorten the startup read set, and
+  keep `handoff.md` state-oriented rather than historical.
+- Why: the repo had started to accumulate duplicated process and transport guidance across startup
+  docs, guides, and handoff. A docs index plus a shorter startup path lowers active-memory load
+  without reducing rigor, and a leaner handoff avoids mixing state with running history.
+- Tradeoff: some detail now lives behind one routing step in `docs/README.md`, so readers need to
+  follow the index instead of assuming every doc belongs in the startup path.
+- Reversal trigger: reverse this only if the leaner surface hides necessary operational context,
+  which should be solved first by improving the index instead of re-bloating startup docs.
+
+### 2026-03-15
+
+- Status: accepted
 - Decision: Add a plain startup git-state check to the repo canon and surface repo initialization,
   branch, HEAD/no-commit state, remotes, and local-only work before substantial implementation.
 - Why: the repo had been treated as a normal initialized git project even though it had no commits

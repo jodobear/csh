@@ -4,18 +4,14 @@
 
 1. `./agent-brief`
 2. `AGENTS.md`
-3. `handoff.md`
-4. `docs/process/process-principles.md`
-5. `docs/process/implementation-gates.md`
-6. `docs/process/buy-before-build.md`
-7. `docs/process/project-profile.md`
-8. `docs/process/research-workflow.md`
-9. `docs/process/prompt-driven-kickoff.md`
-10. `docs/plans/decision-log.md`
-11. `docs/plans/build-plan.md`
-12. `docs/plans/phased-implementation-plan.md`
-13. `docs/prompts/README.md`
-14. active phase prompt
+3. `docs/README.md`
+4. `handoff.md`
+5. `docs/process/process-principles.md`
+6. `docs/process/implementation-gates.md`
+7. `docs/prompts/README.md`
+8. active phase prompt, if one exists
+
+Use `docs/README.md` to route any additional reading. Do not bulk-read all planning, guide, and reference docs by default.
 
 ## Artifact Authority
 

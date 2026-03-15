@@ -11,13 +11,7 @@ It currently provides:
 
 ## Recommended Use
 
-Use a relay you control for real operator work.
-
-Preferred transport order:
-
-1. private relay over VPN or private network
-2. SSH tunnel to a private relay on the server
-3. `relay.contextvm.org` only for convenience checks, not as the primary operator path
+Use a relay you control for real operator work. The canonical transport/deployment guidance lives in [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md).
 
 `csh` itself is still a Bun-backed repo CLI. Persistent deployment should use the existing `systemd`
 example rather than a custom daemon layer.
@@ -86,4 +80,4 @@ CSH_TEST_RELAY_HOST=127.0.0.1 CSH_TEST_RELAY_PORT=10552 scripts/start-test-relay
 - Sessions persist across client reconnects and can survive host restart when the same runtime state is reused.
 - The backend is `tmux` snapshot-based today, so terminal fidelity is below a raw PTY byte-stream design.
 
-For the current verified state and operational details, see [handoff.md](/workspace/projects/csh/handoff.md), [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md), and [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md).
+For the current verified state and operational details, see [handoff.md](/workspace/projects/csh/handoff.md), [docs/README.md](/workspace/projects/csh/docs/README.md), [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md), and [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md).
