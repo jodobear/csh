@@ -8,6 +8,10 @@
   - Git repository initialized on `master`
   - `master` is pushed to `origin/master`
 - Active prompt: none
+- Default audit postures for refinement work:
+  - `security-exposure`
+  - `operator-workflow`
+  - `deployment-resilience`
 
 ## Read First
 

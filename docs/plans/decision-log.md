@@ -258,6 +258,19 @@
 ### 2026-03-15
 
 - Status: accepted
+- Decision: Standardize future refinement work on explicit repo-default audit postures:
+  `security-exposure`, `operator-workflow`, and `deployment-resilience`.
+- Why: the updated refinement playbook makes the key point correctly: generic “quality review” is
+  too vague. This repo’s real failure modes cluster around shell exposure, operator flow, and
+  deployment/network behavior, so those should be the default audit lenses.
+- Tradeoff: refinement packets now need to name posture(s) and finding IDs explicitly, which adds a
+  small amount of upfront structure.
+- Reversal trigger: reverse or extend this only if the repo’s dominant risk shape changes enough to
+  justify a different posture set.
+
+### 2026-03-15
+
+- Status: accepted
 - Decision: Add a plain startup git-state check to the repo canon and surface repo initialization,
   branch, HEAD/no-commit state, remotes, and local-only work before substantial implementation.
 - Why: the repo had been treated as a normal initialized git project even though it had no commits

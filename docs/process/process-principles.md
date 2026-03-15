@@ -38,3 +38,5 @@
 - `P13` Rule: when the gate gets smarter, re-audit already-landed work before continuing.
 - `P14` Rule: closeout includes restoring the docs surface to steady state so startup reading does
   not keep growing after the slice is done.
+- `P15` Rule: audits should use repo-specific postures that match real failure modes, not one
+  generic quality bucket.

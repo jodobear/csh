@@ -21,6 +21,25 @@ They are required whenever work changes:
 
 Every implementation phase must define and satisfy all categories below before closure.
 
+## Repo-Default Audit Postures
+
+Use one or more of these postures for non-trivial refinement work:
+
+- `security-exposure`
+  Identity, authorization, shell exposure, browser exposure, and trust-boundary risks.
+- `operator-workflow`
+  Real operator flow quality: setup friction, reconnect behavior, error visibility, and usability.
+- `deployment-resilience`
+  Startup, restart, persistence, cleanup, service behavior, and network-path assumptions.
+
+Use posture-specific finding IDs in the form:
+
+- `<posture>-<area>-<number>`
+
+Example:
+
+- `operator-workflow-shell-01`
+
 ### 0. Repo State
 
 Before substantial work starts, record and surface basic git state:
@@ -134,16 +153,11 @@ For any non-trivial refinement or hardening slice, record:
 - which audit posture(s) are being applied
 - stable finding IDs for the targeted issues
 
-Examples of posture labels:
-
-- security
-- operations
-- operator-ux
-- interoperability
-- deployment
-
 Finding IDs do not need a complex scheme, but they must be stable enough to reference in prompts,
 handoff, and closeout.
+
+Prefer targeting 1 to 3 postures per slice. If a packet starts addressing every posture at once,
+the slice is probably too broad.
 
 ### 9. Closeout Consistency
 

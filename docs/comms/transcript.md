@@ -129,3 +129,10 @@ Append-only project communication history.
 - When: 2026-03-15 21:45 WET
 - What: Refined the repo process using lessons from the `nzdk` playbook. Added `docs/README.md` as the docs index, shortened the startup read set in `AGENTS.md`, tightened the implementation gate with audit-posture and closeout-consistency rules, and rewrote `handoff.md` as a lean state doc instead of a running historical narrative. Also trimmed duplicated transport posture text so the canonical deployment guidance now lives in `docs/guides/server-setup.md`.
 - Session: local repo execution
+
+### 2026-03-15 21:53 WET
+
+- Who: Codex
+- When: 2026-03-15 21:53 WET
+- What: Pulled over the next refinement from the updated `nzdk` playbook: explicit repo-default audit postures. `csh` now names `security-exposure`, `operator-workflow`, and `deployment-resilience` as its default refinement lenses, records the finding-ID pattern in the implementation gate, and exposes those postures in `handoff.md` so future refinement work stays precise without reopening doc bloat.
+- Session: local repo execution

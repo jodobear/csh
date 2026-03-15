@@ -1,3 +1,13 @@
+---
+title: Docs Index
+doc_type: reference
+status: active
+owner: csh
+read_when:
+  - startup
+  - routing_docs
+---
+
 # Docs Index
 
 This is the repo's docs routing surface.
@@ -29,6 +39,21 @@ Do not bulk-read the rest of `docs/` unless the active work needs it.
 - `docs/prompts/README.md`
   Which phase prompt, if any, is active.
 
+## Doc Roles
+
+- `policy`
+  Canonical rules and gates.
+- `state`
+  Current lane, live proof summary, and next work.
+- `packet`
+  Phase-specific execution doc.
+- `reference`
+  Stable background, accepted decisions, and operator guidance.
+- `log`
+  Append-only communication or issue history.
+- `archive`
+  Historical provenance that no longer controls current work.
+
 ## Reference Docs
 
 - `docs/plans/decision-log.md`
@@ -50,6 +75,9 @@ Do not bulk-read the rest of `docs/` unless the active work needs it.
   Completed phase packets unless one is explicitly reactivated.
 - `docs/references/local/*.md`
   Research notes and local provenance.
+
+When completed prompts or older local notes stop helping current work, move them to archive rather
+than leaving them to accumulate in active paths.
 
 ## Repo-Specific Routing Rules
 
