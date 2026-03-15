@@ -51,6 +51,7 @@ export type ShellSession = {
 };
 
 export type OpenSessionInput = {
+  sessionId?: string;
   command?: string;
   cwd?: string;
   cols?: number;
@@ -83,11 +84,30 @@ export class TmuxSessionManager {
   public async openSession(input: OpenSessionInput): Promise<ShellSession> {
     await this.ready;
 
-    const sessionId = randomUUID();
-    const tmuxSessionName = `csh-${sessionId}`;
+    const ownerId = input.ownerId ?? "local";
+    const requestedSessionId = input.sessionId?.trim() || undefined;
+    if (requestedSessionId) {
+      const existing = this.sessions.get(requestedSessionId);
+      if (existing) {
+        if (existing.ownerId !== ownerId) {
+          throw new Error(`Session ${requestedSessionId} is owned by a different actor`);
+        }
+
+        await this.refreshSessionState(existing);
+        if (!existing.closedAt) {
+          existing.lastActivityAt = new Date().toISOString();
+          await this.persistSession(existing);
+          return existing;
+        }
+
+        await this.discardClosedSession(existing);
+      }
+    }
+
+    const sessionId = requestedSessionId ?? randomUUID();
+    const tmuxSessionName = tmuxSessionNameFor(sessionId);
     const cols = clampDimension(input.cols, 80);
     const rows = clampDimension(input.rows, 24);
-    const ownerId = input.ownerId ?? "local";
     const command = input.command ?? `${process.env.SHELL ?? "/bin/bash"} -i`;
 
     const args = ["new-session", "-d", "-s", tmuxSessionName, "-x", String(cols), "-y", String(rows)];
@@ -390,6 +410,19 @@ export class TmuxSessionManager {
     await rm(this.sessionStatePath(sessionId), { force: true });
   }
 
+  private async discardClosedSession(session: ShellSession): Promise<void> {
+    try {
+      await runTmux(["kill-session", "-t", session.tmuxSessionName]);
+    } catch (error) {
+      if (!isMissingTmuxTarget(error)) {
+        throw error;
+      }
+    }
+
+    this.sessions.delete(session.sessionId);
+    await this.deletePersistedSession(session.sessionId);
+  }
+
   private async readPersistedSession(filePath: string): Promise<ShellSession | null> {
     try {
       const text = await readFile(filePath, "utf8");
@@ -588,4 +621,9 @@ function clampDimension(value: number | undefined, fallback: number): number {
   }
 
   return Math.max(20, Math.min(400, Math.trunc(value)));
+}
+
+function tmuxSessionNameFor(sessionId: string): string {
+  const safeId = sessionId.replace(/[^A-Za-z0-9_-]/g, "_");
+  return `csh-${safeId}`;
 }

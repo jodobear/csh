@@ -286,13 +286,17 @@ async function commandExec(parsed: ParsedArgs): Promise<void> {
     }
 
     if (lastSnapshot) {
-      process.stdout.write(lastSnapshot.trimEnd());
+      process.stdout.write(stripDeadPaneFooter(lastSnapshot).trimEnd());
       process.stdout.write("\n");
     }
   } finally {
     await closeSession(client, session.sessionId).catch(() => undefined);
     await client.close();
   }
+}
+
+function stripDeadPaneFooter(snapshot: string): string {
+  return snapshot.replace(/\n*Pane is dead \(status[^\n]*\):?\s*$/s, "");
 }
 
 async function commandShell(parsed: ParsedArgs): Promise<void> {

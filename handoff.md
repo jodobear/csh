@@ -27,6 +27,7 @@
   - The startup canon now requires a plain git-state check so repo initialization, branch, HEAD/no-commit state, remotes, and local-only work are surfaced immediately instead of assumed.
   - The operational script layout has been flattened from `scripts/phase1/` to `scripts/`, and the repo now has a top-level `README.md`.
   - The config loader now tolerates mode-specific env files, so client commands like `csh exec` no longer fail early on missing host-only keys such as `GW_PRIVATE_KEY`.
+  - Explicit shell session names now work as real reconnect handles, and one-shot `csh exec` output now strips tmux's dead-pane footer.
 - Last verified commands:
   - `command -v bun` -> `/home/at/.bun/bin/bun`
   - `command -v cargo` -> `/home/at/.cargo/bin/cargo`

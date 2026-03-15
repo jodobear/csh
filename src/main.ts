@@ -16,6 +16,7 @@ server.registerTool(
   {
     description: "Open a new tmux-backed shell session.",
     inputSchema: {
+      sessionId: z.string().min(1).optional(),
       command: z.string().optional(),
       cwd: z.string().optional(),
       cols: z.number().int().positive().optional(),
@@ -23,8 +24,9 @@ server.registerTool(
       ownerId: ownerInputSchema,
     },
   },
-  async ({ command, cwd, cols, rows, ownerId }, extra) => {
+  async ({ sessionId, command, cwd, cols, rows, ownerId }, extra) => {
     const session = await manager.openSession({
+      sessionId,
       command,
       cwd,
       cols,

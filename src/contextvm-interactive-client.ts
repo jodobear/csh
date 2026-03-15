@@ -75,28 +75,21 @@ async function runInteractiveClient(): Promise<void> {
   try {
     await client.connect(transport);
 
-    if (!sessionId) {
-      const openResult = await queueRpc(() =>
-        parseToolResult<OpenResult>(
-          client.callTool({
-            name: "session_open",
-            arguments: {
-              command: process.env.CSH_REMOTE_COMMAND || "/bin/sh",
-              ...getTerminalSize(),
-            },
-          }),
-        ),
-      );
+    const initialState = await ensureSession();
+    sessionId = initialState.sessionId;
+    cursor = initialState.cursor;
 
-      sessionId = openResult.sessionId;
-      cursor = openResult.cursor;
-      console.error(`Connected. Remote session ${sessionId}`);
-      console.error("Ctrl-] disconnects. Ctrl-C sends SIGINT to the remote session.");
-    } else {
-      cursor = 0;
+    if (initialState.snapshot !== null) {
+      lastSnapshot = initialState.snapshot;
+    }
+
+    if (initialState.reconnected) {
       console.error(`Reconnected to remote session ${sessionId}`);
       console.error("Ctrl-] disconnects. Ctrl-C sends SIGINT to the remote session.");
       await resizeRemote();
+    } else {
+      console.error(`Connected. Remote session ${sessionId}`);
+      console.error("Ctrl-] disconnects. Ctrl-C sends SIGINT to the remote session.");
     }
 
     restoreTerminal = configureTerminal();
@@ -209,6 +202,63 @@ async function pollUntilStopped(): Promise<void> {
   }
 }
 
+async function ensureSession(): Promise<{
+  sessionId: string;
+  cursor: number;
+  snapshot: string | null;
+  reconnected: boolean;
+}> {
+  if (sessionId) {
+    try {
+      const result = await queueRpc(() =>
+        parseToolResult<PollResult>(
+          client.callTool({
+            name: "session_poll",
+            arguments: {
+              sessionId,
+              cursor: 0,
+            },
+          }),
+        ),
+      );
+
+      if (!result.closedAt) {
+        return {
+          sessionId,
+          cursor: result.cursor,
+          snapshot: result.snapshot ?? null,
+          reconnected: true,
+        };
+      }
+    } catch (error) {
+      if (!isUnknownSessionError(error)) {
+        throw error;
+      }
+    }
+  }
+
+  const requestedSessionId = sessionId;
+  const openResult = await queueRpc(() =>
+    parseToolResult<OpenResult>(
+      client.callTool({
+        name: "session_open",
+        arguments: {
+          ...(requestedSessionId ? { sessionId: requestedSessionId } : {}),
+          command: process.env.CSH_REMOTE_COMMAND || "/bin/sh",
+          ...getTerminalSize(),
+        },
+      }),
+    ),
+  );
+
+  return {
+    sessionId: openResult.sessionId,
+    cursor: openResult.cursor,
+    snapshot: null,
+    reconnected: false,
+  };
+}
+
 function configureTerminal(): () => void {
   stdin.resume();
   stdin.setEncoding("utf8");
@@ -299,6 +349,14 @@ function queueRpc<T>(operation: () => Promise<T>): Promise<T> {
 
 function reportBackgroundError(error: unknown): void {
   console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+}
+
+function isUnknownSessionError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return error.message.includes("Unknown session:");
 }
 
 function clampDimension(value: number | undefined, fallback: number): number {

@@ -108,3 +108,10 @@ Append-only project communication history.
 - When: 2026-03-15 19:12 WET
 - What: Fixed a mode-specific config bug in `scripts/config.ts`. Client commands were failing early on missing host-only keys because the config loader eagerly required `GW_PRIVATE_KEY`. The loader now tolerates missing host-only or client-only keys and leaves mode enforcement to `validateConfig`, which was verified with a client-only env file.
 - Session: local repo execution
+
+### 2026-03-15 20:55 WET
+
+- Who: Codex
+- When: 2026-03-15 20:55 WET
+- What: Fixed two shell UX bugs after live remote testing. `csh exec` now strips tmux's dead-pane footer from one-shot output, and explicit session names like `bin/csh shell --session live-test ...` now behave as real reconnect handles by creating or reusing the named server-side session instead of failing with `Unknown session`.
+- Session: local repo execution

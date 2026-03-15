@@ -136,9 +136,10 @@ export async function callTool<T>(
 
 export async function openSession(
   client: Client,
-  overrides: Partial<{ command: string; cwd: string; cols: number; rows: number; ownerId: string }> = {},
+  overrides: Partial<{ sessionId: string; command: string; cwd: string; cols: number; rows: number; ownerId: string }> = {},
 ): Promise<SessionOpenResult> {
   return await callTool<SessionOpenResult>(client, "session_open", {
+    ...(overrides.sessionId ? { sessionId: overrides.sessionId } : {}),
     command: overrides.command ?? "/bin/sh",
     cols: overrides.cols ?? 80,
     rows: overrides.rows ?? 24,
