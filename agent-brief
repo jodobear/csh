@@ -1,0 +1,33 @@
+#!/usr/bin/env zsh
+set -euo pipefail
+
+repo_root="${0:a:h}"
+cd "$repo_root"
+
+printf '%s\n' "project starter"
+printf '%s\n' "Purpose: project-local execution repo scaffold"
+printf '\n'
+printf '%s\n' "Read Every Session"
+printf '%s\n' "- AGENTS.md"
+printf '%s\n' "- handoff.md"
+printf '\n'
+printf '%s\n' "Core Files"
+printf '%s\n' "- docs/process/process-principles.md"
+printf '%s\n' "- docs/process/buy-before-build.md"
+printf '%s\n' "- docs/process/project-profile.md"
+printf '%s\n' "- docs/process/research-workflow.md"
+printf '%s\n' "- docs/plans/build-plan.md"
+printf '%s\n' "- docs/plans/decision-log.md"
+printf '%s\n' "- docs/plans/phased-implementation-plan.md"
+printf '\n'
+printf '%s\n' "Project Communication"
+printf '%s\n' "- docs/comms/transcript.md"
+printf '\n'
+printf '%s\n' "Current Objective"
+awk '
+  /^## Current State/ { in_state=1; next }
+  /^## / && in_state { exit }
+  in_state && /^- Active phase:/ { print; next }
+  in_state && /^- Active pm mode:/ { print; next }
+  in_state && /^- Current objective:/ { print; next }
+' handoff.md

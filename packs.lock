@@ -1,0 +1,15 @@
+# Project Packs Lock
+
+# Record pinned shared-pack imports here.
+
+[[packs]]
+name = "process-core"
+version = "0.1.0"
+source_repo = "gymnasium"
+source_commit = "REPLACE_ME"
+manifest_path = "packs/process-core.toml"
+fingerprint = "sha256:REPLACE_ME"
+selected_docs = [
+  "docs/process/process-principles.md",
+  "docs/process/prompt-driven-kickoff.md",
+]
