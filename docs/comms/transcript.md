@@ -101,3 +101,10 @@ Append-only project communication history.
 - When: 2026-03-15 18:28 WET
 - What: Cleaned up the repo layout by adding a top-level `README.md`, flattening the operational scripts from `scripts/phase1/` to `scripts/`, updating the CLI/package wiring, and pushing the current `master` branch to `origin/master`.
 - Session: local repo execution
+
+### 2026-03-15 19:12 WET
+
+- Who: Codex
+- When: 2026-03-15 19:12 WET
+- What: Fixed a mode-specific config bug in `scripts/config.ts`. Client commands were failing early on missing host-only keys because the config loader eagerly required `GW_PRIVATE_KEY`. The loader now tolerates missing host-only or client-only keys and leaves mode enforcement to `validateConfig`, which was verified with a client-only env file.
+- Session: local repo execution

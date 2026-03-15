@@ -26,6 +26,7 @@
   - The `csh exec` path now captures final pane output for short-lived commands by snapshotting dead tmux panes before they are reported closed.
   - The startup canon now requires a plain git-state check so repo initialization, branch, HEAD/no-commit state, remotes, and local-only work are surfaced immediately instead of assumed.
   - The operational script layout has been flattened from `scripts/phase1/` to `scripts/`, and the repo now has a top-level `README.md`.
+  - The config loader now tolerates mode-specific env files, so client commands like `csh exec` no longer fail early on missing host-only keys such as `GW_PRIVATE_KEY`.
 - Last verified commands:
   - `command -v bun` -> `/home/at/.bun/bin/bun`
   - `command -v cargo` -> `/home/at/.cargo/bin/cargo`
