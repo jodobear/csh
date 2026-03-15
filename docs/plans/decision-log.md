@@ -218,6 +218,33 @@
 ### 2026-03-15
 
 - Status: accepted
+- Decision: Standardize the operator transport posture on a private relay you control, use SSH
+  tunneling as the reachability fallback, and treat `relay.contextvm.org` only as a secondary
+  compatibility check.
+- Why: the latest controlled-relay rerun is stable for `exec`, named-session shell reconnect, and
+  browser-over-ContextVM, while the latest current-code rerun against `relay.contextvm.org` still
+  failed before `initialize` with relay connection errors and `Publish event timed out`.
+- Tradeoff: public-relay convenience is no longer treated as the default path, so operators need a
+  relay they control or a simple tunnel when network reachability is uncertain.
+- Reversal trigger: reverse this only if `relay.contextvm.org` becomes reliable enough in practice
+  to serve as a primary operator path, or if the deployment model changes to bundle a different
+  default relay strategy.
+
+### 2026-03-15
+
+- Status: accepted
+- Decision: Keep a deterministic repo-local `nak` relay helper in `scripts/start-test-relay.sh`
+  for proof and troubleshooting.
+- Why: it gives the repo a stable local/private relay path for shell, browser, and disconnect-path
+  verification without depending on public-relay conditions.
+- Tradeoff: the repo now documents one more operator utility and assumes `nak` is available for
+  deterministic relay testing.
+- Reversal trigger: reverse this only if the repo adopts a different deterministic private-relay
+  harness that is clearly simpler or more portable than `nak`.
+
+### 2026-03-15
+
+- Status: accepted
 - Decision: Add a plain startup git-state check to the repo canon and surface repo initialization,
   branch, HEAD/no-commit state, remotes, and local-only work before substantial implementation.
 - Why: the repo had been treated as a normal initialized git project even though it had no commits

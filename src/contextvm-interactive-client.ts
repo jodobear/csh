@@ -54,6 +54,7 @@ let lastSnapshot = "";
 let screenInitialized = false;
 let pollLoopFailed = false;
 let localExitRequested = false;
+let shuttingDown = false;
 let rpcChain = Promise.resolve();
 const closeOnExit = process.env.CSH_CLOSE_ON_EXIT === "1";
 
@@ -63,6 +64,9 @@ const stdout = process.stdout;
 await runInteractiveClient()
   .then(() => process.exit(0))
   .catch((error) => {
+    if (shouldSuppressDuringShutdown(error)) {
+      process.exit(0);
+    }
     console.error(error instanceof Error ? error.stack ?? error.message : String(error));
     process.exit(1);
   });
@@ -145,6 +149,8 @@ async function runInteractiveClient(): Promise<void> {
       throw new Error("Remote session polling failed");
     }
   } finally {
+    shuttingDown = true;
+
     if (onInput) {
       stdin.off("data", onInput);
     }
@@ -161,7 +167,12 @@ async function runInteractiveClient(): Promise<void> {
       console.error(`Disconnected. Reconnect with: bin/csh shell --session ${sessionId}`);
     }
 
-    await client.close();
+    await settleRpcChain();
+    await client.close().catch((error) => {
+      if (!shouldSuppressDuringShutdown(error)) {
+        throw error;
+      }
+    });
   }
 }
 
@@ -194,6 +205,9 @@ async function pollUntilStopped(): Promise<void> {
         return;
       }
     } catch (error) {
+      if (shouldSuppressDuringShutdown(error)) {
+        return;
+      }
       pollLoopFailed = true;
       throw error;
     }
@@ -348,7 +362,17 @@ function queueRpc<T>(operation: () => Promise<T>): Promise<T> {
 }
 
 function reportBackgroundError(error: unknown): void {
+  if (shouldSuppressDuringShutdown(error)) {
+    return;
+  }
   console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+}
+
+async function settleRpcChain(): Promise<void> {
+  await Promise.race([
+    rpcChain.catch(() => undefined),
+    Bun.sleep(300),
+  ]);
 }
 
 function isUnknownSessionError(error: unknown): boolean {
@@ -357,6 +381,22 @@ function isUnknownSessionError(error: unknown): boolean {
   }
 
   return error.message.includes("Unknown session:");
+}
+
+function shouldSuppressDuringShutdown(error: unknown): boolean {
+  if (!(localExitRequested || shuttingDown)) {
+    return false;
+  }
+
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return (
+    error.message.includes("Connection closed") ||
+    error.message.includes("Publish event timed out") ||
+    error.message.includes("Transport closed")
+  );
 }
 
 function clampDimension(value: number | undefined, fallback: number): number {

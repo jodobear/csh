@@ -9,7 +9,7 @@
 - Repo state:
   - Git repository initialized locally on `master`.
   - Current work is committed locally on `master` and pushed to `origin/master`.
-- Current objective: Phase 3 acceptance hardening is complete; the next work should be product polish and packaging rather than unresolved shell/browser proof gaps
+- Current objective: the core shell and browser flows are proven on a controlled relay; the next work should focus on deployment polish, packaging decisions, and operator-facing cleanup rather than unresolved core proof gaps
 - Current research:
   - First candidate comparison note added at `docs/references/local/2026-03-14-private-remote-shell-over-nostr-candidates.md`.
   - The original buy-before-build bake-off proved ContextVM transport viability and showed that `terminal_mcp` was good enough for a persistent command shell, but not for a proper interactive terminal.
@@ -21,13 +21,17 @@
   - A stable CLI entrypoint now exists at `bin/csh` for bootstrap, runtime, host, direct, lifecycle, proxy, exec, shell, browser, systemd-unit rendering, and full verification.
   - `scripts/operator.sh` now exists only as a compatibility shim to `bin/csh`.
   - The repo no longer depends on the external `proxy-cli` binary for normal operation.
-  - The relay-backed regression gap is now closed. The root cause was a transport mismatch in the repo-local client helpers and stdio proxy: they were publishing NIP-59 gift wraps as kind `1059` because `giftWrapMode` was omitted, while the interactive host path expected ephemeral gift wrap kind `21059`. `scripts/client-common.ts` and `scripts/proxy-stdio.ts` now force `GiftWrapMode.EPHEMERAL`.
-  - New generated env files now default to `required` encryption for both the host gateway and client/proxy paths, matching the validated `csh-old` donor path and the now-proven relay-backed flow.
+  - The controlled-relay regression gap is now closed. The root cause was a transport mismatch in the repo-local client helpers and stdio proxy: they were publishing NIP-59 gift wraps as kind `1059` because `giftWrapMode` was omitted, while the interactive host path expected ephemeral gift wrap kind `21059`. `scripts/client-common.ts` and `scripts/proxy-stdio.ts` now force `GiftWrapMode.EPHEMERAL`.
+  - New generated env files now default to `required` encryption for both the host gateway and client/proxy paths, matching the validated `csh-old` donor path and the now-proven controlled-relay flow.
   - The `csh exec` path now captures final pane output for short-lived commands by snapshotting dead tmux panes before they are reported closed.
   - The startup canon now requires a plain git-state check so repo initialization, branch, HEAD/no-commit state, remotes, and local-only work are surfaced immediately instead of assumed.
   - The operational script layout has been flattened from `scripts/phase1/` to `scripts/`, and the repo now has a top-level `README.md`.
   - The config loader now tolerates mode-specific env files, so client commands like `csh exec` no longer fail early on missing host-only keys such as `GW_PRIVATE_KEY`.
   - Explicit shell session names now work as real reconnect handles, and one-shot `csh exec` output now strips tmux's dead-pane footer.
+  - Intentional local `csh shell` disconnect now suppresses expected teardown noise such as `Connection closed` and `Publish event timed out`, so the normal disconnect path is cleaner.
+  - The repo now has a deterministic private-relay helper at `scripts/start-test-relay.sh` and a server/client transport guide at `docs/guides/server-setup.md`.
+  - The controlled browser path is now live-proven again: the browser UI connected through the repo-local gateway on a `nak` relay and rendered `__BROWSER__/workspace/projects/csh` in the terminal view.
+  - `relay.contextvm.org` is still not reliable in this environment. The latest rerun from the current code failed during relay connection/publish with `Publish event timed out` before `initialize`.
 - Last verified commands:
   - `command -v bun` -> `/home/at/.bun/bin/bun`
   - `command -v cargo` -> `/home/at/.cargo/bin/cargo`
@@ -46,12 +50,11 @@
   - browser token negative test: `POST /api/session/open` without `x-csh-browser-token` now returns `403 {"error":"Missing or invalid browser API token"}`
   - restart recovery verification: a session opened under one `src/main.ts` process remained reachable from a new process when `CSH_SESSION_STATE_DIR` and `CSH_TMUX_SOCKET` were reused
   - closed-session cleanup verification: expired closed-session state files are scavenged on the next server run when the cleanup interval and TTL elapse
-  - relay-backed smoke verification: `bin/csh direct /tmp/csh-relay-required.env` passed against `wss://relay.contextvm.org`
-  - relay-backed lifecycle verification: `bin/csh lifecycle /tmp/csh-relay-required.env` passed after removing stale random `ownerId` use from the authenticated test path
-  - relay-backed proxy verification: `bin/csh proxy /tmp/csh-relay-required.env` passed after fixing the proxy gift-wrap mode
-  - relay-backed one-shot exec verification: `bin/csh exec 'printf "__REMOTE__%s\n" "$PWD"' /tmp/csh-relay-required.env` returned the final shell snapshot with `/workspace/projects/csh`
+  - controlled-relay exec verification: `bin/csh exec "pwd" /tmp/csh-browser-test.env` returned `/workspace/projects/csh` through a repo-local `nak` relay on `ws://127.0.0.1:10553`
+  - controlled-relay browser verification: `bin/csh browser /tmp/csh-browser-test.env` served `http://127.0.0.1:4319`, `POST /api/session/write` rendered `__BROWSER__/workspace/projects/csh`, and Playwright snapshot `page-2026-03-15T21-26-25-743Z.yml` captured that output
+  - public-relay compatibility rerun: `bin/csh exec 'printf "__PUBLIC__%s\n" "$PWD"' /tmp/csh-live-test.env` failed against `wss://relay.contextvm.org` with relay connection errors and `Publish event timed out` before `initialize`
   - live browser-local verification: headless Playwright loaded `http://127.0.0.1:4318`, sent `pwd`, and rendered `/workspace/projects/csh`
-  - live browser-over-ContextVM verification: headless Playwright loaded `http://127.0.0.1:4319`, sent `pwd`, and rendered `/workspace/projects/csh` through the live relay-backed host
+  - local shell disconnect verification: `bin/csh shell --session disconnect-clean /tmp/csh-browser-test.env` no longer emitted the previous teardown stack traces during an intentional local disconnect check
 
 ## Claims Vs Proof
 
@@ -61,18 +64,21 @@
 | Repo-local MCP server can open a shell and return output | local stdio MCP verification against `src/main.ts`: `session_open` -> `session_write("pwd\n")` -> `session_poll` returned `/workspace/projects/csh`; relay-backed `bin/csh direct` and `bin/csh exec` returned `/workspace/projects/csh` and `/tmp` as expected | proven locally and relay-backed | none recorded beyond tmux/snapshot limitations |
 | Browser assets build cleanly | `Bun.build({ entrypoints: ["./src/browser/app.ts"], target: "browser" })` succeeded | proven locally | none recorded |
 | Browser local bridge can open and close a session | `createLocalShellBridge()` opened and closed a `session_open` session successfully; headless Playwright loaded `http://127.0.0.1:4318`, sent `pwd`, and rendered `/workspace/projects/csh` | proven locally | browser remains an operator-local bridge, not a public multi-user surface |
+| Browser-over-ContextVM works on a controlled relay | `nak` relay on `ws://127.0.0.1:10553` plus `bin/csh browser /tmp/csh-browser-test.env` served a live page on `http://127.0.0.1:4319`; `POST /api/session/write` rendered `__BROWSER__/workspace/projects/csh` and Playwright snapshot `page-2026-03-15T21-26-25-743Z.yml` captured that output | proven locally over controlled relay | browser remains an operator-local bridge, not a public multi-user surface |
 | Repo-local host gateway starts | `scripts/start-host.sh /tmp/csh-relay-required.env` started the repo-local ContextVM gateway successfully and served relay-backed clients | proven locally and relay-backed | none recorded |
 | Session access requires authenticated or explicitly forced identity by default | local stdio negative test: `session_open` without authenticated metadata, `CSH_FORCED_OWNER_ID`, or `CSH_ALLOW_UNAUTHENTICATED_OWNER=1` fails with `Authenticated client identity is required for session access`; relay-backed flows succeed without spoofed `ownerId` values because the server resolves the authenticated client pubkey | proven locally and relay-backed | unauthenticated local stdio still requires explicit override by design |
 | Cross-owner access is denied | local stdio negative test: session opened as `alice`, polled as `bob`, returned `Session ... is owned by a different actor` | proven locally | relay-backed multi-client cross-owner test not rerun separately, but authenticated owner binding is now exercised by the live relay-backed flows |
 | Browser UI is loopback-only by default and rejects unsigned API POSTs | local browser negative tests: non-loopback bind without opt-in fails, and API POST without `x-csh-browser-token` returns `403`; live browser-local and browser-over-ContextVM pages both worked on loopback | proven locally and live-browser | browser UI remains an operator-local bridge, not a public multi-user surface |
 | Session metadata survives server restart and expired closed sessions are scavenged | local stdio restart and cleanup tests with shared `CSH_SESSION_STATE_DIR` and `CSH_TMUX_SOCKET` recovered a live session and later removed expired closed-session files | proven locally | relay-backed restart path was not rerun separately, but the backing session manager behavior is now stable locally |
+| Intentional CLI disconnect avoids noisy teardown traces | local TTY disconnect check against `/tmp/csh-browser-test.env` no longer emitted the previous `Connection closed` and `Publish event timed out` stack traces when disconnecting intentionally | partially proven locally | a fresh human rerun from a remote client is still useful as a final UX confirmation |
 
 ## Environment Matrix
 
 - Local stdio MCP server: partially proven
 - Local browser bridge: proven
 - Local host startup: proven
-- Same-host relay path over `wss://relay.contextvm.org`: proven for direct smoke, lifecycle, proxy, exec, and browser-over-ContextVM
+- Controlled relay path (`nak` on loopback/private host): proven for exec, named-session shell reconnect, and browser-over-ContextVM
+- Same-host relay path over `wss://relay.contextvm.org`: latest rerun failed with relay connection errors and publish timeout before `initialize`
 - Split client/server filesystem path: previous cwd assumptions were invalid; defaults have been changed to avoid client-path coupling and the relay-backed rerun now passes without client-path injection
 - Restart/redeploy path: proven locally with shared `CSH_SESSION_STATE_DIR` and `CSH_TMUX_SOCKET`
 - Browser HTTP path: proven locally for loopback bind, per-page token injection, token-required API POSTs, and live browser interaction
@@ -85,6 +91,7 @@
 - Browser API POST without `x-csh-browser-token` is rejected with HTTP 403.
 - The autonomous verification loop now fails early if the host never reaches readiness instead of sleeping blindly.
 - Relay client helpers and the stdio proxy now prove the correct gift-wrap mode by publishing outer kind `21059` instead of `1059`.
+- `relay.contextvm.org` still times out in this environment even after the app-side fixes, so public-relay proof remains explicitly non-blocking.
 
 ## Trust Boundaries
 
@@ -119,12 +126,14 @@
 - Browser and CLI interactive views are snapshot-driven over tmux capture, not raw PTY byte streams.
 - Error visibility is now improved for readiness failures, auth failures, and owner-mismatch failures.
 - Default log posture remains `CVM_LOG_LEVEL=error`.
-- Relay-backed browser interaction is now live-proven in addition to the local browser path.
+- Controlled-relay browser interaction is now live-proven in addition to the local browser path.
+- Preferred operator transport is now explicit: private relay first, SSH tunnel second, public relay only as a secondary compatibility check.
 
 ## Open Risks
 
 - The browser server is intended to stay loopback-bound by default; non-loopback use is now explicit but still deserves careful operator review.
 - The tmux backend is still `send-keys` based, so terminal fidelity remains below a raw PTY byte-stream design.
+- `relay.contextvm.org` remains operationally flaky in this environment, so it is still a risk if treated as the primary operator relay.
 
 ## Unsupported Behaviors
 
@@ -141,9 +150,10 @@
 ## Next Actions
 
 1. Decide whether `bin/csh` should remain a Bun-backed repo CLI or become a packaged standalone binary.
-2. Expand the user-facing setup guide now that the interactive shell and browser paths have stable relay-backed verification again.
+2. Expand the user-facing setup guide now that the interactive shell, controlled relay, and browser paths have stable proof again.
 3. Improve operator UX only where it matters most: better `csh shell` ergonomics, browser reconnect affordances, and clearer output handling for one-shot execs.
-4. Keep appending project communication to `docs/comms/transcript.md`.
+4. If public-relay support still matters, test `relay.contextvm.org` opportunistically but do not couple primary operator workflows to it.
+5. Keep appending project communication to `docs/comms/transcript.md`.
 
 ## Review Checkpoint
 

@@ -115,3 +115,10 @@ Append-only project communication history.
 - When: 2026-03-15 20:55 WET
 - What: Fixed two shell UX bugs after live remote testing. `csh exec` now strips tmux's dead-pane footer from one-shot output, and explicit session names like `bin/csh shell --session live-test ...` now behave as real reconnect handles by creating or reusing the named server-side session instead of failing with `Unknown session`.
 - Session: local repo execution
+
+### 2026-03-15 21:27 WET
+
+- Who: Codex
+- When: 2026-03-15 21:27 WET
+- What: Added shutdown-noise suppression for intentional `csh shell` disconnect, added `scripts/start-test-relay.sh` as a deterministic private-relay helper, wrote `docs/guides/server-setup.md`, and revalidated the browser path over a controlled `nak` relay. The browser UI served on `http://127.0.0.1:4319`, the token-gated bridge rendered `__BROWSER__/workspace/projects/csh`, and the live Playwright snapshot captured that output. A fresh current-code rerun against `wss://relay.contextvm.org` still failed before `initialize` with relay connection errors and `Publish event timed out`, so the project now records a controlled private relay as the primary operator posture and the public relay only as a secondary compatibility check.
+- Session: local repo execution

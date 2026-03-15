@@ -9,6 +9,19 @@ It currently provides:
 - a CLI for bootstrap, host startup, one-shot exec, interactive shell, proxy checks, and browser access
 - a browser terminal UI for operator use
 
+## Recommended Use
+
+Use a relay you control for real operator work.
+
+Preferred transport order:
+
+1. private relay over VPN or private network
+2. SSH tunnel to a private relay on the server
+3. `relay.contextvm.org` only for convenience checks, not as the primary operator path
+
+`csh` itself is still a Bun-backed repo CLI. Persistent deployment should use the existing `systemd`
+example rather than a custom daemon layer.
+
 ## Quick Start
 
 Install dependencies:
@@ -53,6 +66,12 @@ Open the browser terminal:
 bin/csh browser .env.phase1.local
 ```
 
+Start a deterministic local test relay with `nak`:
+
+```bash
+CSH_TEST_RELAY_HOST=127.0.0.1 CSH_TEST_RELAY_PORT=10552 scripts/start-test-relay.sh
+```
+
 ## Repo Layout
 
 - [bin/](/workspace/projects/csh/bin): public CLI entrypoints
@@ -67,4 +86,4 @@ bin/csh browser .env.phase1.local
 - Sessions persist across client reconnects and can survive host restart when the same runtime state is reused.
 - The backend is `tmux` snapshot-based today, so terminal fidelity is below a raw PTY byte-stream design.
 
-For the current verified state and operational details, see [handoff.md](/workspace/projects/csh/handoff.md) and [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md).
+For the current verified state and operational details, see [handoff.md](/workspace/projects/csh/handoff.md), [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md), and [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md).
