@@ -12,7 +12,7 @@ audit findings, and leave behind a defensible proof record.
 - `docs/plans/build-plan.md`
 - `docs/plans/phased-implementation-plan.md`
 - `docs/plans/decision-log.md`
-- the current interactive/browser implementation under `src/` and `scripts/phase1/`
+- the current interactive/browser implementation under `src/` and `scripts/`
 
 ## Required Work
 

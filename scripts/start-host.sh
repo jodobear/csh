@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${1:-$ROOT_DIR/.env.phase1.local}"
 RUNTIME_DIR="${CSH_RUNTIME_DIR:-$ROOT_DIR/.csh-runtime}"
 LOGS_DIR="$RUNTIME_DIR/logs"

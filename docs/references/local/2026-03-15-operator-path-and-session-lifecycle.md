@@ -13,7 +13,7 @@ updated_on: 2026-03-15
 pack:
 promotion_target:
 related_docs:
-  - "scripts/phase1/README.md"
+  - "scripts/README.md"
   - "handoff.md"
   - "docs/plans/decision-log.md"
 reviewed_on:
@@ -46,7 +46,7 @@ hold up across private access control, reconnects, and session cleanup?
 
 ## Evidence
 
-- Autonomous loop script: `scripts/phase1/run-autonomous-loop.sh /tmp/csh-autoloop-fixed.env`
+- Autonomous loop script: `scripts/run-autonomous-loop.sh /tmp/csh-autoloop-fixed.env`
 - Direct smoke output:
   - `tools/list` returned `execute_command`, `persistent_shell`, and `session_manager`
   - `persistent_shell` preserved state across `pwd`, `cd /tmp`, `pwd`

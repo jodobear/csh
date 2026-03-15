@@ -1,6 +1,6 @@
-# Phase 1 Scripts
+# Scripts
 
-These scripts now compose the repo-local interactive shell path:
+These scripts compose the repo-local interactive shell path:
 
 - repo-local `tmux`-backed MCP server in `src/main.ts`
 - repo-local ContextVM gateway in `src/contextvm-gateway.ts`
@@ -10,7 +10,7 @@ These scripts now compose the repo-local interactive shell path:
 
 ## Files
 
-- `../../bin/csh`: stable public CLI entrypoint
+- `../bin/csh`: stable public CLI entrypoint
 - `operator.sh`: compatibility shim to `bin/csh`
 - `install-runtime.sh`: installs JS dependencies and checks the interactive runtime prerequisites
 - `bootstrap-env.sh`: generates a private-by-default local env file with allowlisted host/client keys

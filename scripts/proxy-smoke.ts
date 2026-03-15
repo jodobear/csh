@@ -2,12 +2,12 @@ import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js"
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
 import { loadEnvFile } from "./client-common";
-import { parseToolResult } from "../../src/mcp/tool-result.js";
+import { parseToolResult } from "../src/mcp/tool-result.js";
 
 loadEnvFile();
 
 const envFile = process.env.CVM_ENV_FILE || ".env.phase1.local";
-const command = process.env.CVM_PROXY_COMMAND || "scripts/phase1/start-proxy.sh";
+const command = process.env.CVM_PROXY_COMMAND || "scripts/start-proxy.sh";
 const args = process.env.CVM_PROXY_ARGS
   ? process.env.CVM_PROXY_ARGS.split(" ").filter(Boolean)
   : [envFile];

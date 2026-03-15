@@ -6,17 +6,17 @@
   },
   "type": "module",
   "scripts": {
-    "csh": "bun scripts/phase1/csh.ts",
+    "csh": "bun scripts/csh.ts",
     "start": "bun run src/main.ts",
     "start:contextvm": "bun run src/contextvm-gateway.ts",
     "start:browser": "bun run src/browser/server.ts",
     "start:browser:contextvm": "bun run src/browser/contextvm-server.ts",
     "demo:contextvm:interactive": "bun run src/contextvm-interactive-client.ts",
-    "phase1:operator": "bash scripts/phase1/operator.sh",
-    "phase1:keys": "bun run scripts/phase1/generate-keypair.ts",
-    "phase1:smoke": "bun run scripts/phase1/smoke-client.ts",
-    "phase1:lifecycle": "bun run scripts/phase1/lifecycle-client.ts",
-    "phase1:proxy-smoke": "bun run scripts/phase1/proxy-smoke.ts"
+    "csh:operator": "bash scripts/operator.sh",
+    "csh:keys": "bun run scripts/generate-keypair.ts",
+    "csh:smoke": "bun run scripts/smoke-client.ts",
+    "csh:lifecycle": "bun run scripts/lifecycle-client.ts",
+    "csh:proxy-smoke": "bun run scripts/proxy-smoke.ts"
   },
   "dependencies": {
     "@contextvm/sdk": "latest",

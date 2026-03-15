@@ -7,9 +7,9 @@ import {
   GiftWrapMode,
   PrivateKeySigner,
 } from "@contextvm/sdk";
-import { loadContextVmClientConfig } from "../../src/contextvm/client-config.js";
-import { SkewTolerantNostrClientTransport } from "../../src/contextvm/skew-tolerant-client-transport.js";
-import { parseToolResult } from "../../src/mcp/tool-result.js";
+import { loadContextVmClientConfig } from "../src/contextvm/client-config.js";
+import { SkewTolerantNostrClientTransport } from "../src/contextvm/skew-tolerant-client-transport.js";
+import { parseToolResult } from "../src/mcp/tool-result.js";
 
 type ClientLogLevel = "debug" | "info" | "warn" | "error" | "silent";
 type SessionOpenResult = {

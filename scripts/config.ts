@@ -48,7 +48,7 @@ function stripQuotes(value: string): string {
 }
 
 export function repoRoot(): string {
-  return path.resolve(path.dirname(new URL(import.meta.url).pathname), "../..");
+  return path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 }
 
 export function defaultEnvFile(): string {

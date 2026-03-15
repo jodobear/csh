@@ -50,7 +50,7 @@ Append-only project communication history.
 
 - Who: Codex
 - When: 2026-03-15 02:26 WET
-- What: Removed the external `proxy-cli` binary from the repo workflow, added `scripts/phase1/operator.sh` as the single operator-facing entrypoint, and verified the new wrapper end-to-end with `operator.sh verify`.
+- What: Removed the external `proxy-cli` binary from the repo workflow, added `scripts/operator.sh` as the single operator-facing entrypoint, and verified the new wrapper end-to-end with `operator.sh verify`.
 - Session: local repo execution
 
 ### 2026-03-15 02:47 WET
@@ -93,4 +93,11 @@ Append-only project communication history.
 - Who: Codex
 - When: 2026-03-15 18:12 WET
 - What: Corrected the repo workflow after discovering the project had no commits or remotes despite substantial local work. Added a plain startup git-state check to the canon and converted the existing tree into an honest retrospective local commit sequence so the current state is no longer only in the working tree.
+- Session: local repo execution
+
+### 2026-03-15 18:28 WET
+
+- Who: Codex
+- When: 2026-03-15 18:28 WET
+- What: Cleaned up the repo layout by adding a top-level `README.md`, flattening the operational scripts from `scripts/phase1/` to `scripts/`, updating the CLI/package wiring, and pushing the current `master` branch to `origin/master`.
 - Session: local repo execution

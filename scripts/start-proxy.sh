@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${1:-$ROOT_DIR/.env.phase1.local}"
 
 if [[ ! -f "$ENV_FILE" ]]; then
@@ -23,4 +23,4 @@ if ! command -v bun >/dev/null 2>&1; then
 fi
 
 echo "Starting SDK proxy"
-exec bun scripts/phase1/proxy-stdio.ts
+exec bun scripts/proxy-stdio.ts

@@ -98,7 +98,7 @@
 ### 2026-03-15
 
 - Status: accepted
-- Decision: Add `scripts/phase1/operator.sh` as the single operator-facing entrypoint for bootstrap,
+- Decision: Add `scripts/operator.sh` as the single operator-facing entrypoint for bootstrap,
   runtime, host, direct, lifecycle, proxy, and full verification.
 - Why: the script collapses the repo's scattered operational commands into one stable surface and
   passed an end-to-end `verify` run on 2026-03-15.
@@ -111,7 +111,7 @@
 
 - Status: accepted
 - Decision: Promote `bin/csh` to the stable public CLI entrypoint and keep
-  `scripts/phase1/operator.sh` only as a compatibility shim.
+  `scripts/operator.sh` only as a compatibility shim.
 - Why: `bin/csh` now covers secure bootstrap, host start, config checking, systemd-unit rendering,
   direct execution, shell access, proxy access, and full verification, and it passed end-to-end
   verification on 2026-03-15.

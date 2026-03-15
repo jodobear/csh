@@ -134,7 +134,7 @@ async function commandBootstrap(parsed: ParsedArgs): Promise<void> {
 }
 
 async function commandRuntimeInstall(): Promise<void> {
-  const code = await runCommand("bash", ["scripts/phase1/install-runtime.sh"]);
+  const code = await runCommand("bash", ["scripts/install-runtime.sh"]);
   if (code !== 0) {
     process.exit(code);
   }
@@ -150,7 +150,7 @@ async function commandHostStart(parsed: ParsedArgs): Promise<void> {
   ) {
     throw new Error("Refusing to start the host as root. Use a dedicated service account or set CSH_ALLOW_ROOT=1 to override.");
   }
-  const code = await runCommand("bash", ["scripts/phase1/start-host.sh", configPath]);
+  const code = await runCommand("bash", ["scripts/start-host.sh", configPath]);
   process.exit(code);
 }
 
@@ -229,21 +229,21 @@ async function commandHostSystemdUnit(parsed: ParsedArgs): Promise<void> {
 async function commandDirect(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
   requireHealthyConfig(configPath, "client");
-  const code = await runCommand("bun", ["run", "phase1:smoke"], { CVM_ENV_FILE: configPath });
+  const code = await runCommand("bun", ["run", "csh:smoke"], { CVM_ENV_FILE: configPath });
   process.exit(code);
 }
 
 async function commandLifecycle(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
   requireHealthyConfig(configPath, "client");
-  const code = await runCommand("bun", ["run", "phase1:lifecycle"], { CVM_ENV_FILE: configPath });
+  const code = await runCommand("bun", ["run", "csh:lifecycle"], { CVM_ENV_FILE: configPath });
   process.exit(code);
 }
 
 async function commandProxy(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
   requireHealthyConfig(configPath, "client");
-  const code = await runCommand("bun", ["run", "phase1:proxy-smoke"], { CVM_ENV_FILE: configPath });
+  const code = await runCommand("bun", ["run", "csh:proxy-smoke"], { CVM_ENV_FILE: configPath });
   process.exit(code);
 }
 
@@ -328,7 +328,7 @@ async function commandBrowserLocal(): Promise<void> {
 
 async function commandVerify(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
-  const code = await runCommand("bash", ["scripts/phase1/run-autonomous-loop.sh", configPath]);
+  const code = await runCommand("bash", ["scripts/run-autonomous-loop.sh", configPath]);
   process.exit(code);
 }
 

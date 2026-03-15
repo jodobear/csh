@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${1:-$ROOT_DIR/.env.phase1.local}"
 HOST_LOG="${CSH_HOST_LOG:-$ROOT_DIR/.csh-runtime/logs/host.log}"
 PROXY_LOG="${CSH_PROXY_LOG:-$ROOT_DIR/.csh-runtime/logs/proxy.log}"
@@ -18,12 +18,12 @@ trap cleanup EXIT
 
 cd "$ROOT_DIR"
 
-scripts/phase1/install-runtime.sh
+scripts/install-runtime.sh
 if [[ ! -f "$ENV_FILE" ]] || [[ "${CSH_VERIFY_BOOTSTRAP:-0}" == "1" ]]; then
-  scripts/phase1/bootstrap-env.sh "$ENV_FILE"
+  scripts/bootstrap-env.sh "$ENV_FILE"
 fi
 
-scripts/phase1/start-host.sh "$ENV_FILE" >"$HOST_LOG" 2>&1 &
+scripts/start-host.sh "$ENV_FILE" >"$HOST_LOG" 2>&1 &
 host_pid=$!
 
 ready=0
@@ -46,11 +46,11 @@ if [[ "$ready" != "1" ]]; then
   exit 1
 fi
 
-CVM_ENV_FILE="$ENV_FILE" bun run phase1:smoke
-CVM_ENV_FILE="$ENV_FILE" bun run phase1:lifecycle
+CVM_ENV_FILE="$ENV_FILE" bun run csh:smoke
+CVM_ENV_FILE="$ENV_FILE" bun run csh:lifecycle
 
 set +e
-CVM_ENV_FILE="$ENV_FILE" bun run phase1:proxy-smoke >"$PROXY_LOG" 2>&1
+CVM_ENV_FILE="$ENV_FILE" bun run csh:proxy-smoke >"$PROXY_LOG" 2>&1
 proxy_status=$?
 set -e
 

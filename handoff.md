@@ -8,7 +8,7 @@
   - None recorded yet.
 - Repo state:
   - Git repository initialized locally on `master`.
-  - Current work is committed locally but not yet pushed to any remote.
+  - Current work is committed locally on `master` and pushed to `origin/master`.
 - Current objective: Phase 3 acceptance hardening is complete; the next work should be product polish and packaging rather than unresolved shell/browser proof gaps
 - Current research:
   - First candidate comparison note added at `docs/references/local/2026-03-14-private-remote-shell-over-nostr-candidates.md`.
@@ -19,12 +19,13 @@
   - Private-by-default allowlisting remains the default host posture, and the repo-local gateway now enables authenticated client pubkey injection for owner-bound sessions.
   - A repo-local SDK stdio proxy path now works too, so MCP-host compatibility is no longer blocked on the external `proxy-cli` artifact.
   - A stable CLI entrypoint now exists at `bin/csh` for bootstrap, runtime, host, direct, lifecycle, proxy, exec, shell, browser, systemd-unit rendering, and full verification.
-  - `scripts/phase1/operator.sh` now exists only as a compatibility shim to `bin/csh`.
+  - `scripts/operator.sh` now exists only as a compatibility shim to `bin/csh`.
   - The repo no longer depends on the external `proxy-cli` binary for normal operation.
-  - The relay-backed regression gap is now closed. The root cause was a transport mismatch in the repo-local client helpers and stdio proxy: they were publishing NIP-59 gift wraps as kind `1059` because `giftWrapMode` was omitted, while the interactive host path expected ephemeral gift wrap kind `21059`. `scripts/phase1/client-common.ts` and `scripts/phase1/proxy-stdio.ts` now force `GiftWrapMode.EPHEMERAL`.
+  - The relay-backed regression gap is now closed. The root cause was a transport mismatch in the repo-local client helpers and stdio proxy: they were publishing NIP-59 gift wraps as kind `1059` because `giftWrapMode` was omitted, while the interactive host path expected ephemeral gift wrap kind `21059`. `scripts/client-common.ts` and `scripts/proxy-stdio.ts` now force `GiftWrapMode.EPHEMERAL`.
   - New generated env files now default to `required` encryption for both the host gateway and client/proxy paths, matching the validated `csh-old` donor path and the now-proven relay-backed flow.
   - The `csh exec` path now captures final pane output for short-lived commands by snapshotting dead tmux panes before they are reported closed.
   - The startup canon now requires a plain git-state check so repo initialization, branch, HEAD/no-commit state, remotes, and local-only work are surfaced immediately instead of assumed.
+  - The operational script layout has been flattened from `scripts/phase1/` to `scripts/`, and the repo now has a top-level `README.md`.
 - Last verified commands:
   - `command -v bun` -> `/home/at/.bun/bin/bun`
   - `command -v cargo` -> `/home/at/.cargo/bin/cargo`
@@ -36,7 +37,7 @@
   - local stdio MCP verification against `src/main.ts`: `session_open` -> `session_write("pwd\n")` -> `session_poll` returned `/workspace/projects/csh`
   - browser bundle verification: `Bun.build({ entrypoints: ["./src/browser/app.ts"], target: "browser" })` succeeded
   - local bridge verification: `createLocalShellBridge()` opened and closed a `session_open` session successfully
-  - `scripts/phase1/start-host.sh /tmp/csh-interactive.env` started the repo-local ContextVM gateway successfully
+  - `scripts/start-host.sh /tmp/csh-interactive.env` started the repo-local ContextVM gateway successfully
   - unauthenticated-owner negative test: `parseToolResult(client.callTool({ name: "session_open", arguments: { command: "/bin/sh", cols: 80, rows: 24 } }))` now fails with `Authenticated client identity is required for session access`
   - owner-isolation negative test: opening a session as `alice` and polling it as `bob` now fails with `Session ... is owned by a different actor`
   - browser loopback negative test: `CSH_BROWSER_HOST=0.0.0.0 bun run src/browser/server.ts` now fails unless `CSH_BROWSER_ALLOW_REMOTE=1`
@@ -58,7 +59,7 @@
 | Repo-local MCP server can open a shell and return output | local stdio MCP verification against `src/main.ts`: `session_open` -> `session_write("pwd\n")` -> `session_poll` returned `/workspace/projects/csh`; relay-backed `bin/csh direct` and `bin/csh exec` returned `/workspace/projects/csh` and `/tmp` as expected | proven locally and relay-backed | none recorded beyond tmux/snapshot limitations |
 | Browser assets build cleanly | `Bun.build({ entrypoints: ["./src/browser/app.ts"], target: "browser" })` succeeded | proven locally | none recorded |
 | Browser local bridge can open and close a session | `createLocalShellBridge()` opened and closed a `session_open` session successfully; headless Playwright loaded `http://127.0.0.1:4318`, sent `pwd`, and rendered `/workspace/projects/csh` | proven locally | browser remains an operator-local bridge, not a public multi-user surface |
-| Repo-local host gateway starts | `scripts/phase1/start-host.sh /tmp/csh-relay-required.env` started the repo-local ContextVM gateway successfully and served relay-backed clients | proven locally and relay-backed | none recorded |
+| Repo-local host gateway starts | `scripts/start-host.sh /tmp/csh-relay-required.env` started the repo-local ContextVM gateway successfully and served relay-backed clients | proven locally and relay-backed | none recorded |
 | Session access requires authenticated or explicitly forced identity by default | local stdio negative test: `session_open` without authenticated metadata, `CSH_FORCED_OWNER_ID`, or `CSH_ALLOW_UNAUTHENTICATED_OWNER=1` fails with `Authenticated client identity is required for session access`; relay-backed flows succeed without spoofed `ownerId` values because the server resolves the authenticated client pubkey | proven locally and relay-backed | unauthenticated local stdio still requires explicit override by design |
 | Cross-owner access is denied | local stdio negative test: session opened as `alice`, polled as `bob`, returned `Session ... is owned by a different actor` | proven locally | relay-backed multi-client cross-owner test not rerun separately, but authenticated owner binding is now exercised by the live relay-backed flows |
 | Browser UI is loopback-only by default and rejects unsigned API POSTs | local browser negative tests: non-loopback bind without opt-in fails, and API POST without `x-csh-browser-token` returns `403`; live browser-local and browser-over-ContextVM pages both worked on loopback | proven locally and live-browser | browser UI remains an operator-local bridge, not a public multi-user surface |
