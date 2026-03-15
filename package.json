@@ -1,0 +1,29 @@
+{
+  "name": "csh",
+  "private": true,
+  "bin": {
+    "csh": "./bin/csh"
+  },
+  "type": "module",
+  "scripts": {
+    "csh": "bun scripts/phase1/csh.ts",
+    "start": "bun run src/main.ts",
+    "start:contextvm": "bun run src/contextvm-gateway.ts",
+    "start:browser": "bun run src/browser/server.ts",
+    "start:browser:contextvm": "bun run src/browser/contextvm-server.ts",
+    "demo:contextvm:interactive": "bun run src/contextvm-interactive-client.ts",
+    "phase1:operator": "bash scripts/phase1/operator.sh",
+    "phase1:keys": "bun run scripts/phase1/generate-keypair.ts",
+    "phase1:smoke": "bun run scripts/phase1/smoke-client.ts",
+    "phase1:lifecycle": "bun run scripts/phase1/lifecycle-client.ts",
+    "phase1:proxy-smoke": "bun run scripts/phase1/proxy-smoke.ts"
+  },
+  "dependencies": {
+    "@contextvm/sdk": "latest",
+    "@modelcontextprotocol/sdk": "latest",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/xterm": "^6.0.0",
+    "nostr-tools": "latest",
+    "zod": "^4.3.5"
+  }
+}

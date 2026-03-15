@@ -1,0 +1,23 @@
+[Unit]
+Description=csh host gateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=CHANGE_ME
+WorkingDirectory=CHANGE_ME_REPO_PATH
+ExecStart=CHANGE_ME_REPO_PATH/bin/csh host start CHANGE_ME_CONFIG_PATH
+Restart=always
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=CHANGE_ME_REPO_PATH/.csh-runtime
+UMask=0077
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
