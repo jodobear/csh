@@ -2,54 +2,84 @@
 
 `csh` is the stable CLI entrypoint for this repo.
 
+## Install
+
+From the repo checkout:
+
+```bash
+bun install
+bun run csh install
+```
+
+That writes a Bun-backed launcher to `~/.local/bin/csh` by default. Use `--prefix <dir>` if you want
+another install root.
+
 ## Primary Commands
 
 Bootstrap a secure local config:
 
 ```bash
-bin/csh bootstrap .env.csh.local
+csh bootstrap .env.csh.local
 ```
 
 Install or refresh runtime prerequisites:
 
 ```bash
-bin/csh runtime install
+csh runtime install
 ```
 
-Validate host readiness:
+Validate the config file directly:
 
 ```bash
-bin/csh host check .env.csh.local
+csh config check .env.csh.local
+```
+
+Run the broader operator/runtime diagnostic pass:
+
+```bash
+csh doctor .env.csh.local
+```
+
+Show the resolved operator/deployment state:
+
+```bash
+csh status .env.csh.local
+```
+
+Validate host readiness only:
+
+```bash
+csh host check .env.csh.local
 ```
 
 Start the persistent host:
 
 ```bash
-bin/csh host start .env.csh.local
+csh host start .env.csh.local
 ```
 
 Run one operator command in a fresh remote shell:
 
 ```bash
-bin/csh exec "pwd" .env.csh.local
+csh exec "pwd" .env.csh.local
 ```
 
 Start the interactive shell:
 
 ```bash
-bin/csh shell .env.csh.local
+csh shell .env.csh.local
 ```
 
 Reconnect to an existing interactive session:
 
 ```bash
-bin/csh shell .env.csh.local --session <session-id>
+csh shell .env.csh.local --session <session-id>
 ```
 
 Start the browser terminal UI:
 
 ```bash
-bin/csh browser .env.csh.local
+csh browser .env.csh.local
 ```
 
 The browser will prompt for the credentials from `CSH_BROWSER_AUTH_USER` and
@@ -58,7 +88,19 @@ The browser will prompt for the credentials from `CSH_BROWSER_AUTH_USER` and
 Run the end-to-end verification loop:
 
 ```bash
-bin/csh verify /tmp/csh-verify.env
+csh verify /tmp/csh-verify.env
+```
+
+Print completions:
+
+```bash
+csh completion zsh
+```
+
+Print the installed version:
+
+```bash
+csh version
 ```
 
 ## Secure Defaults
@@ -77,7 +119,7 @@ bin/csh verify /tmp/csh-verify.env
 Render a hardened unit for your real server paths:
 
 ```bash
-bin/csh host systemd-unit .env.csh.local --output /tmp/csh-host.service
+csh host systemd-unit .env.csh.local --output /tmp/csh-host.service
 ```
 
 You can also start from [csh-host.service.example](/workspace/projects/csh/ops/systemd/csh-host.service.example).

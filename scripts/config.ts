@@ -56,7 +56,28 @@ export function repoRoot(): string {
 }
 
 export function defaultEnvFile(): string {
+  if (process.env.CSH_CONFIG) {
+    return path.resolve(process.env.CSH_CONFIG);
+  }
   return path.join(repoRoot(), ".env.csh.local");
+}
+
+export function defaultInstallPrefix(env: NodeJS.ProcessEnv = process.env): string {
+  return env.CSH_INSTALL_PREFIX || path.join(os.homedir(), ".local");
+}
+
+export function installPaths(prefix = defaultInstallPrefix()): {
+  prefix: string;
+  binDir: string;
+  launcherPath: string;
+  completionsDir: string;
+} {
+  return {
+    prefix,
+    binDir: path.join(prefix, "bin"),
+    launcherPath: path.join(prefix, "bin", "csh"),
+    completionsDir: path.join(prefix, "share", "csh", "completions"),
+  };
 }
 
 export function parseEnvFile(envFilePath: string): Record<string, string> {

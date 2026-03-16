@@ -1,6 +1,27 @@
-# csh Server Setup
+# csh Deployment Guide
 
-This guide covers the recommended deployment and test posture for `csh`.
+This guide covers the recommended install, deployment, and test posture for `csh`.
+
+## Install the CLI
+
+From the repo checkout on both server and client:
+
+```bash
+bun install
+bun run csh install
+```
+
+That installs a Bun-backed launcher to `~/.local/bin/csh` by default.
+
+Useful follow-up checks:
+
+```bash
+csh version
+csh doctor
+csh status
+```
+
+If `~/.local/bin` is not already on `PATH`, add it before continuing.
 
 ## Recommended Transport Posture
 
@@ -18,30 +39,31 @@ Why:
 
 ## Server
 
-Install dependencies:
-
-```bash
-bun install
-```
-
 Bootstrap a local env:
 
 ```bash
-bin/csh bootstrap .env.csh.local
+csh bootstrap .env.csh.local
 ```
 
 The generated env includes browser credentials and defaults to a loopback/private relay.
 
-Check readiness:
+Check readiness and the resolved runtime state:
 
 ```bash
-bin/csh host check .env.csh.local
+csh doctor .env.csh.local
+csh host check .env.csh.local
 ```
 
 Start the host:
 
 ```bash
-bin/csh host start .env.csh.local
+csh host start .env.csh.local
+```
+
+Inspect the live config summary at any time:
+
+```bash
+csh status .env.csh.local
 ```
 
 ## Private Test Relay With `nak`
@@ -60,7 +82,7 @@ CVM_RELAYS="ws://127.0.0.1:10552"
 
 For remote clients, use the server's reachable VPN/private IP in the client env, not `127.0.0.1`.
 
-`bin/csh verify` will auto-start this relay shape locally when the env uses a loopback `ws://127.0.0.1:<port>`
+`csh verify` will auto-start this relay shape locally when the env uses a loopback `ws://127.0.0.1:<port>`
 URL and `nak` is installed.
 
 ## SSH Tunnel Fallback
@@ -79,12 +101,6 @@ CVM_RELAYS="ws://127.0.0.1:10552"
 
 ## Client
 
-Install dependencies:
-
-```bash
-bun install
-```
-
 Minimal client env:
 
 ```bash
@@ -98,19 +114,19 @@ CVM_LOG_LEVEL="error"
 Quick check:
 
 ```bash
-bin/csh exec "pwd" /tmp/csh-client.env
+csh exec "pwd" /tmp/csh-client.env
 ```
 
 Interactive shell:
 
 ```bash
-bin/csh shell --session live-test /tmp/csh-client.env
+csh shell --session live-test /tmp/csh-client.env
 ```
 
 Browser terminal:
 
 ```bash
-bin/csh browser /tmp/csh-client.env
+csh browser /tmp/csh-client.env
 ```
 
 Open `http://127.0.0.1:4318`.
@@ -125,12 +141,36 @@ CSH_BROWSER_TRUST_PROXY_TLS=1
 
 and put it behind an HTTPS/TLS-terminating reverse proxy.
 
+## Browser Operator Path
+
+The default browser flow is:
+
+1. run `csh browser <config>`
+2. open the printed local URL
+3. log in with the configured browser credentials
+4. use the reconnect button if you want to reattach a persisted session
+
+The browser UI is an operator-side bridge, not a public multi-user shell surface.
+
 ## Persistent Service
 
 Render the `systemd` unit:
 
 ```bash
-bin/csh host systemd-unit .env.csh.local --output /tmp/csh-host.service
+csh host systemd-unit .env.csh.local --output /tmp/csh-host.service
 ```
 
 See [csh-host.service.example](/workspace/projects/csh/ops/systemd/csh-host.service.example).
+
+Recommended host lifecycle:
+
+1. `csh doctor .env.csh.local`
+2. `csh host systemd-unit .env.csh.local --output /tmp/csh-host.service`
+3. install the rendered unit as a dedicated non-root service account
+4. keep the relay private by default
+5. use `csh verify` after deployment changes
+
+## Compatibility Note
+
+`relay.contextvm.org` is now a working compatibility path, but it is still not the preferred
+operator relay. Use your own relay or an SSH tunnel first.

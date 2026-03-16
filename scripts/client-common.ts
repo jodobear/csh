@@ -165,11 +165,15 @@ export async function pollSession(
   client: Client,
   sessionId: string,
   cursor?: number,
-  ownerId?: string,
+  ownerIdOrKeepAlive?: string | boolean,
+  keepAlive = false,
 ): Promise<SessionPollResult> {
+  const ownerId = typeof ownerIdOrKeepAlive === "string" ? ownerIdOrKeepAlive : undefined;
+  const resolvedKeepAlive = typeof ownerIdOrKeepAlive === "boolean" ? ownerIdOrKeepAlive : keepAlive;
   return await callTool<SessionPollResult>(client, "session_poll", {
     sessionId,
     ...(cursor === undefined ? {} : { cursor }),
+    ...(resolvedKeepAlive ? { keepAlive: true } : {}),
     ...(ownerId ? { ownerId } : {}),
   });
 }

@@ -91,10 +91,12 @@ async function runInteractiveClient(): Promise<void> {
     if (initialState.reconnected) {
       console.error(`Reconnected to remote session ${sessionId}`);
       console.error("Ctrl-] disconnects. Ctrl-C sends SIGINT to the remote session.");
+      console.error(`Reconnect hint: ${reconnectHint(sessionId)}`);
       await resizeRemote();
     } else {
       console.error(`Connected. Remote session ${sessionId}`);
       console.error("Ctrl-] disconnects. Ctrl-C sends SIGINT to the remote session.");
+      console.error(`Reconnect hint: ${reconnectHint(sessionId)}`);
     }
 
     restoreTerminal = configureTerminal();

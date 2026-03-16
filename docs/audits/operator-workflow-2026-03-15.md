@@ -90,3 +90,25 @@ Question: where does the operator-facing workflow mislead the user, lose state, 
   - [contextvm-interactive-client.ts](/workspace/projects/csh/src/contextvm-interactive-client.ts#L167)
 - Status: closed 2026-03-15
 - Resolution: reconnect hints now preserve `CVM_ENV_FILE` in the printed command when available.
+
+### `operator-workflow-cli-01`
+
+- Severity: medium
+- Summary: the CLI previously felt repo-local and ad hoc: no installable command on `PATH`, no version/status/doctor surface, and no completion output.
+- Evidence:
+  - [csh.ts](/workspace/projects/csh/scripts/csh.ts)
+  - [install-cli.sh](/workspace/projects/csh/scripts/install-cli.sh)
+  - [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md)
+- Status: closed 2026-03-16
+- Resolution: `csh` now has `install`, `version`, `status`, `doctor`, `config check`, and `completion`, and the Bun-backed installer writes a launcher plus completion files into a normal user prefix.
+- Proof: `bun run csh install --prefix /tmp/csh-install --no-runtime` created `/tmp/csh-install/bin/csh` plus completion files, and `/tmp/csh-install/bin/csh version` returned `csh 0.1.0`.
+
+### `operator-workflow-browser-03`
+
+- Severity: low
+- Summary: browser startup messaging previously left operators guessing about the local URL, auth source, and reconnect affordances.
+- Evidence:
+  - [csh.ts](/workspace/projects/csh/scripts/csh.ts#L617)
+  - [contextvm-interactive-client.ts](/workspace/projects/csh/src/contextvm-interactive-client.ts#L74)
+- Status: closed 2026-03-16
+- Resolution: `csh browser` now prints the browser URL and credential source before launch, `browser-local` prints the effective local URL and auth expectations, and `csh shell` prints the reconnect hint on initial connect as well as reconnect.

@@ -70,6 +70,8 @@ Do not bulk-read the rest of `docs/` unless the active work needs it.
   Stable process references and templates.
 - `docs/guides/*.md`
   Operator-facing guidance.
+  Prefer `docs/guides/server-setup.md` for install and deployment and
+  `docs/guides/csh-cli-operations.md` for command usage.
 
 ## Historical / Provenance Docs
 

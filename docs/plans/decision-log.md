@@ -357,3 +357,29 @@
   relay posture.
 - Reversal trigger: reverse only if the repo adopts a different deterministic private-relay harness
   or moves verification away from relay-backed smoke checks entirely.
+
+### 2026-03-16
+
+- Status: accepted
+- Decision: keep the near-term install model Bun-backed and checkout-backed instead of packaging a
+  standalone binary yet.
+- Why: the current objective is a natural operator CLI without freezing distribution prematurely.
+  A managed launcher in a normal user prefix gives `csh` a standard command-line feel now while
+  keeping iteration cheap.
+- Tradeoff: installed launchers depend on the repo checkout path staying stable, so installation is
+  simpler than binary packaging but less portable.
+- Reversal trigger: reverse when the operator surface stabilizes enough that distribution convenience
+  matters more than rapid iteration.
+
+### 2026-03-16
+
+- Status: accepted
+- Decision: add `install`, `version`, `status`, `doctor`, `config check`, and `completion` as the
+  stable operator-preflight CLI surface.
+- Why: the older surface proved the shell/browser path but still felt repo-local and ad hoc. These
+  commands give operators a normal install/preflight/status flow without changing the underlying
+  transport or shell model.
+- Tradeoff: the CLI surface is broader, so future changes must keep command intent clear and avoid
+  sliding back into overlapping commands.
+- Reversal trigger: reverse only if a future standalone packaged CLI or different operator client
+  makes this preflight surface redundant.

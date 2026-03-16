@@ -73,3 +73,12 @@ Question: where can this repo expose a shell, identity, or secret more broadly t
 - Status: closed 2026-03-15
 - Resolution: both bootstrap paths now generate `CVM_RELAYS="ws://127.0.0.1:10552"` by default.
 - Proof: `bin/csh bootstrap /tmp/csh-audit-fix.env` produced a private-relay-first config.
+
+### `security-exposure-browser-02`
+
+- Severity: low
+- Summary: browser startup messaging briefly echoed the configured browser password directly to stderr, which would have leaked a reusable secret into terminal logs.
+- Evidence:
+  - [csh.ts](/workspace/projects/csh/scripts/csh.ts#L617)
+- Status: closed 2026-03-16
+- Resolution: `csh browser` now prints the auth username and points operators back to the config file for the password instead of echoing the secret.

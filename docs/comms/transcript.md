@@ -185,3 +185,17 @@ Append-only project communication history.
 - When: 2026-03-16 01:18 WET
 - What: Removed stale `phase1` naming from the active operator surface. Default env/config naming is now `.env.csh.local` / `.env.csh.example`, generated session IDs now use `csh-*`, and the active README/scripts/guides were updated accordingly. Remaining `phase1` references are historical provenance only.
 - Session: local repo execution
+
+### 2026-03-16 01:45 WET
+
+- Who: Codex
+- When: 2026-03-16 01:45 WET
+- What: Productized the CLI surface. Added `csh install`, `version`, `status`, `doctor`, `config check`, and `completion`, added the Bun-backed installer at `scripts/install-cli.sh`, updated the deployment and CLI guides around an installed `csh` command instead of `bin/csh`, and verified the installer by creating `/tmp/csh-install/bin/csh` plus completion files and running `/tmp/csh-install/bin/csh version`.
+- Session: local repo execution
+
+### 2026-03-16 01:52 WET
+
+- Who: Codex
+- When: 2026-03-16 01:52 WET
+- What: Closed the CLI-productization slice with verification and an in-place audit refresh. Verified `status`, `doctor`, `config check`, rendered a hardened `systemd` unit with the absolute Bun path, reran `bin/csh verify` successfully end to end, tightened browser startup messaging to avoid echoing secrets, and updated the live posture docs with the closed CLI/install/browser findings.
+- Session: local repo execution

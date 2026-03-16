@@ -9,62 +9,67 @@ It currently provides:
 - a CLI for bootstrap, host startup, one-shot exec, interactive shell, proxy checks, and browser access
 - a browser terminal UI for operator use
 
-## Recommended Use
-
-Use a relay you control for real operator work. The canonical transport/deployment guidance lives in [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md).
-
-`csh` itself is still a Bun-backed repo CLI. Persistent deployment should use the existing `systemd`
-example rather than a custom daemon layer.
-
 ## Quick Start
 
-Install dependencies:
+Install dependencies and put `csh` on your `PATH`:
 
 ```bash
 bun install
+bun run csh install
 ```
 
 Create a local config:
 
 ```bash
-bin/csh bootstrap
+csh bootstrap
 ```
 
-Check host readiness:
+Check the environment and runtime:
 
 ```bash
-bin/csh host check .env.csh.local
+csh doctor
 ```
 
 Start the host:
 
 ```bash
-bin/csh host start .env.csh.local
+csh host start
 ```
 
 Run one command from another shell:
 
 ```bash
-bin/csh exec "pwd" .env.csh.local
+csh exec "pwd"
 ```
 
 Open the interactive shell:
 
 ```bash
-bin/csh shell .env.csh.local
+csh shell
 ```
 
 Open the browser terminal:
 
 ```bash
-bin/csh browser .env.csh.local
+csh browser
 ```
 
-Start a deterministic local test relay with `nak`:
+Inspect the resolved deployment/operator state:
 
 ```bash
-CSH_TEST_RELAY_HOST=127.0.0.1 CSH_TEST_RELAY_PORT=10552 scripts/start-test-relay.sh
+csh status
 ```
+
+If you prefer not to install a launcher yet, every command above also works as `bin/csh ...` from the
+repo root.
+
+## Recommended Use
+
+Use a relay you control for real operator work. The canonical deployment path lives in
+[server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md).
+
+`csh` is intentionally a Bun-backed tool for now. Persistent deployment should use the existing
+`systemd` example rather than a custom daemon layer.
 
 ## Repo Layout
 
@@ -79,5 +84,6 @@ CSH_TEST_RELAY_HOST=127.0.0.1 CSH_TEST_RELAY_PORT=10552 scripts/start-test-relay
 - The browser UI is operator-local and loopback-bound by default.
 - Sessions persist across client reconnects and can survive host restart when the same runtime state is reused.
 - The backend is `tmux` snapshot-based today, so terminal fidelity is below a raw PTY byte-stream design.
+- `csh install` writes a Bun-backed launcher into `~/.local/bin/csh` by default.
 
 For the current verified state and operational details, see [handoff.md](/workspace/projects/csh/handoff.md), [docs/README.md](/workspace/projects/csh/docs/README.md), [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md), and [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md).
