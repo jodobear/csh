@@ -68,3 +68,8 @@
 2. Decide whether to package `csh` beyond the current Bun-backed repo CLI.
 3. Expand the user-facing setup guide around the now-proven private-relay workflow.
 4. Keep public-relay testing opportunistic and secondary.
+
+## Process Notes
+
+- `docs/process/process-control.md` is now the canonical owner for control-surface roles, process-change reconciliation, and docs-surface drift rules.
+- Use `DOC-<area>-<number>` IDs when the issue is docs/process routing drift rather than runtime behavior.

@@ -34,6 +34,8 @@ Do not bulk-read the rest of `docs/` unless the active work needs it.
   Current repo state, live gaps, current proof summary, and next actions.
 - `docs/process/process-principles.md`
   Canonical process defaults.
+- `docs/process/process-control.md`
+  Canonical control-surface ownership and process-change reconciliation.
 - `docs/process/implementation-gates.md`
   Canonical implementation acceptance gate.
 - `docs/prompts/README.md`

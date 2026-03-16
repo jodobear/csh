@@ -40,6 +40,10 @@ Example:
 
 - `operator-workflow-shell-01`
 
+When the issue is docs-surface or process-control drift rather than runtime behavior, use:
+
+- `DOC-<area>-<number>`
+
 ### 0. Repo State
 
 Before substantial work starts, record and surface basic git state:
@@ -159,7 +163,20 @@ handoff, and closeout.
 Prefer targeting 1 to 3 postures per slice. If a packet starts addressing every posture at once,
 the slice is probably too broad.
 
-### 9. Closeout Consistency
+### 9. Synchronization Touchpoints
+
+Before substantial implementation starts, declare whether the slice changes:
+
+- teaching surface
+  README, guides, examples, or operator-facing usage
+- audit state
+  findings, posture status, accepted-risk state, or review conclusions
+- startup/discovery surface
+  handoff, docs index, prompts routing, or other startup-path docs
+
+Keep this short. It is a closeout checklist, not a new phase.
+
+### 10. Closeout Consistency
 
 Before calling the phase complete, restore the docs surface to steady state:
 
@@ -174,6 +191,7 @@ Before calling the phase complete, restore the docs surface to steady state:
 Every implementation phase should leave behind:
 
 - phase prompt with explicit exit criteria
+- declared synchronization touchpoints when the slice changes teaching, audit, or startup surfaces
 - claims-vs-proof table in the phase artifact or handoff
 - named audit posture(s) and target finding IDs for non-trivial refinement work
 - recorded open risks

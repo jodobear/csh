@@ -305,3 +305,17 @@
   for ad hoc demos, but its trust boundary is explicit.
 - Reversal trigger: reverse only if the browser client gains a stronger first-class auth model that
   replaces Basic Auth while keeping remote exposure clearly bounded.
+
+### 2026-03-16
+
+- Status: accepted
+- Decision: Add a canonical `process-control.md` for control-surface ownership and process-change
+  reconciliation, but keep it out of the default startup read set.
+- Why: the `noztr` and `nzdk` refinements correctly separated canonical control-surface rules from
+  the implementation gate and from the playbook/rationale layer. `csh` benefits from the same
+  split, but forcing that doc into every startup session would reintroduce the active-memory load
+  problem the repo has already worked to reduce.
+- Tradeoff: process/doc-surface work now has one more canonical doc to consult on demand, while
+  ordinary implementation sessions stay leaner.
+- Reversal trigger: reverse only if process-control drift keeps recurring because the canonical
+  owner is too hidden from the people doing the work.

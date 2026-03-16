@@ -3,6 +3,7 @@
 ```md
 Start from:
 - `AGENTS.md`
+- `docs/process/process-control.md`
 - `docs/process/process-principles.md`
 - `docs/process/implementation-gates.md`
 - `docs/process/buy-before-build.md`
@@ -21,6 +22,8 @@ Before planning or coding, confirm:
 - toolchain
 - dependency policy
 - quality gates
+- target finding IDs, if this is a refinement slice
+- synchronization touchpoints if the slice changes guides, audits, handoff, or startup docs
 - remote/push expectations
 - acceptance-gate categories that must be proven before phase closure
 

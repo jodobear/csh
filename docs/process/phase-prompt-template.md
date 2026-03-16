@@ -5,9 +5,18 @@
 
 Goal: <single clear outcome>
 
+Target findings:
+- <finding-id>
+- <finding-id>
+
 ## Inputs
 - <input>
 - <input>
+
+## Synchronization Touchpoints
+- teaching surface: <yes/no; what changes>
+- audit state: <yes/no; what changes>
+- startup/discovery surface: <yes/no; what changes>
 
 ## Required Work
 - <task>
