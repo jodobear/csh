@@ -18,6 +18,8 @@ bun install
 bun run csh install
 ```
 
+The runtime expects `bun`, `tmux`, and `python3` on the host.
+
 Create a local config:
 
 ```bash
@@ -90,8 +92,9 @@ Use a relay you control for real operator work. The canonical deployment path li
 
 - The browser UI is operator-local and loopback-bound by default.
 - Sessions persist across client reconnects and can survive host restart when the same runtime state is reused.
-- The backend is `tmux` snapshot-based today. It now supports richer shell-editing keys and deeper
-  scrollback, but it is still below a raw PTY byte-stream design.
+- The backend now uses PTY-attached tmux clients for terminal I/O while keeping tmux for session
+  persistence. That materially improves interactive behavior, but it is still not the same as a
+  native PTY session model end to end.
 - `csh install` writes a Bun-backed launcher into `~/.local/bin/csh` by default.
 
 For the current verified state and operational details, see [handoff.md](/workspace/projects/csh/handoff.md), [docs/README.md](/workspace/projects/csh/docs/README.md), [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md), and [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md).

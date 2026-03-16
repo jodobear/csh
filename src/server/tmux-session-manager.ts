@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { execFile } from "node:child_process";
+import { execFile, spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import {
   chmod,
   mkdir,
@@ -40,6 +40,8 @@ const SESSION_SCAVENGE_INTERVAL_MS = parseDurationMs(
   60 * 1000,
 );
 const SAFE_SESSION_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
+const STREAM_EVENT_LIMIT = 2048;
+const STREAM_BYTE_LIMIT = 1_000_000;
 
 export type ShellSession = {
   sessionId: string;
@@ -74,10 +76,25 @@ export type PollResult = {
   changed: boolean;
   revision: number;
   snapshot?: string;
+  delta?: string;
+};
+
+type StreamEvent = {
+  cursor: number;
+  data: string;
+};
+
+type AttachBridgeState = {
+  process: ChildProcessWithoutNullStreams;
+  sessionId: string;
+  stdoutBuffer: string;
+  streamEvents: StreamEvent[];
+  streamBytes: number;
 };
 
 export class TmuxSessionManager {
   private readonly sessions = new Map<string, ShellSession>();
+  private readonly bridges = new Map<string, AttachBridgeState>();
   private readonly ready: Promise<void>;
 
   public constructor() {
@@ -107,6 +124,7 @@ export class TmuxSessionManager {
 
         await this.refreshSessionState(existing);
         if (!existing.closedAt) {
+          await this.ensureAttachBridge(existing);
           existing.lastActivityAt = new Date().toISOString();
           await this.persistSession(existing);
           return existing;
@@ -129,7 +147,7 @@ export class TmuxSessionManager {
     args.push(command);
 
     await runTmux(args);
-    await runTmux(["set-option", "-t", tmuxSessionName, "remain-on-exit", "on"]);
+    await configureTmuxSession(tmuxSessionName);
 
     const paneInfo = await getPaneInfo(tmuxSessionName);
     const createdAt = new Date().toISOString();
@@ -153,6 +171,7 @@ export class TmuxSessionManager {
     };
 
     this.sessions.set(sessionId, session);
+    await this.ensureAttachBridge(session);
     await this.persistSession(session);
     return session;
   }
@@ -171,7 +190,11 @@ export class TmuxSessionManager {
 
   public async writeToSession(sessionId: string, input: string, actorId: string): Promise<ShellSession> {
     const session = await this.getOpenSessionForActor(sessionId, actorId);
-    await sendInput(session.paneTarget, input);
+    const bridge = await this.ensureAttachBridge(session);
+    await sendBridgeCommand(bridge, {
+      type: "write",
+      data: Buffer.from(input, "utf8").toString("base64"),
+    });
 
     session.lastActivityAt = new Date().toISOString();
     await this.persistSession(session);
@@ -200,6 +223,13 @@ export class TmuxSessionManager {
       String(session.rows),
     ]);
 
+    const bridge = await this.ensureAttachBridge(session);
+    await sendBridgeCommand(bridge, {
+      type: "resize",
+      cols: session.cols,
+      rows: session.rows,
+    });
+
     await this.persistSession(session);
     return session;
   }
@@ -224,6 +254,12 @@ export class TmuxSessionManager {
   ): Promise<PollResult> {
     const session = await this.getSessionForActor(sessionId, actorId);
     let dirty = await this.refreshSessionState(session);
+    let delta: string | undefined;
+
+    if (!session.closedAt) {
+      const bridge = await this.ensureAttachBridge(session);
+      delta = collectStreamDelta(bridge, cursor, session.revision);
+    }
 
     const snapshot = session.closedAt ? session.lastSnapshot : await capturePane(session.paneTarget);
 
@@ -250,6 +286,7 @@ export class TmuxSessionManager {
       changed,
       revision: session.revision,
       snapshot: changed ? session.lastSnapshot : undefined,
+      delta: changed ? delta : undefined,
     };
   }
 
@@ -257,6 +294,7 @@ export class TmuxSessionManager {
     const session = await this.getSessionForActor(sessionId, actorId);
 
     if (!session.closedAt) {
+      await this.detachBridge(session.sessionId);
       try {
         await runTmux(["kill-session", "-t", session.tmuxSessionName]);
       } catch (error) {
@@ -293,6 +331,109 @@ export class TmuxSessionManager {
     return session;
   }
 
+  private async ensureAttachBridge(session: ShellSession): Promise<AttachBridgeState> {
+    const existing = this.bridges.get(session.sessionId);
+    if (existing && !existing.process.killed && existing.process.exitCode === null) {
+      return existing;
+    }
+
+    await configureTmuxSession(session.tmuxSessionName);
+
+    const helperPath = path.join(process.cwd(), "scripts", "pty-attach.py");
+    const child = spawn(
+      "python3",
+      [
+        helperPath,
+        "--tmux-socket",
+        TMUX_SOCKET_PATH,
+        "--session",
+        session.tmuxSessionName,
+        "--cols",
+        String(session.cols),
+        "--rows",
+        String(session.rows),
+      ],
+      {
+        stdio: ["pipe", "pipe", "inherit"],
+      },
+    );
+
+    const bridge: AttachBridgeState = {
+      process: child,
+      sessionId: session.sessionId,
+      stdoutBuffer: "",
+      streamEvents: [],
+      streamBytes: 0,
+    };
+
+    child.stdout.setEncoding("utf8");
+    child.stdout.on("data", (chunk: string) => {
+      this.handleBridgeStdout(bridge, chunk);
+    });
+    child.on("exit", () => {
+      const current = this.bridges.get(session.sessionId);
+      if (current === bridge) {
+        this.bridges.delete(session.sessionId);
+      }
+    });
+
+    this.bridges.set(session.sessionId, bridge);
+    return bridge;
+  }
+
+  private handleBridgeStdout(bridge: AttachBridgeState, chunk: string): void {
+    bridge.stdoutBuffer += chunk;
+
+    while (true) {
+      const newlineIndex = bridge.stdoutBuffer.indexOf("\n");
+      if (newlineIndex === -1) {
+        return;
+      }
+
+      const rawLine = bridge.stdoutBuffer.slice(0, newlineIndex);
+      bridge.stdoutBuffer = bridge.stdoutBuffer.slice(newlineIndex + 1);
+      if (!rawLine.trim()) {
+        continue;
+      }
+
+      try {
+        const message = JSON.parse(rawLine) as { type?: string; data?: string };
+        if (message.type === "data" && typeof message.data === "string") {
+          const session = this.sessions.get(bridge.sessionId);
+          if (!session) {
+            continue;
+          }
+
+          const data = Buffer.from(message.data, "base64").toString("utf8");
+          if (!data) {
+            continue;
+          }
+
+          session.revision += 1;
+          bridge.streamEvents.push({
+            cursor: session.revision,
+            data,
+          });
+          bridge.streamBytes += data.length;
+          trimStreamEvents(bridge);
+        }
+      } catch (error) {
+        reportBackgroundError(error);
+      }
+    }
+  }
+
+  private async detachBridge(sessionId: string): Promise<void> {
+    const bridge = this.bridges.get(sessionId);
+    if (!bridge) {
+      return;
+    }
+
+    this.bridges.delete(sessionId);
+    await sendBridgeCommand(bridge, { type: "close" }).catch(() => undefined);
+    bridge.process.kill("SIGHUP");
+  }
+
   private async refreshSessionState(session: ShellSession): Promise<boolean> {
     if (session.closedAt) {
       return false;
@@ -300,6 +441,7 @@ export class TmuxSessionManager {
 
     const paneState = await getPaneState(session.paneTarget);
     if (paneState.kind === "missing") {
+      await this.detachBridge(session.sessionId);
       session.closedAt = new Date().toISOString();
       session.exitStatus ??= null;
       await this.persistSession(session);
@@ -307,6 +449,7 @@ export class TmuxSessionManager {
     }
 
     if (paneState.dead) {
+      await this.detachBridge(session.sessionId);
       const finalSnapshot = await capturePane(session.paneTarget).catch((error) => {
         if (isMissingTmuxTarget(error)) {
           return session.lastSnapshot;
@@ -386,6 +529,7 @@ export class TmuxSessionManager {
       }
 
       try {
+        await this.detachBridge(sessionId);
         await runTmux(["kill-session", "-t", session.tmuxSessionName]);
       } catch (error) {
         if (!isMissingTmuxTarget(error)) {
@@ -443,6 +587,7 @@ export class TmuxSessionManager {
 
   private async discardClosedSession(session: ShellSession): Promise<void> {
     try {
+      await this.detachBridge(session.sessionId);
       await runTmux(["kill-session", "-t", session.tmuxSessionName]);
     } catch (error) {
       if (!isMissingTmuxTarget(error)) {
@@ -555,6 +700,12 @@ async function runTmux(args: string[]): Promise<{ stdout: string; stderr: string
   }
 }
 
+async function configureTmuxSession(sessionName: string): Promise<void> {
+  await runTmux(["set-option", "-t", sessionName, "remain-on-exit", "on"]);
+  await runTmux(["set-option", "-t", sessionName, "status", "off"]);
+  await runTmux(["set-option", "-t", sessionName, "mouse", "off"]);
+}
+
 async function signalPane(session: ShellSession, signalName: NodeJS.Signals): Promise<void> {
   if (signalName === "SIGINT") {
     await runTmux(["send-keys", "-t", session.paneTarget, "C-c"]);
@@ -570,194 +721,58 @@ async function signalPane(session: ShellSession, signalName: NodeJS.Signals): Pr
   process.kill(session.panePid, signalName);
 }
 
-async function sendInput(paneTarget: string, input: string): Promise<void> {
-  let literalBuffer = "";
-
-  for (const action of parseTerminalInput(input)) {
-    if (action.kind === "literal") {
-      literalBuffer += action.value;
-      continue;
-    }
-
-    if (literalBuffer.length > 0) {
-      await runTmux(["send-keys", "-t", paneTarget, "-l", literalBuffer]);
-      literalBuffer = "";
-    }
-
-    await runTmux(["send-keys", "-t", paneTarget, action.key]);
-  }
-
-  if (literalBuffer.length > 0) {
-    await runTmux(["send-keys", "-t", paneTarget, "-l", literalBuffer]);
-  }
-}
-
-type InputAction =
-  | { kind: "literal"; value: string }
-  | { kind: "key"; key: string };
-
-function parseTerminalInput(input: string): InputAction[] {
-  const actions: InputAction[] = [];
-  let index = 0;
-
-  while (index < input.length) {
-    const bracketedPasteStart = input.startsWith("\u001b[200~", index);
-    if (bracketedPasteStart) {
-      const pasteEnd = input.indexOf("\u001b[201~", index + 6);
-      if (pasteEnd !== -1) {
-        const pasted = input.slice(index + 6, pasteEnd);
-        if (pasted.length > 0) {
-          actions.push({ kind: "literal", value: pasted });
-        }
-        index = pasteEnd + 6;
-        continue;
+async function sendBridgeCommand(
+  bridge: AttachBridgeState,
+  command: Record<string, unknown>,
+): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    bridge.process.stdin.write(`${JSON.stringify(command)}\n`, (error) => {
+      if (error) {
+        reject(error);
+        return;
       }
-    }
-
-    const special = parseSpecialSequence(input, index);
-    if (special) {
-      actions.push(special.action);
-      index += special.length;
-      continue;
-    }
-
-    actions.push({ kind: "literal", value: input[index] });
-    index += 1;
-  }
-
-  return coalesceLiteralActions(actions);
+      resolve();
+    });
+  });
 }
 
-function parseSpecialSequence(
-  input: string,
-  index: number,
-): { action: InputAction; length: number } | null {
-  if (input.startsWith("\r\n", index)) {
-    return { action: { kind: "key", key: "Enter" }, length: 2 };
+function collectStreamDelta(
+  bridge: AttachBridgeState,
+  cursor: number | undefined,
+  currentRevision: number,
+): string | undefined {
+  if (cursor === undefined) {
+    return undefined;
   }
 
-  const char = input[index];
-  if (char === "\r" || char === "\n") {
-    return { action: { kind: "key", key: "Enter" }, length: 1 };
-  }
-  if (char === "\t") {
-    return { action: { kind: "key", key: "Tab" }, length: 1 };
-  }
-  if (char === "\u007f" || char === "\b") {
-    return { action: { kind: "key", key: "BSpace" }, length: 1 };
+  if (cursor > currentRevision) {
+    return undefined;
   }
 
-  const code = char.charCodeAt(0);
-  if (code >= 0x01 && code <= 0x1a) {
-    const key = String.fromCharCode(code + 96);
-    return { action: { kind: "key", key: `C-${key}` }, length: 1 };
+  const deltaEvents = bridge.streamEvents.filter((event) => event.cursor > cursor);
+  if (deltaEvents.length === 0) {
+    return undefined;
   }
 
-  if (char !== "\u001b") {
-    return null;
+  const oldestAvailable = bridge.streamEvents[0]?.cursor ?? currentRevision;
+  if (cursor < oldestAvailable - 1) {
+    return undefined;
   }
 
-  for (const [sequence, key] of ESCAPE_KEY_SEQUENCES) {
-    if (input.startsWith(sequence, index)) {
-      return { action: { kind: "key", key }, length: sequence.length };
-    }
-  }
-
-  const modifiedArrow = input.slice(index).match(/^\u001b\[1;([235])([ABCDHF])/) ??
-    input.slice(index).match(/^\u001b\[([1-8]);([235])([ABCDHF])/);
-  if (modifiedArrow) {
-    const modifier = modifiedArrow[1] ?? modifiedArrow[2];
-    const keyCode = modifiedArrow[2] ?? modifiedArrow[3];
-    const prefix = modifierToTmuxPrefix(modifier);
-    const key = navigationKeyName(keyCode);
-    if (prefix && key) {
-      return { action: { kind: "key", key: `${prefix}-${key}` }, length: modifiedArrow[0].length };
-    }
-  }
-
-  const altChar = input[index + 1];
-  if (altChar && altChar !== "\u001b" && !altChar.startsWith?.("[")) {
-    const maybeAlt = altKeyName(altChar);
-    if (maybeAlt) {
-      return { action: { kind: "key", key: maybeAlt }, length: 2 };
-    }
-  }
-
-  return { action: { kind: "key", key: "Escape" }, length: 1 };
+  return deltaEvents.map((event) => event.data).join("");
 }
 
-const ESCAPE_KEY_SEQUENCES = new Map<string, string>([
-  ["\u001b[A", "Up"],
-  ["\u001b[B", "Down"],
-  ["\u001b[C", "Right"],
-  ["\u001b[D", "Left"],
-  ["\u001bOA", "Up"],
-  ["\u001bOB", "Down"],
-  ["\u001bOC", "Right"],
-  ["\u001bOD", "Left"],
-  ["\u001b[H", "Home"],
-  ["\u001b[F", "End"],
-  ["\u001bOH", "Home"],
-  ["\u001bOF", "End"],
-  ["\u001b[3~", "DC"],
-  ["\u001b[5~", "PageUp"],
-  ["\u001b[6~", "PageDown"],
-  ["\u001b[Z", "BTab"],
-]);
-
-function navigationKeyName(code: string | undefined): string | null {
-  switch (code) {
-    case "A":
-      return "Up";
-    case "B":
-      return "Down";
-    case "C":
-      return "Right";
-    case "D":
-      return "Left";
-    case "H":
-      return "Home";
-    case "F":
-      return "End";
-    default:
-      return null;
-  }
-}
-
-function modifierToTmuxPrefix(modifier: string | undefined): string | null {
-  switch (modifier) {
-    case "2":
-      return "S";
-    case "3":
-      return "M";
-    case "5":
-      return "C";
-    default:
-      return null;
-  }
-}
-
-function altKeyName(char: string): string | null {
-  if (/^[A-Za-z0-9]$/.test(char)) {
-    return `M-${char.toLowerCase()}`;
-  }
-  return null;
-}
-
-function coalesceLiteralActions(actions: InputAction[]): InputAction[] {
-  const merged: InputAction[] = [];
-
-  for (const action of actions) {
-    const previous = merged[merged.length - 1];
-    if (action.kind === "literal" && previous?.kind === "literal") {
-      previous.value += action.value;
-      continue;
+function trimStreamEvents(bridge: AttachBridgeState): void {
+  while (
+    bridge.streamEvents.length > STREAM_EVENT_LIMIT ||
+    bridge.streamBytes > STREAM_BYTE_LIMIT
+  ) {
+    const removed = bridge.streamEvents.shift();
+    if (!removed) {
+      return;
     }
-
-    merged.push(action);
+    bridge.streamBytes -= removed.data.length;
   }
-
-  return merged;
 }
 
 async function getForegroundProcessGroup(processId: number): Promise<number | null> {

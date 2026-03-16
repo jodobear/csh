@@ -400,6 +400,18 @@
 ### 2026-03-16
 
 - Status: accepted
+- Decision: use a PTY-attached tmux client helper for terminal I/O while keeping tmux as the
+  persistence/reconnect layer.
+- Why: this gives a materially better interactive terminal than `tmux send-keys` while preserving
+  the current session contract and tmux-backed recovery behavior.
+- Tradeoff: the stack is now a hybrid rather than a single mechanism, and recovery still depends on
+  tmux snapshot capture rather than a native PTY session model end to end.
+- Reversal trigger: reverse only if the repo moves all the way to a native PTY session backend and
+  no longer needs tmux as the persistence layer.
+
+### 2026-03-16
+
+- Status: accepted
 - Decision: define the Bun-backed launcher lifecycle explicitly with `csh upgrade` and
   `csh uninstall`.
 - Why: once `csh install` became the recommended operator path, not having the rest of the lifecycle

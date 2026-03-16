@@ -206,3 +206,10 @@ Append-only project communication history.
 - When: 2026-03-16 02:27 WET
 - What: Closed the tmux-backed terminal-fidelity slice. Added broader control-key mapping in `src/server/tmux-session-manager.ts`, raised and exposed scrollback depth through `CSH_SCROLLBACK_LINES`, added `csh upgrade` and `csh uninstall` around the Bun-backed launcher lifecycle, updated the operator/deployment guides, and proved the new input behavior directly through the session manager by replaying history with `ArrowUp` and editing a command with backspace to produce `ststop`. The normal `bin/csh verify /tmp/csh-cli-polish.env` loop also still passed afterward.
 - Session: local repo execution
+
+### 2026-03-16 02:40 WET
+
+- Who: Codex
+- When: 2026-03-16 02:40 WET
+- What: Replaced the new-control-key-only approach with a stronger backend seam: terminal I/O now goes through a PTY-attached tmux client helper in `scripts/pty-attach.py`, while tmux still preserves the persistent session. `session_poll` now carries both snapshot recovery and stream deltas, the shell/browser clients use those deltas when available, and the repo docs/handoff/decision log were updated to describe this as a hybrid PTY-over-tmux design rather than just richer `send-keys` handling.
+- Session: local repo execution

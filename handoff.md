@@ -53,7 +53,7 @@
   - `csh config check`
   - `csh completion <bash|zsh|fish>`
 - Terminal fidelity is better within the tmux-backed design:
-  - richer shell-editing keys work through the session bridge
+  - terminal I/O now goes through a PTY-attached tmux client
   - scrollback depth is controlled by `CSH_SCROLLBACK_LINES` and defaults to `10000`
 
 ## Claims Vs Proof
@@ -70,20 +70,20 @@
 | Public relay compatibility works | outside the sandbox, `/tmp/csh-public-shell.sh` returned `/workspace/projects/csh` and `/tmp/csh-public-browser.sh` rendered `__BROWSER__/workspace/projects/csh` over `wss://relay.contextvm.org` | proven as a compatibility path | still not the preferred operator transport; private relay remains the default posture |
 | `csh` can be installed as a normal user command | `bun run csh install --prefix /tmp/csh-install --no-runtime` created `/tmp/csh-install/bin/csh`, and `/tmp/csh-install/bin/csh version` returned `csh 0.1.0` | proven locally | launcher is intentionally repo-backed and assumes the checkout stays in place |
 | The operator surface has stable preflight commands | `bun run csh doctor /tmp/csh-cli-polish.env`, `bun run csh status /tmp/csh-cli-polish.env`, and `bun run csh config check /tmp/csh-cli-polish.env` all succeeded against a fresh bootstrap config | proven locally | `doctor` is preflight evidence, not a substitute for end-to-end relay verification |
-| tmux-backed terminal fidelity covers common shell-editing keys | direct session-manager proof replayed command history with `ArrowUp` and produced `ststop` after backspace editing | proven locally | this still does not imply raw PTY byte fidelity or full-screen TUI correctness |
+| tmux-backed terminal fidelity covers common shell-editing keys | direct session-manager proof replayed command history with `ArrowUp` and produced `ststop` after backspace editing | proven locally | this still does not imply a native PTY session model end to end |
 | install lifecycle is complete for the Bun-backed launcher | `bun run csh install --prefix /tmp/csh-lifecycle --no-runtime`, `bun run csh upgrade --prefix /tmp/csh-lifecycle --no-runtime`, and `bun run csh uninstall --prefix /tmp/csh-lifecycle` all succeeded | proven locally | uninstall only removes managed launchers unless forced |
 
 ## Open Risks
 
 - `relay.contextvm.org` now works as a compatibility path, but it should still not be the primary operator relay.
-- The backend is still `tmux send-keys` plus snapshot capture, so fidelity is improved but still below a raw PTY byte stream.
+- The backend now uses PTY-attached tmux clients for terminal I/O, but the overall design is still bounded by tmux-backed persistence and snapshot recovery.
 - The browser UI is an operator-side bridge, not a public multi-user shell surface.
 - Interactive disconnect still uses a bounded grace window, not a hard delivery guarantee under a broken transport.
 - The installed `csh` launcher is checkout-backed by design; moving or deleting the repo checkout breaks that launcher until it is reinstalled.
 
 ## Unsupported Behaviors
 
-- Raw byte-perfect PTY streaming is not implemented.
+- A native PTY session model end to end is not implemented.
 - Infinite durable scrollback is not implemented.
 - Remote browser exposure is not a supported default workflow.
 - The installed launcher is not a standalone packaged binary.

@@ -20,6 +20,7 @@ type OpenResult = {
 type PollResult = {
   cursor: number;
   snapshot: string | null;
+  delta?: string | null;
   changed: boolean;
   closedAt: string | null;
   exitStatus: number | null;
@@ -182,6 +183,7 @@ async function runInteractiveClient(): Promise<void> {
 async function pollUntilStopped(): Promise<void> {
   while (!localExitRequested && sessionId) {
     try {
+      const requestedCursor = cursor;
       const result = await queueRpc(() =>
         parseToolResult<PollResult>(
           client.callTool({
@@ -197,8 +199,15 @@ async function pollUntilStopped(): Promise<void> {
 
       cursor = result.cursor;
 
-      if (result.snapshot !== null && result.snapshot !== lastSnapshot) {
+      const shouldRenderSnapshot =
+        result.snapshot !== null && (!result.delta || requestedCursor === 0) && result.snapshot !== lastSnapshot;
+
+      if (shouldRenderSnapshot) {
         renderSnapshot(result.snapshot);
+      } else if (result.delta) {
+        renderDelta(result.delta);
+      } else if (result.snapshot !== null) {
+        lastSnapshot = result.snapshot;
       }
 
       if (result.closedAt) {
@@ -315,6 +324,15 @@ function renderSnapshot(nextSnapshot: string): void {
     stdout.write(nextSnapshot);
   }
   lastSnapshot = nextSnapshot;
+}
+
+function renderDelta(delta: string): void {
+  if (!screenInitialized) {
+    stdout.write("\x1b[?1049h");
+    screenInitialized = true;
+  }
+
+  stdout.write(delta);
 }
 
 async function resizeRemote(): Promise<void> {

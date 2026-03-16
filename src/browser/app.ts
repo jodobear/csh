@@ -17,6 +17,7 @@ type PollResult = {
   changed: boolean;
   cursor: number;
   snapshot: string | null;
+  delta?: string | null;
   cols: number;
   rows: number;
   closedAt: string | null;
@@ -247,6 +248,7 @@ async function pollRemote(): Promise<void> {
   }
 
   const activeSessionId = sessionId;
+  const requestedCursor = cursor;
   const result = await queueRpc(() =>
     postJson<PollResult>("session/poll", {
       sessionId: activeSessionId,
@@ -257,8 +259,15 @@ async function pollRemote(): Promise<void> {
 
   cursor = result.cursor;
 
-  if (result.snapshot !== null && result.snapshot !== lastSnapshot) {
+  const shouldRenderSnapshot =
+    result.snapshot !== null && (!result.delta || requestedCursor === null) && result.snapshot !== lastSnapshot;
+
+  if (shouldRenderSnapshot) {
     renderSnapshot(result.snapshot);
+  } else if (result.delta) {
+    terminal.write(result.delta);
+  } else if (result.snapshot !== null) {
+    lastSnapshot = result.snapshot;
   }
 
   if (result.closedAt) {

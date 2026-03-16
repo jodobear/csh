@@ -26,6 +26,7 @@ type SessionPollResult = {
   changed: boolean;
   cursor: number;
   snapshot: string | null;
+  delta?: string | null;
   cols: number;
   rows: number;
   closedAt: string | null;

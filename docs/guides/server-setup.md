@@ -12,6 +12,7 @@ bun run csh install
 ```
 
 That installs a Bun-backed launcher to `~/.local/bin/csh` by default.
+The runtime expects `bun`, `tmux`, and `python3` on the host.
 
 Useful follow-up checks:
 
@@ -165,9 +166,10 @@ The browser UI is an operator-side bridge, not a public multi-user shell surface
 Current behavior is intentionally described narrowly:
 
 - richer shell-editing input is supported through the tmux bridge
+- terminal I/O now goes through a PTY-attached tmux client
 - deeper scrollback is available through `CSH_SCROLLBACK_LINES`
 - reconnect and session persistence work
-- raw PTY byte-stream fidelity is still not implemented
+- a native PTY session model end to end is still not implemented
 
 If the next phase pushes fidelity further, it should be about the backend session model rather than
 more CLI surface.

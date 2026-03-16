@@ -121,6 +121,8 @@ These scripts compose the repo-local interactive shell path:
 
 - The host path is now repo-local: `src/main.ts` exposes the `session_*` tools and
   `src/contextvm-gateway.ts` exposes that server over ContextVM with pubkey injection enabled.
+- Terminal I/O now uses a PTY-attached tmux client helper (`scripts/pty-attach.py`) while tmux still
+  holds the persistent session state.
 - The current default operator path is the interactive client at `csh shell`, with `csh exec`
   kept for one-shot commands and `csh browser` available for the browser terminal UI.
 - Browser UI access is authenticated even on loopback. Remote browser mode additionally requires

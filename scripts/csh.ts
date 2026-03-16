@@ -183,10 +183,12 @@ async function gatherRuntimeCheck(): Promise<RuntimeCheck> {
     srcGateway: paths.srcGateway,
     browserServer: path.join(paths.rootDir, "src", "browser", "contextvm-server.ts"),
     browserBuild: path.join(paths.rootDir, "dist", "browser", "app.js"),
+    ptyAttach: path.join(paths.rootDir, "scripts", "pty-attach.py"),
   };
   const commands = {
     bun: Bun.which("bun"),
     tmux: Bun.which("tmux"),
+    python3: Bun.which("python3"),
     nak: Bun.which("nak"),
     csh: Bun.which("csh"),
   };
@@ -202,6 +204,9 @@ async function gatherRuntimeCheck(): Promise<RuntimeCheck> {
   }
   if (!commands.tmux) {
     errors.push("Missing tmux in PATH.");
+  }
+  if (!commands.python3) {
+    errors.push("Missing python3 in PATH.");
   }
   if (!commands.nak) {
     warnings.push("nak is not in PATH; loopback relay verification and local test-relay helpers will be unavailable.");

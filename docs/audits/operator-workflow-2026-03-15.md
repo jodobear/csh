@@ -123,9 +123,9 @@ Question: where does the operator-facing workflow mislead the user, lose state, 
   - [tmux-session-manager.ts](/workspace/projects/csh/src/server/tmux-session-manager.ts)
   - [app.ts](/workspace/projects/csh/src/browser/app.ts)
 - Status: closed 2026-03-16
-- Resolution: the tmux input bridge now parses a broader set of control sequences and maps them to
-  tmux key names, including arrows, backspace/delete, home/end, page keys, Alt-character prefixes,
-  and common `Ctrl-<letter>` shell-editing controls.
+- Resolution: terminal I/O now runs through a PTY-attached tmux client instead of only `tmux send-keys`,
+  which materially improves interactive behavior for control keys and shell editing while preserving
+  tmux-backed persistence.
 - Proof: a direct session-manager proof now replays prior history with `ArrowUp` and produces
   `ststop` after backspace editing, confirming that non-printable input is reaching the shell as
   editing keys rather than only literal text.
@@ -141,3 +141,4 @@ Question: where does the operator-facing workflow mislead the user, lose state, 
 - Status: closed 2026-03-16
 - Resolution: scrollback depth is now configurable through `CSH_SCROLLBACK_LINES` and defaults to
   `10000` lines across the tmux capture path and browser terminal.
+- Residual limit: snapshot recovery still depends on tmux capture rather than a full durable stream log.
