@@ -3,7 +3,7 @@
 ## Current Status
 
 - Active phase: none
-- Current objective: keep the CLI productized and operator-friendly while deciding whether the next major step is distribution packaging or terminal-fidelity work
+- Current objective: decide whether to keep pushing tmux-backed terminal fidelity or move to a true PTY-backed session model
 - Repo state:
   - Git repository initialized on `master`
   - `master` is pushed to `origin/master`
@@ -29,6 +29,10 @@
 
 - `csh` is a repo-local `tmux`-backed interactive shell over ContextVM/Nostr with CLI and browser clients.
 - `csh` now has a Bun-backed install path that places a stable `csh` launcher on `PATH`.
+- `csh` now also has a managed install lifecycle:
+  - `csh install`
+  - `csh upgrade`
+  - `csh uninstall`
 - Active operator/config naming now uses `csh`, not `phase1`:
   - default local env path is `.env.csh.local`
   - example env file is `.env.csh.example`
@@ -41,11 +45,16 @@
 - Startup paths now treat env files as data-only config, not shell code.
 - CLI/operator surface now includes:
   - `csh install`
+  - `csh upgrade`
+  - `csh uninstall`
   - `csh version`
   - `csh status`
   - `csh doctor`
   - `csh config check`
   - `csh completion <bash|zsh|fish>`
+- Terminal fidelity is better within the tmux-backed design:
+  - richer shell-editing keys work through the session bridge
+  - scrollback depth is controlled by `CSH_SCROLLBACK_LINES` and defaults to `10000`
 
 ## Claims Vs Proof
 
@@ -61,11 +70,13 @@
 | Public relay compatibility works | outside the sandbox, `/tmp/csh-public-shell.sh` returned `/workspace/projects/csh` and `/tmp/csh-public-browser.sh` rendered `__BROWSER__/workspace/projects/csh` over `wss://relay.contextvm.org` | proven as a compatibility path | still not the preferred operator transport; private relay remains the default posture |
 | `csh` can be installed as a normal user command | `bun run csh install --prefix /tmp/csh-install --no-runtime` created `/tmp/csh-install/bin/csh`, and `/tmp/csh-install/bin/csh version` returned `csh 0.1.0` | proven locally | launcher is intentionally repo-backed and assumes the checkout stays in place |
 | The operator surface has stable preflight commands | `bun run csh doctor /tmp/csh-cli-polish.env`, `bun run csh status /tmp/csh-cli-polish.env`, and `bun run csh config check /tmp/csh-cli-polish.env` all succeeded against a fresh bootstrap config | proven locally | `doctor` is preflight evidence, not a substitute for end-to-end relay verification |
+| tmux-backed terminal fidelity covers common shell-editing keys | direct session-manager proof replayed command history with `ArrowUp` and produced `ststop` after backspace editing | proven locally | this still does not imply raw PTY byte fidelity or full-screen TUI correctness |
+| install lifecycle is complete for the Bun-backed launcher | `bun run csh install --prefix /tmp/csh-lifecycle --no-runtime`, `bun run csh upgrade --prefix /tmp/csh-lifecycle --no-runtime`, and `bun run csh uninstall --prefix /tmp/csh-lifecycle` all succeeded | proven locally | uninstall only removes managed launchers unless forced |
 
 ## Open Risks
 
 - `relay.contextvm.org` now works as a compatibility path, but it should still not be the primary operator relay.
-- The backend is still `tmux send-keys` plus snapshot capture, so fidelity is below a raw PTY byte stream.
+- The backend is still `tmux send-keys` plus snapshot capture, so fidelity is improved but still below a raw PTY byte stream.
 - The browser UI is an operator-side bridge, not a public multi-user shell surface.
 - Interactive disconnect still uses a bounded grace window, not a hard delivery guarantee under a broken transport.
 - The installed `csh` launcher is checkout-backed by design; moving or deleting the repo checkout breaks that launcher until it is reinstalled.
@@ -79,9 +90,9 @@
 
 ## Next Actions
 
-1. Decide whether the next step is standalone packaging/distribution or deeper terminal-fidelity work.
-2. If the current Bun-backed install model remains, add a light upgrade/uninstall story around it.
-3. If operator fidelity matters more, scope the next phase around PTY/terminal behavior rather than more CLI surface.
+1. Decide whether the next step is an actual PTY-backed session model rather than more tmux-bridge refinement.
+2. If PTY work starts, frame it as a backend/session-model phase, not a CLI or docs phase.
+3. Keep public-relay checks secondary while the terminal model is still evolving.
 
 ## Process Notes
 

@@ -38,6 +38,13 @@ These scripts compose the repo-local interactive shell path:
    bun run csh install
    ```
 
+   Refresh or remove it later with:
+
+   ```bash
+   csh upgrade
+   csh uninstall
+   ```
+
 3. Generate a private local env:
 
    ```bash
@@ -46,7 +53,8 @@ These scripts compose the repo-local interactive shell path:
 
 4. Inspect or edit `.env.csh.local` if you want different relays or metadata.
    The browser UI now expects credentials from `CSH_BROWSER_AUTH_USER` and
-   `CSH_BROWSER_AUTH_PASSWORD`.
+   `CSH_BROWSER_AUTH_PASSWORD`. The tmux/browser scrollback depth is controlled by
+   `CSH_SCROLLBACK_LINES`.
 
 ## Run
 
@@ -117,6 +125,8 @@ These scripts compose the repo-local interactive shell path:
   kept for one-shot commands and `csh browser` available for the browser terminal UI.
 - Browser UI access is authenticated even on loopback. Remote browser mode additionally requires
   `CSH_BROWSER_TRUST_PROXY_TLS=1` behind an HTTPS/TLS-terminating reverse proxy.
+- Terminal fidelity is still snapshot-backed, but common shell-editing keys now work more naturally
+  through the tmux bridge and default scrollback depth is larger.
 - The repo-local SDK proxy path also works and is available when you want a stdio MCP bridge.
 - The repo no longer depends on the external `proxy-cli` binary for normal operation.
 - See [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md) for the short

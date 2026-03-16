@@ -91,6 +91,8 @@ function usage(): string {
 
 Commands:
   install                        Install a PATH-friendly launcher into ~/.local/bin by default
+  upgrade                        Reinstall or refresh the managed launcher and completions
+  uninstall                      Remove the managed launcher and completions
   bootstrap [config-path]        Generate a private-by-default config file
   version                        Print the csh version
   status [config-path]           Show the resolved operator/deployment status
@@ -274,6 +276,8 @@ function installNotes(): string[] {
     `Install prefix: ${prefix}`,
     `Expected launcher: ${paths.launcherPath}`,
     `Resolved csh in PATH: ${current ?? "(not installed on PATH)"}`,
+    `Upgrade: csh upgrade${prefix === defaultInstallPrefix() ? "" : ` --prefix ${prefix}`}`,
+    `Uninstall: csh uninstall${prefix === defaultInstallPrefix() ? "" : ` --prefix ${prefix}`}`,
   ];
 
   if (!process.env.PATH?.split(path.delimiter).includes(paths.binDir)) {
@@ -298,6 +302,7 @@ function printStatus(config: AppConfig, mode: "host" | "client" | "full", runtim
       url: browserUrl(config),
       allowRemote: config.browserAllowRemote,
       authUser: config.browserAuthUser || "(generated at bootstrap or required for remote mode)",
+      scrollbackLines: config.scrollbackLines,
     },
     install: {
       prefix: defaultInstallPrefix(),
@@ -319,6 +324,7 @@ function printStatus(config: AppConfig, mode: "host" | "client" | "full", runtim
   console.log(`Server pubkey: ${payload.serverPubkey}`);
   console.log(`Browser: ${payload.browser.url}`);
   console.log(`Browser auth user: ${payload.browser.authUser}`);
+  console.log(`Scrollback lines: ${payload.browser.scrollbackLines}`);
   console.log(`Installed command: ${payload.install.resolvedCommand ?? "(not on PATH)"}`);
   if (runtime.warnings.length > 0) {
     console.log("Warnings:");
@@ -329,7 +335,20 @@ function printStatus(config: AppConfig, mode: "host" | "client" | "full", runtim
 }
 
 async function commandInstall(parsed: ParsedArgs): Promise<void> {
+  await commandInstallAction("install", parsed);
+}
+
+async function commandUpgrade(parsed: ParsedArgs): Promise<void> {
+  await commandInstallAction("upgrade", parsed);
+}
+
+async function commandUninstall(parsed: ParsedArgs): Promise<void> {
+  await commandInstallAction("uninstall", parsed);
+}
+
+async function commandInstallAction(action: "install" | "upgrade" | "uninstall", parsed: ParsedArgs): Promise<void> {
   const args: string[] = [];
+  args.push(action);
   if (typeof parsed.flags.prefix === "string") {
     args.push("--prefix", parsed.flags.prefix);
   }
@@ -620,6 +639,7 @@ async function commandBrowser(parsed: ParsedArgs): Promise<void> {
   process.env.CVM_ENV_FILE = configPath;
   loadEnvFile(configPath);
   console.error(`Browser URL: ${browserUrl(config)}`);
+  console.error(`Scrollback lines: ${config.scrollbackLines}`);
   if (config.browserAuthUser && config.browserAuthPassword) {
     console.error(`Browser auth user: ${config.browserAuthUser}`);
     console.error(`Browser auth password: read from ${configPath}`);
@@ -634,7 +654,9 @@ async function commandBrowser(parsed: ParsedArgs): Promise<void> {
 async function commandBrowserLocal(): Promise<void> {
   const host = process.env.CSH_BROWSER_HOST || "127.0.0.1";
   const port = process.env.CSH_BROWSER_PORT || "4318";
+  const scrollback = process.env.CSH_SCROLLBACK_LINES || "10000";
   console.error(`Browser URL: http://${host}:${port}`);
+  console.error(`Scrollback lines: ${scrollback}`);
   console.error("Browser auth credentials will be generated at startup if they are not already set in the environment.");
   console.error("Use Ctrl-C in this terminal to stop the local browser bridge.");
   const code = await runCommand("bun", ["run", "src/browser/server.ts"]);
@@ -651,6 +673,8 @@ async function commandVerify(parsed: ParsedArgs): Promise<void> {
 function completionScript(shell: string): string {
   const commands = [
     "install",
+    "upgrade",
+    "uninstall",
     "bootstrap",
     "version",
     "status",
@@ -797,6 +821,14 @@ async function main(): Promise<void> {
 
   if (command === "install") {
     await commandInstall(parsed);
+    return;
+  }
+  if (command === "upgrade") {
+    await commandUpgrade(parsed);
+    return;
+  }
+  if (command === "uninstall") {
+    await commandUninstall(parsed);
     return;
   }
   if (command === "bootstrap") {

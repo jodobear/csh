@@ -199,3 +199,10 @@ Append-only project communication history.
 - When: 2026-03-16 01:52 WET
 - What: Closed the CLI-productization slice with verification and an in-place audit refresh. Verified `status`, `doctor`, `config check`, rendered a hardened `systemd` unit with the absolute Bun path, reran `bin/csh verify` successfully end to end, tightened browser startup messaging to avoid echoing secrets, and updated the live posture docs with the closed CLI/install/browser findings.
 - Session: local repo execution
+
+### 2026-03-16 02:27 WET
+
+- Who: Codex
+- When: 2026-03-16 02:27 WET
+- What: Closed the tmux-backed terminal-fidelity slice. Added broader control-key mapping in `src/server/tmux-session-manager.ts`, raised and exposed scrollback depth through `CSH_SCROLLBACK_LINES`, added `csh upgrade` and `csh uninstall` around the Bun-backed launcher lifecycle, updated the operator/deployment guides, and proved the new input behavior directly through the session manager by replaying history with `ArrowUp` and editing a command with backspace to produce `ststop`. The normal `bin/csh verify /tmp/csh-cli-polish.env` loop also still passed afterward.
+- Session: local repo execution

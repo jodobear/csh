@@ -93,3 +93,17 @@ Question: where can startup, verification, persistence, or long-running operatio
 - Status: closed 2026-03-16
 - Resolution: `csh doctor`, `csh status`, and `csh config check` now provide a defined install/config/runtime preflight path before host startup.
 - Proof: `bun run csh doctor /tmp/csh-cli-polish.env`, `bun run csh status /tmp/csh-cli-polish.env`, and `bun run csh config check /tmp/csh-cli-polish.env` all succeeded against a fresh bootstrap config.
+
+### `deployment-resilience-install-02`
+
+- Severity: low
+- Summary: the first Bun-backed installer pass could install a managed launcher, but it did not yet
+  define the rest of the lifecycle, so operators had no canonical upgrade or uninstall flow.
+- Evidence:
+  - [install-cli.sh](/workspace/projects/csh/scripts/install-cli.sh)
+  - [csh.ts](/workspace/projects/csh/scripts/csh.ts)
+- Status: closed 2026-03-16
+- Resolution: `csh upgrade` now refreshes the managed launcher/completions in place and
+  `csh uninstall` removes them cleanly, while still refusing to touch non-managed launchers unless
+  `--force` is supplied.
+- Proof: `bun run csh install --prefix /tmp/csh-lifecycle --no-runtime`, `bun run csh upgrade --prefix /tmp/csh-lifecycle --no-runtime`, and `bun run csh uninstall --prefix /tmp/csh-lifecycle` completed successfully and removed the managed launcher.

@@ -19,6 +19,7 @@ const envSchema = z.object({
     .trim()
     .optional()
     .transform((value) => value === "1" || value?.toLowerCase() === "true"),
+  CSH_SCROLLBACK_LINES: z.coerce.number().int().min(1000).max(200000).default(10000),
 });
 
 const openSchema = z.object({
@@ -103,7 +104,7 @@ export async function startBrowserServer(options: BrowserServerOptions): Promise
     port: env.CSH_BROWSER_PORT,
     idleTimeout: 30,
     fetch: (request) =>
-      handleRequest(request, shellBridge, assets, noStoreHeaders, options, apiToken, browserAuth),
+      handleRequest(request, shellBridge, assets, noStoreHeaders, options, apiToken, browserAuth, env.CSH_SCROLLBACK_LINES),
     error(error) {
       console.error(error);
       return Response.json(
@@ -155,6 +156,7 @@ async function handleRequest(
   options: BrowserServerOptions,
   apiToken: string,
   browserAuth: BrowserAuth | null,
+  scrollbackLines: number,
 ): Promise<Response> {
   const url = new URL(request.url);
   const authError = authorizeBrowserRequest(request, browserAuth);
@@ -169,7 +171,7 @@ async function handleRequest(
   }
 
   if (request.method === "GET" && url.pathname === "/") {
-    return new Response(renderHtml(bundledAssets, options, apiToken), {
+    return new Response(renderHtml(bundledAssets, options, apiToken, scrollbackLines), {
       headers: {
         "content-type": "text/html; charset=utf-8",
         ...noStoreHeaders,
@@ -348,6 +350,7 @@ function renderHtml(
   assets: BundledAssets,
   options: BrowserServerOptions,
   apiToken: string,
+  scrollbackLines: number,
 ): string {
   const stylesheetLinks = assets.stylesheetPaths
     .map((href) => `<link rel="stylesheet" href="${href}">`)
@@ -387,6 +390,7 @@ function renderHtml(
       window.__CSH_BROWSER_CONFIG__ = ${JSON.stringify({
         apiToken,
         stateNamespace: options.stateNamespace,
+        scrollbackLines,
       })};
     </script>
     <script type="module" src="${assets.scriptPath}"></script>

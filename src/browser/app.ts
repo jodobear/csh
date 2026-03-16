@@ -35,6 +35,7 @@ type UiElements = {
 type BrowserRuntimeConfig = {
   apiToken: string;
   stateNamespace: string;
+  scrollbackLines: number;
 };
 
 const pollIntervalMs = 60;
@@ -45,6 +46,7 @@ const ui = getUiElements();
 const terminal = new Terminal({
   cursorBlink: true,
   convertEol: true,
+  scrollback: browserConfig.scrollbackLines,
   fontFamily: '"IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", monospace',
   fontSize: 14,
   theme: {
@@ -355,7 +357,7 @@ async function postJson<T = Record<string, unknown>>(
 }
 
 function toTerminalInput(event: KeyboardEvent): string | null {
-  if (event.metaKey || event.altKey) {
+  if (event.metaKey) {
     return null;
   }
 
@@ -380,6 +382,12 @@ function toTerminalInput(event: KeyboardEvent): string | null {
       return "\u001b[F";
     case "Delete":
       return "\u001b[3~";
+    case "PageUp":
+      return "\u001b[5~";
+    case "PageDown":
+      return "\u001b[6~";
+    case "Escape":
+      return "\u001b";
     default:
       break;
   }
@@ -391,6 +399,10 @@ function toTerminalInput(event: KeyboardEvent): string | null {
     }
 
     return null;
+  }
+
+  if (event.altKey && event.key.length === 1) {
+    return `\u001b${event.key}`;
   }
 
   if (event.key.length === 1) {
@@ -511,7 +523,8 @@ function readBrowserRuntimeConfig(): BrowserRuntimeConfig {
   if (
     !runtimeConfig ||
     typeof runtimeConfig.apiToken !== "string" ||
-    typeof runtimeConfig.stateNamespace !== "string"
+    typeof runtimeConfig.stateNamespace !== "string" ||
+    typeof runtimeConfig.scrollbackLines !== "number"
   ) {
     throw new Error("Missing browser runtime configuration");
   }

@@ -14,6 +14,13 @@ bun run csh install
 That writes a Bun-backed launcher to `~/.local/bin/csh` by default. Use `--prefix <dir>` if you want
 another install root.
 
+Refresh or remove that launcher later with:
+
+```bash
+csh upgrade
+csh uninstall
+```
+
 ## Primary Commands
 
 Bootstrap a secure local config:
@@ -102,6 +109,19 @@ Print the installed version:
 ```bash
 csh version
 ```
+
+## Terminal Behavior
+
+The current shell path is still `tmux` snapshot-backed, not raw PTY streaming, but it now supports a
+broader practical shell-editing set:
+
+- history recall via arrow keys
+- backspace/delete/home/end/page keys
+- common `Ctrl-<letter>` shell-editing shortcuts
+- browser scrollback sized from `CSH_SCROLLBACK_LINES` (default `10000`)
+
+The residual limitation is still architectural: full byte-perfect TUIs are not the claim of this
+version.
 
 ## Secure Defaults
 

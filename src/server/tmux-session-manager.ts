@@ -12,7 +12,8 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const TMUX_HISTORY_START = "-2000";
+const TMUX_SCROLLBACK_LINES = parseScrollbackLines(process.env.CSH_SCROLLBACK_LINES, 10_000);
+const TMUX_HISTORY_START = `-${TMUX_SCROLLBACK_LINES}`;
 const TMUX_SOCKET_PATH =
   process.env.CSH_TMUX_SOCKET ??
   path.join(process.cwd(), ".csh-runtime", "tmux.sock");
@@ -570,20 +571,193 @@ async function signalPane(session: ShellSession, signalName: NodeJS.Signals): Pr
 }
 
 async function sendInput(paneTarget: string, input: string): Promise<void> {
-  const parts = input.split(/(\r\n|\r|\n)/);
+  let literalBuffer = "";
 
-  for (const part of parts) {
-    if (part === "") {
+  for (const action of parseTerminalInput(input)) {
+    if (action.kind === "literal") {
+      literalBuffer += action.value;
       continue;
     }
 
-    if (part === "\r" || part === "\n" || part === "\r\n") {
-      await runTmux(["send-keys", "-t", paneTarget, "Enter"]);
-      continue;
+    if (literalBuffer.length > 0) {
+      await runTmux(["send-keys", "-t", paneTarget, "-l", literalBuffer]);
+      literalBuffer = "";
     }
 
-    await runTmux(["send-keys", "-t", paneTarget, "-l", part]);
+    await runTmux(["send-keys", "-t", paneTarget, action.key]);
   }
+
+  if (literalBuffer.length > 0) {
+    await runTmux(["send-keys", "-t", paneTarget, "-l", literalBuffer]);
+  }
+}
+
+type InputAction =
+  | { kind: "literal"; value: string }
+  | { kind: "key"; key: string };
+
+function parseTerminalInput(input: string): InputAction[] {
+  const actions: InputAction[] = [];
+  let index = 0;
+
+  while (index < input.length) {
+    const bracketedPasteStart = input.startsWith("\u001b[200~", index);
+    if (bracketedPasteStart) {
+      const pasteEnd = input.indexOf("\u001b[201~", index + 6);
+      if (pasteEnd !== -1) {
+        const pasted = input.slice(index + 6, pasteEnd);
+        if (pasted.length > 0) {
+          actions.push({ kind: "literal", value: pasted });
+        }
+        index = pasteEnd + 6;
+        continue;
+      }
+    }
+
+    const special = parseSpecialSequence(input, index);
+    if (special) {
+      actions.push(special.action);
+      index += special.length;
+      continue;
+    }
+
+    actions.push({ kind: "literal", value: input[index] });
+    index += 1;
+  }
+
+  return coalesceLiteralActions(actions);
+}
+
+function parseSpecialSequence(
+  input: string,
+  index: number,
+): { action: InputAction; length: number } | null {
+  if (input.startsWith("\r\n", index)) {
+    return { action: { kind: "key", key: "Enter" }, length: 2 };
+  }
+
+  const char = input[index];
+  if (char === "\r" || char === "\n") {
+    return { action: { kind: "key", key: "Enter" }, length: 1 };
+  }
+  if (char === "\t") {
+    return { action: { kind: "key", key: "Tab" }, length: 1 };
+  }
+  if (char === "\u007f" || char === "\b") {
+    return { action: { kind: "key", key: "BSpace" }, length: 1 };
+  }
+
+  const code = char.charCodeAt(0);
+  if (code >= 0x01 && code <= 0x1a) {
+    const key = String.fromCharCode(code + 96);
+    return { action: { kind: "key", key: `C-${key}` }, length: 1 };
+  }
+
+  if (char !== "\u001b") {
+    return null;
+  }
+
+  for (const [sequence, key] of ESCAPE_KEY_SEQUENCES) {
+    if (input.startsWith(sequence, index)) {
+      return { action: { kind: "key", key }, length: sequence.length };
+    }
+  }
+
+  const modifiedArrow = input.slice(index).match(/^\u001b\[1;([235])([ABCDHF])/) ??
+    input.slice(index).match(/^\u001b\[([1-8]);([235])([ABCDHF])/);
+  if (modifiedArrow) {
+    const modifier = modifiedArrow[1] ?? modifiedArrow[2];
+    const keyCode = modifiedArrow[2] ?? modifiedArrow[3];
+    const prefix = modifierToTmuxPrefix(modifier);
+    const key = navigationKeyName(keyCode);
+    if (prefix && key) {
+      return { action: { kind: "key", key: `${prefix}-${key}` }, length: modifiedArrow[0].length };
+    }
+  }
+
+  const altChar = input[index + 1];
+  if (altChar && altChar !== "\u001b" && !altChar.startsWith?.("[")) {
+    const maybeAlt = altKeyName(altChar);
+    if (maybeAlt) {
+      return { action: { kind: "key", key: maybeAlt }, length: 2 };
+    }
+  }
+
+  return { action: { kind: "key", key: "Escape" }, length: 1 };
+}
+
+const ESCAPE_KEY_SEQUENCES = new Map<string, string>([
+  ["\u001b[A", "Up"],
+  ["\u001b[B", "Down"],
+  ["\u001b[C", "Right"],
+  ["\u001b[D", "Left"],
+  ["\u001bOA", "Up"],
+  ["\u001bOB", "Down"],
+  ["\u001bOC", "Right"],
+  ["\u001bOD", "Left"],
+  ["\u001b[H", "Home"],
+  ["\u001b[F", "End"],
+  ["\u001bOH", "Home"],
+  ["\u001bOF", "End"],
+  ["\u001b[3~", "DC"],
+  ["\u001b[5~", "PageUp"],
+  ["\u001b[6~", "PageDown"],
+  ["\u001b[Z", "BTab"],
+]);
+
+function navigationKeyName(code: string | undefined): string | null {
+  switch (code) {
+    case "A":
+      return "Up";
+    case "B":
+      return "Down";
+    case "C":
+      return "Right";
+    case "D":
+      return "Left";
+    case "H":
+      return "Home";
+    case "F":
+      return "End";
+    default:
+      return null;
+  }
+}
+
+function modifierToTmuxPrefix(modifier: string | undefined): string | null {
+  switch (modifier) {
+    case "2":
+      return "S";
+    case "3":
+      return "M";
+    case "5":
+      return "C";
+    default:
+      return null;
+  }
+}
+
+function altKeyName(char: string): string | null {
+  if (/^[A-Za-z0-9]$/.test(char)) {
+    return `M-${char.toLowerCase()}`;
+  }
+  return null;
+}
+
+function coalesceLiteralActions(actions: InputAction[]): InputAction[] {
+  const merged: InputAction[] = [];
+
+  for (const action of actions) {
+    const previous = merged[merged.length - 1];
+    if (action.kind === "literal" && previous?.kind === "literal") {
+      previous.value += action.value;
+      continue;
+    }
+
+    merged.push(action);
+  }
+
+  return merged;
 }
 
 async function getForegroundProcessGroup(processId: number): Promise<number | null> {
@@ -646,6 +820,19 @@ function parseDurationMs(value: string | undefined, fallbackMs: number): number 
   }
 
   return Math.max(0, parsed * 1000);
+}
+
+function parseScrollbackLines(value: string | undefined, fallback: number): number {
+  if (!value) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.max(1000, Math.min(200_000, parsed));
 }
 
 function reportBackgroundError(error: unknown): void {

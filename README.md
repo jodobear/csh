@@ -60,6 +60,13 @@ Inspect the resolved deployment/operator state:
 csh status
 ```
 
+Upgrade or remove the installed launcher later with:
+
+```bash
+csh upgrade
+csh uninstall
+```
+
 If you prefer not to install a launcher yet, every command above also works as `bin/csh ...` from the
 repo root.
 
@@ -83,7 +90,8 @@ Use a relay you control for real operator work. The canonical deployment path li
 
 - The browser UI is operator-local and loopback-bound by default.
 - Sessions persist across client reconnects and can survive host restart when the same runtime state is reused.
-- The backend is `tmux` snapshot-based today, so terminal fidelity is below a raw PTY byte-stream design.
+- The backend is `tmux` snapshot-based today. It now supports richer shell-editing keys and deeper
+  scrollback, but it is still below a raw PTY byte-stream design.
 - `csh install` writes a Bun-backed launcher into `~/.local/bin/csh` by default.
 
 For the current verified state and operational details, see [handoff.md](/workspace/projects/csh/handoff.md), [docs/README.md](/workspace/projects/csh/docs/README.md), [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md), and [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md).

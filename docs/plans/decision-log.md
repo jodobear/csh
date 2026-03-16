@@ -383,3 +383,28 @@
   sliding back into overlapping commands.
 - Reversal trigger: reverse only if a future standalone packaged CLI or different operator client
   makes this preflight surface redundant.
+
+### 2026-03-16
+
+- Status: accepted
+- Decision: keep pushing terminal fidelity inside the current tmux-backed design only up to the
+  point where it materially improves operator shell behavior, without claiming raw PTY semantics.
+- Why: `csh-old` confirmed that the repo did not already have a hidden better PTY core to port, and
+  the current gap can still be narrowed meaningfully by improving control-key handling and
+  scrollback depth without changing transports mid-slice.
+- Tradeoff: shell behavior is better for real operators now, but the repo still owes an explicit
+  backend decision if it wants true byte-perfect terminal semantics later.
+- Reversal trigger: reverse when the remaining fidelity gaps become dominated by the tmux/snapshot
+  model itself rather than by missing key handling or shallow scrollback.
+
+### 2026-03-16
+
+- Status: accepted
+- Decision: define the Bun-backed launcher lifecycle explicitly with `csh upgrade` and
+  `csh uninstall`.
+- Why: once `csh install` became the recommended operator path, not having the rest of the lifecycle
+  was an operational gap rather than a minor docs omission.
+- Tradeoff: the CLI surface grows by two more operational commands, but the launcher lifecycle is
+  now explicit and reversible.
+- Reversal trigger: reverse only if the repo moves to a different packaging/install model where a
+  managed repo-backed launcher is no longer the primary distribution path.

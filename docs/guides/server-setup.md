@@ -21,6 +21,13 @@ csh doctor
 csh status
 ```
 
+For lifecycle:
+
+```bash
+csh upgrade
+csh uninstall
+```
+
 If `~/.local/bin` is not already on `PATH`, add it before continuing.
 
 ## Recommended Transport Posture
@@ -46,6 +53,7 @@ csh bootstrap .env.csh.local
 ```
 
 The generated env includes browser credentials and defaults to a loopback/private relay.
+It also sets `CSH_SCROLLBACK_LINES=10000` for the tmux/browser snapshot path.
 
 Check readiness and the resolved runtime state:
 
@@ -151,6 +159,18 @@ The default browser flow is:
 4. use the reconnect button if you want to reattach a persisted session
 
 The browser UI is an operator-side bridge, not a public multi-user shell surface.
+
+## Terminal Fidelity Posture
+
+Current behavior is intentionally described narrowly:
+
+- richer shell-editing input is supported through the tmux bridge
+- deeper scrollback is available through `CSH_SCROLLBACK_LINES`
+- reconnect and session persistence work
+- raw PTY byte-stream fidelity is still not implemented
+
+If the next phase pushes fidelity further, it should be about the backend session model rather than
+more CLI surface.
 
 ## Persistent Service
 

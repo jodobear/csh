@@ -112,3 +112,32 @@ Question: where does the operator-facing workflow mislead the user, lose state, 
   - [contextvm-interactive-client.ts](/workspace/projects/csh/src/contextvm-interactive-client.ts#L74)
 - Status: closed 2026-03-16
 - Resolution: `csh browser` now prints the browser URL and credential source before launch, `browser-local` prints the effective local URL and auth expectations, and `csh shell` prints the reconnect hint on initial connect as well as reconnect.
+
+### `operator-workflow-terminal-02`
+
+- Severity: medium
+- Summary: terminal input fidelity previously stopped at printable text plus Enter, so history recall,
+  backspace editing, paging keys, and common shell-editing controls were unreliable through the tmux
+  bridge.
+- Evidence:
+  - [tmux-session-manager.ts](/workspace/projects/csh/src/server/tmux-session-manager.ts)
+  - [app.ts](/workspace/projects/csh/src/browser/app.ts)
+- Status: closed 2026-03-16
+- Resolution: the tmux input bridge now parses a broader set of control sequences and maps them to
+  tmux key names, including arrows, backspace/delete, home/end, page keys, Alt-character prefixes,
+  and common `Ctrl-<letter>` shell-editing controls.
+- Proof: a direct session-manager proof now replays prior history with `ArrowUp` and produces
+  `ststop` after backspace editing, confirming that non-printable input is reaching the shell as
+  editing keys rather than only literal text.
+
+### `operator-workflow-terminal-03`
+
+- Severity: low
+- Summary: terminal scrollback depth was too shallow and under-documented for an operator shell.
+- Evidence:
+  - [tmux-session-manager.ts](/workspace/projects/csh/src/server/tmux-session-manager.ts)
+  - [server-core.ts](/workspace/projects/csh/src/browser/server-core.ts)
+  - [app.ts](/workspace/projects/csh/src/browser/app.ts)
+- Status: closed 2026-03-16
+- Resolution: scrollback depth is now configurable through `CSH_SCROLLBACK_LINES` and defaults to
+  `10000` lines across the tmux capture path and browser terminal.

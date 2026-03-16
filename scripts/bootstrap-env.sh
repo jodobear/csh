@@ -40,6 +40,7 @@ client_public_key="$(printf '%s' "$client_json" | jq -r '.publicKeyHex')"
   printf 'CSH_BROWSER_TRUST_PROXY_TLS=%q\n' '0'
   printf 'CSH_SESSION_IDLE_TTL_SECONDS=%q\n' '1800'
   printf 'CSH_CLOSED_SESSION_TTL_SECONDS=%q\n' '300'
+  printf 'CSH_SCROLLBACK_LINES=%q\n' '10000'
 } > "$OUTPUT_FILE"
 chmod 600 "$OUTPUT_FILE"
 

@@ -33,6 +33,7 @@ export type AppConfig = {
   browserTrustProxyTls: boolean;
   sessionIdleTtlSeconds: number;
   closedSessionTtlSeconds: number;
+  scrollbackLines: number;
 };
 
 export type ConfigCheckResult = {
@@ -157,6 +158,7 @@ export function loadConfig(envFilePath: string = defaultEnvFile()): AppConfig {
     browserTrustProxyTls: parseBoolean(values.CSH_BROWSER_TRUST_PROXY_TLS, false),
     sessionIdleTtlSeconds: parseNumber(values.CSH_SESSION_IDLE_TTL_SECONDS, 1800, "CSH_SESSION_IDLE_TTL_SECONDS"),
     closedSessionTtlSeconds: parseNumber(values.CSH_CLOSED_SESSION_TTL_SECONDS, 300, "CSH_CLOSED_SESSION_TTL_SECONDS"),
+    scrollbackLines: parseNumber(values.CSH_SCROLLBACK_LINES, 10_000, "CSH_SCROLLBACK_LINES"),
   };
 }
 
@@ -252,6 +254,7 @@ export function redactConfig(config: AppConfig): Record<string, unknown> {
     browserTrustProxyTls: config.browserTrustProxyTls,
     sessionIdleTtlSeconds: config.sessionIdleTtlSeconds,
     closedSessionTtlSeconds: config.closedSessionTtlSeconds,
+    scrollbackLines: config.scrollbackLines,
   };
 }
 
@@ -293,7 +296,8 @@ export function writeBootstrapEnv(outputFile: string): { outputFile: string; all
     formatEnvLine("CSH_BROWSER_AUTH_PASSWORD", browserAuthPassword) +
     formatEnvLine("CSH_BROWSER_TRUST_PROXY_TLS", "0") +
     formatEnvLine("CSH_SESSION_IDLE_TTL_SECONDS", "1800") +
-    formatEnvLine("CSH_CLOSED_SESSION_TTL_SECONDS", "300");
+    formatEnvLine("CSH_CLOSED_SESSION_TTL_SECONDS", "300") +
+    formatEnvLine("CSH_SCROLLBACK_LINES", "10000");
 
   writeFileSync(outputFile, text, "utf8");
   chmodSync(outputFile, 0o600);
