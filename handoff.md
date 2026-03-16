@@ -28,6 +28,9 @@
 ## Current Product State
 
 - `csh` is a repo-local `tmux`-backed interactive shell over ContextVM/Nostr with CLI and browser clients.
+- Active operator/config naming now uses `csh`, not `phase1`:
+  - default local env path is `.env.csh.local`
+  - example env file is `.env.csh.example`
 - Preferred operator transport is now explicit:
   - private relay you control
   - SSH tunnel fallback

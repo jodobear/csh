@@ -27,7 +27,7 @@ bun install
 Bootstrap a local env:
 
 ```bash
-bin/csh bootstrap .env.phase1.local
+bin/csh bootstrap .env.csh.local
 ```
 
 The generated env includes browser credentials and defaults to a loopback/private relay.
@@ -35,13 +35,13 @@ The generated env includes browser credentials and defaults to a loopback/privat
 Check readiness:
 
 ```bash
-bin/csh host check .env.phase1.local
+bin/csh host check .env.csh.local
 ```
 
 Start the host:
 
 ```bash
-bin/csh host start .env.phase1.local
+bin/csh host start .env.csh.local
 ```
 
 ## Private Test Relay With `nak`
@@ -130,7 +130,7 @@ and put it behind an HTTPS/TLS-terminating reverse proxy.
 Render the `systemd` unit:
 
 ```bash
-bin/csh host systemd-unit .env.phase1.local --output /tmp/csh-host.service
+bin/csh host systemd-unit .env.csh.local --output /tmp/csh-host.service
 ```
 
 See [csh-host.service.example](/workspace/projects/csh/ops/systemd/csh-host.service.example).

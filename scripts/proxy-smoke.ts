@@ -6,7 +6,7 @@ import { parseToolResult } from "../src/mcp/tool-result.js";
 
 loadEnvFile();
 
-const envFile = process.env.CVM_ENV_FILE || ".env.phase1.local";
+const envFile = process.env.CVM_ENV_FILE || ".env.csh.local";
 const command = process.env.CVM_PROXY_COMMAND || "scripts/start-proxy.sh";
 const args = process.env.CVM_PROXY_ARGS
   ? process.env.CVM_PROXY_ARGS.split(" ").filter(Boolean)
@@ -26,7 +26,7 @@ transport.stderr?.on("data", (chunk) => {
 });
 
 const client = new Client({
-  name: "csh-phase1-proxy-smoke",
+  name: "csh-proxy-smoke",
   version: "0.1.0",
 });
 

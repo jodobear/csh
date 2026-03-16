@@ -19,7 +19,7 @@ function assert(condition: unknown, message: string): asserts condition {
   }
 }
 
-const firstClient = await createDirectClient("csh-phase1-lifecycle-a");
+const firstClient = await createDirectClient("csh-lifecycle-a");
 const opened = await openSession(firstClient);
 await writeSession(firstClient, opened.sessionId, "printf '__PWD__%s\\n' \"$PWD\"\necho __PID__$$\n");
 const firstResult = await waitForSnapshot(
@@ -44,7 +44,7 @@ await firstClient.close();
 
 await sleep(reconnectDelayMs);
 
-const reconnectClient = await createDirectClient("csh-phase1-lifecycle-b");
+const reconnectClient = await createDirectClient("csh-lifecycle-b");
 await writeSession(
   reconnectClient,
   opened.sessionId,

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ENV_FILE="${1:-$ROOT_DIR/.env.phase1.local}"
+ENV_FILE="${1:-$ROOT_DIR/.env.csh.local}"
 
 if ! command -v bun >/dev/null 2>&1; then
   echo "bun is required" >&2

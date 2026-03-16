@@ -36,7 +36,7 @@ These scripts compose the repo-local interactive shell path:
    bin/csh bootstrap
    ```
 
-3. Inspect or edit `.env.phase1.local` if you want different relays or metadata.
+3. Inspect or edit `.env.csh.local` if you want different relays or metadata.
    The browser UI now expects credentials from `CSH_BROWSER_AUTH_USER` and
    `CSH_BROWSER_AUTH_PASSWORD`.
 
@@ -51,25 +51,25 @@ These scripts compose the repo-local interactive shell path:
 2. Start the host:
 
    ```bash
-   bin/csh host start .env.phase1.local
+   bin/csh host start .env.csh.local
    ```
 
 3. In a second shell, run the smoke client:
 
    ```bash
-   bin/csh direct .env.phase1.local
+   bin/csh direct .env.csh.local
    ```
 
 4. Run the lifecycle test:
 
    ```bash
-   bin/csh lifecycle .env.phase1.local
+   bin/csh lifecycle .env.csh.local
    ```
 
 5. Optionally run the stdio proxy path:
 
    ```bash
-   bin/csh proxy .env.phase1.local
+   bin/csh proxy .env.csh.local
    ```
 
 6. Run the full loop in one command:
@@ -84,22 +84,22 @@ These scripts compose the repo-local interactive shell path:
 7. Run one real operator command:
 
    ```bash
-   bin/csh exec "pwd" .env.phase1.local
+   bin/csh exec "pwd" .env.csh.local
    ```
 
 8. Start the interactive shell:
 
    ```bash
-   bin/csh shell .env.phase1.local
+   bin/csh shell .env.csh.local
    ```
 
 9. Start the browser terminal UI:
 
    ```bash
-   bin/csh browser .env.phase1.local
+   bin/csh browser .env.csh.local
    ```
 
-   Then authenticate in the browser with the credentials from `.env.phase1.local`.
+   Then authenticate in the browser with the credentials from `.env.csh.local`.
 
 ## Notes
 

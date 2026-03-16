@@ -178,3 +178,10 @@ Append-only project communication history.
 - When: 2026-03-16 01:12 WET
 - What: Revalidated the integrated paths after those fixes. Local `bin/csh verify /tmp/csh-fix-pass.env` passed end to end. Outside the sandbox, the public-relay shell path succeeded through `/tmp/csh-public-shell.sh`, and the browser-over-ContextVM path succeeded through `/tmp/csh-public-browser.sh`, which returned a snapshot containing `__BROWSER__/workspace/projects/csh` over `wss://relay.contextvm.org`.
 - Session: local repo execution
+
+### 2026-03-16 01:18 WET
+
+- Who: Codex
+- When: 2026-03-16 01:18 WET
+- What: Removed stale `phase1` naming from the active operator surface. Default env/config naming is now `.env.csh.local` / `.env.csh.example`, generated session IDs now use `csh-*`, and the active README/scripts/guides were updated accordingly. Remaining `phase1` references are historical provenance only.
+- Session: local repo execution

@@ -42,7 +42,7 @@ function stripQuotes(value: string): string {
   return value.replace(/\\ /g, " ");
 }
 
-export function loadEnvFile(envFile = process.env.CVM_ENV_FILE || ".env.phase1.local"): void {
+export function loadEnvFile(envFile = process.env.CVM_ENV_FILE || ".env.csh.local"): void {
   const text = readFileSync(envFile, "utf8");
   for (const rawLine of text.split(/\r?\n/)) {
     const line = rawLine.trim();

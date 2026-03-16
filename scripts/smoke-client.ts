@@ -9,7 +9,7 @@ import {
 
 loadEnvFile();
 
-const client = await createDirectClient("csh-phase1-smoke");
+const client = await createDirectClient("csh-smoke");
 
 const tools = await client.listTools();
 console.log(JSON.stringify({ tools: tools.tools.map((tool) => tool.name) }, null, 2));

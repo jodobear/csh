@@ -56,7 +56,7 @@ export function repoRoot(): string {
 }
 
 export function defaultEnvFile(): string {
-  return path.join(repoRoot(), ".env.phase1.local");
+  return path.join(repoRoot(), ".env.csh.local");
 }
 
 export function parseEnvFile(envFilePath: string): Record<string, string> {
@@ -125,8 +125,8 @@ export function loadConfig(envFilePath: string = defaultEnvFile()): AppConfig {
     serverPubkey: values.CVM_SERVER_PUBKEY || "",
     proxyEncryptionMode: (values.CVM_PROXY_ENCRYPTION_MODE as EncryptionMode) || "required",
     logLevel: (values.CVM_LOG_LEVEL as ClientLogLevel) || "error",
-    smokeSessionId: values.CVM_SMOKE_SESSION_ID || "phase1-smoke",
-    lifecycleSessionId: values.CVM_LIFECYCLE_SESSION_ID || "phase1-lifecycle",
+    smokeSessionId: values.CVM_SMOKE_SESSION_ID || "csh-smoke",
+    lifecycleSessionId: values.CVM_LIFECYCLE_SESSION_ID || "csh-lifecycle",
     responseLookbackSeconds: parseNumber(values.CVM_RESPONSE_LOOKBACK_SECONDS, 300, "CVM_RESPONSE_LOOKBACK_SECONDS"),
     browserHost: values.CSH_BROWSER_HOST || "127.0.0.1",
     browserPort: parseNumber(values.CSH_BROWSER_PORT, 4318, "CSH_BROWSER_PORT"),
@@ -263,8 +263,8 @@ export function writeBootstrapEnv(outputFile: string): { outputFile: string; all
     formatEnvLine("CVM_PROXY_ENCRYPTION_MODE", "required") +
     formatEnvLine("CVM_LOG_LEVEL", "error") +
     formatEnvLine("CVM_RESPONSE_LOOKBACK_SECONDS", "300") +
-    formatEnvLine("CVM_SMOKE_SESSION_ID", "phase1-smoke") +
-    formatEnvLine("CVM_LIFECYCLE_SESSION_ID", "phase1-lifecycle") +
+    formatEnvLine("CVM_SMOKE_SESSION_ID", "csh-smoke") +
+    formatEnvLine("CVM_LIFECYCLE_SESSION_ID", "csh-lifecycle") +
     formatEnvLine("CSH_BROWSER_HOST", "127.0.0.1") +
     formatEnvLine("CSH_BROWSER_PORT", "4318") +
     formatEnvLine("CSH_BROWSER_ALLOW_REMOTE", "0") +

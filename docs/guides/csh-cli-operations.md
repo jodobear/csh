@@ -7,7 +7,7 @@
 Bootstrap a secure local config:
 
 ```bash
-bin/csh bootstrap .env.phase1.local
+bin/csh bootstrap .env.csh.local
 ```
 
 Install or refresh runtime prerequisites:
@@ -19,37 +19,37 @@ bin/csh runtime install
 Validate host readiness:
 
 ```bash
-bin/csh host check .env.phase1.local
+bin/csh host check .env.csh.local
 ```
 
 Start the persistent host:
 
 ```bash
-bin/csh host start .env.phase1.local
+bin/csh host start .env.csh.local
 ```
 
 Run one operator command in a fresh remote shell:
 
 ```bash
-bin/csh exec "pwd" .env.phase1.local
+bin/csh exec "pwd" .env.csh.local
 ```
 
 Start the interactive shell:
 
 ```bash
-bin/csh shell .env.phase1.local
+bin/csh shell .env.csh.local
 ```
 
 Reconnect to an existing interactive session:
 
 ```bash
-bin/csh shell .env.phase1.local --session <session-id>
+bin/csh shell .env.csh.local --session <session-id>
 ```
 
 Start the browser terminal UI:
 
 ```bash
-bin/csh browser .env.phase1.local
+bin/csh browser .env.csh.local
 ```
 
 The browser will prompt for the credentials from `CSH_BROWSER_AUTH_USER` and
@@ -77,7 +77,7 @@ bin/csh verify /tmp/csh-verify.env
 Render a hardened unit for your real server paths:
 
 ```bash
-bin/csh host systemd-unit .env.phase1.local --output /tmp/csh-host.service
+bin/csh host systemd-unit .env.csh.local --output /tmp/csh-host.service
 ```
 
 You can also start from [csh-host.service.example](/workspace/projects/csh/ops/systemd/csh-host.service.example).

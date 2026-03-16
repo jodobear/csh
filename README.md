@@ -33,31 +33,31 @@ bin/csh bootstrap
 Check host readiness:
 
 ```bash
-bin/csh host check .env.phase1.local
+bin/csh host check .env.csh.local
 ```
 
 Start the host:
 
 ```bash
-bin/csh host start .env.phase1.local
+bin/csh host start .env.csh.local
 ```
 
 Run one command from another shell:
 
 ```bash
-bin/csh exec "pwd" .env.phase1.local
+bin/csh exec "pwd" .env.csh.local
 ```
 
 Open the interactive shell:
 
 ```bash
-bin/csh shell .env.phase1.local
+bin/csh shell .env.csh.local
 ```
 
 Open the browser terminal:
 
 ```bash
-bin/csh browser .env.phase1.local
+bin/csh browser .env.csh.local
 ```
 
 Start a deterministic local test relay with `nak`:
