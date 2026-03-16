@@ -48,25 +48,42 @@ try {
       name: "session_write",
       arguments: {
         sessionId: openResult.sessionId,
-        input: "pwd\n",
+        input: "printf '__PWD__%s\\n' \"$PWD\"\ncd /tmp\nprintf '__PWD__%s\\n' \"$PWD\"\n",
       },
     }),
   );
-  const result = await parseToolResult<{ cursor: number; snapshot: string | null }>(
-    client.callTool({
-      name: "session_poll",
-      arguments: {
-        sessionId: openResult.sessionId,
-        cursor: openResult.cursor,
-      },
-    }),
-  );
+  let cursor = openResult.cursor;
+  let snapshot: string | null = null;
+  const startedAt = Date.now();
+  while (Date.now() - startedAt < 10_000) {
+    const result = await parseToolResult<{ cursor: number; snapshot: string | null }>(
+      client.callTool({
+        name: "session_poll",
+        arguments: {
+          sessionId: openResult.sessionId,
+          cursor,
+        },
+      }),
+    );
+    cursor = result.cursor;
+    if (result.snapshot !== null) {
+      snapshot = result.snapshot;
+      if (snapshot.includes("__PWD__/tmp")) {
+        break;
+      }
+    }
+    await Bun.sleep(50);
+  }
+
+  if (!snapshot || !snapshot.includes("__PWD__/tmp")) {
+    throw new Error("Proxy smoke did not observe expected shell output");
+  }
 
   console.log(
     JSON.stringify(
       {
         tools: tools.tools.map((tool) => tool.name),
-        firstCommand: result.snapshot,
+        snapshot,
       },
       null,
       2,

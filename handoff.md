@@ -47,11 +47,11 @@
 | Restart recovery and cleanup exist | local restart and TTL cleanup tests with shared `CSH_SESSION_STATE_DIR` and `CSH_TMUX_SOCKET` passed | proven locally | relay-backed restart was not rerun separately |
 | Remote browser auth is enforced before page load | in-process browser auth check returned `401` for unauthenticated/wrong-password requests and `200` for correct credentials | proven locally | remote browser mode is still an explicitly opt-in operator workflow |
 | Session metadata stays private on disk | isolated session-manager check produced session dir mode `700`, file mode `600`, and unchanged `lastActivityAt` across polling | proven locally | runtime depends on host filesystem honoring POSIX modes |
-| Public relay is acceptable as primary transport | latest `bin/csh exec ... /tmp/csh-live-test.env` against `wss://relay.contextvm.org` | not proven; failed with relay connection errors and `Publish event timed out` before `initialize` | could improve later, but not the default path now |
+| Public relay compatibility works | outside the sandbox, `/tmp/csh-public-shell.sh` returned `/workspace/projects/csh` and `/tmp/csh-public-browser.sh` rendered `__BROWSER__/workspace/projects/csh` over `wss://relay.contextvm.org` | proven as a compatibility path | still not the preferred operator transport; private relay remains the default posture |
 
 ## Open Risks
 
-- `relay.contextvm.org` remains flaky in this environment and should not be the primary operator relay.
+- `relay.contextvm.org` now works as a compatibility path, but it should still not be the primary operator relay.
 - The backend is still `tmux send-keys` plus snapshot capture, so fidelity is below a raw PTY byte stream.
 - The browser UI is an operator-side bridge, not a public multi-user shell surface.
 - Interactive disconnect still uses a bounded grace window, not a hard delivery guarantee under a broken transport.
@@ -64,10 +64,9 @@
 
 ## Next Actions
 
-1. Re-run end-to-end shell and browser flows against a private relay in a clean network environment after this remediation pass.
-2. Decide whether to package `csh` beyond the current Bun-backed repo CLI.
-3. Expand the user-facing setup guide around the now-proven private-relay workflow.
-4. Keep public-relay testing opportunistic and secondary.
+1. Decide whether to package `csh` beyond the current Bun-backed repo CLI.
+2. Expand the user-facing setup guide around the now-proven private-relay workflow and authenticated browser path.
+3. Keep public-relay testing opportunistic and secondary.
 
 ## Process Notes
 

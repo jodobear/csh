@@ -14,6 +14,11 @@ const envSchema = z.object({
     .transform((value) => value === "1" || value?.toLowerCase() === "true"),
   CSH_BROWSER_AUTH_USER: z.string().trim().optional(),
   CSH_BROWSER_AUTH_PASSWORD: z.string().trim().optional(),
+  CSH_BROWSER_TRUST_PROXY_TLS: z
+    .string()
+    .trim()
+    .optional()
+    .transform((value) => value === "1" || value?.toLowerCase() === "true"),
 });
 
 const openSchema = z.object({
@@ -69,6 +74,7 @@ type BundledAssets = {
 type BrowserAuth = {
   username: string;
   password: string;
+  generated: boolean;
 };
 
 export async function startBrowserServer(options: BrowserServerOptions): Promise<void> {
@@ -76,6 +82,11 @@ export async function startBrowserServer(options: BrowserServerOptions): Promise
   if (!env.CSH_BROWSER_ALLOW_REMOTE && !isLoopbackHost(env.CSH_BROWSER_HOST)) {
     throw new Error(
       `Refusing to bind browser UI to non-loopback host ${env.CSH_BROWSER_HOST} without CSH_BROWSER_ALLOW_REMOTE=1`,
+    );
+  }
+  if (env.CSH_BROWSER_ALLOW_REMOTE && !env.CSH_BROWSER_TRUST_PROXY_TLS) {
+    throw new Error(
+      "Remote browser mode requires CSH_BROWSER_TRUST_PROXY_TLS=1 and an HTTPS/TLS-terminating reverse proxy.",
     );
   }
   const browserAuth = resolveBrowserAuth(env);
@@ -108,6 +119,10 @@ export async function startBrowserServer(options: BrowserServerOptions): Promise
   console.error(
     `csh browser UI (${options.modeLabel}) listening on http://${server.hostname}:${server.port}`,
   );
+  if (browserAuth.generated) {
+    console.error(`Browser auth user: ${browserAuth.username}`);
+    console.error(`Browser auth password: ${browserAuth.password}`);
+  }
 
   const shutdown = async (exitCode: number): Promise<never> => {
     server.stop(true);
@@ -410,14 +425,18 @@ function resolveBrowserAuth(env: z.infer<typeof envSchema>): BrowserAuth | null 
   const username = env.CSH_BROWSER_AUTH_USER?.trim() ?? "";
   const password = env.CSH_BROWSER_AUTH_PASSWORD?.trim() ?? "";
   if (!env.CSH_BROWSER_ALLOW_REMOTE && !username && !password) {
-    return null;
+    return {
+      username: "csh",
+      password: randomUUID(),
+      generated: true,
+    };
   }
   if (!username || !password) {
     throw new Error(
       "Remote browser mode requires CSH_BROWSER_AUTH_USER and CSH_BROWSER_AUTH_PASSWORD",
     );
   }
-  return { username, password };
+  return { username, password, generated: false };
 }
 
 function authorizeBrowserRequest(request: Request, auth: BrowserAuth | null): string | null {

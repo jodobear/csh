@@ -319,3 +319,41 @@
   ordinary implementation sessions stay leaner.
 - Reversal trigger: reverse only if process-control drift keeps recurring because the canonical
   owner is too hidden from the people doing the work.
+
+### 2026-03-16
+
+- Status: accepted
+- Decision: treat the browser UI as an authenticated operator surface even on loopback, and require
+  explicit TLS-proxy acknowledgment for any remote browser exposure.
+- Why: the latest audit found that a loopback-bound browser still exposed a live API token to any
+  other local process, and remote browser mode was plain HTTP unless the operator supplied an
+  external TLS layer. The browser path is an operator tool, not an anonymous local or remote shell.
+- Tradeoff: browser usage now always involves credentials, and remote browser mode requires one
+  more explicit deployment flag.
+- Reversal trigger: reverse only if the browser path gains a stronger first-class local/remote auth
+  model that makes explicit browser credentials unnecessary without weakening the trust boundary.
+
+### 2026-03-16
+
+- Status: accepted
+- Decision: keep session idle TTL based on operator activity, but add throttled `keepAlive` heartbeats
+  from genuinely attached clients.
+- Why: a pure input-only TTL killed read-only but actively attached sessions such as `tail -f`, while
+  a pure polling TTL let background tabs pin sessions indefinitely. Throttled keepalive heartbeats
+  from visible browser tabs and attached CLI clients are the narrow middle path.
+- Tradeoff: the session contract now has one more optional polling field, and attached clients must
+  participate correctly for read-only sessions to stay alive.
+- Reversal trigger: reverse only if the backend moves to a stronger lease or PTY session model that
+  can represent attachment directly instead of inferring it from heartbeats.
+
+### 2026-03-16
+
+- Status: accepted
+- Decision: make `bin/csh verify` auto-start a loopback `nak` relay when the env targets a local
+  `ws://127.0.0.1:<port>` relay and no listener is already present.
+- Why: the latest audit found that the default verification path could fail for environmental reasons
+  unrelated to the host itself because bootstrap now defaults to a private local relay URL.
+- Tradeoff: deterministic verification now assumes `nak` is available when using the default loopback
+  relay posture.
+- Reversal trigger: reverse only if the repo adopts a different deterministic private-relay harness
+  or moves verification away from relay-backed smoke checks entirely.

@@ -164,3 +164,17 @@ Append-only project communication history.
 - When: 2026-03-16 00:15 WET
 - What: Adapted the strongest `noztr` and `nzdk` process-control/refinement ideas into `csh` without re-bloating the startup surface. Added a canonical `docs/process/process-control.md`, added a shareable `docs/process/process-refinement-playbook.md`, updated the implementation gate to require synchronization touchpoints and docs-surface finding IDs, updated prompt templates to declare target findings and touchpoints early, and wired the new control doc into the startup route and handoff.
 - Session: local repo execution
+
+### 2026-03-16 01:05 WET
+
+- Who: Codex
+- When: 2026-03-16 01:05 WET
+- What: Applied the follow-on code review fixes. Hardened session ID handling against path traversal, secured shell-bootstrap secret-file creation, tightened numeric config parsing, made browser access authenticated on loopback as well as remote, required explicit TLS-proxy acknowledgment for remote browser mode, added throttled `keepAlive` heartbeats so read-only attached sessions are not scavenged, strengthened proxy verification to assert real shell output, made `verify` auto-start a loopback `nak` relay when needed, pinned runtime dependencies to current exact versions, and made rendered `systemd` units use the absolute Bun executable instead of relying on `PATH`.
+- Session: local repo execution
+
+### 2026-03-16 01:12 WET
+
+- Who: Codex
+- When: 2026-03-16 01:12 WET
+- What: Revalidated the integrated paths after those fixes. Local `bin/csh verify /tmp/csh-fix-pass.env` passed end to end. Outside the sandbox, the public-relay shell path succeeded through `/tmp/csh-public-shell.sh`, and the browser-over-ContextVM path succeeded through `/tmp/csh-public-browser.sh`, which returned a snapshot containing `__BROWSER__/workspace/projects/csh` over `wss://relay.contextvm.org`.
+- Session: local repo execution

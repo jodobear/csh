@@ -21,7 +21,7 @@ mkdir -p "$LOGS_DIR"
 echo "Installing JavaScript dependencies"
 (
   cd "$ROOT_DIR"
-  bun install
+  bun install --frozen-lockfile
   bun run csh:build-browser
 )
 

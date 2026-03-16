@@ -30,6 +30,8 @@ Bootstrap a local env:
 bin/csh bootstrap .env.phase1.local
 ```
 
+The generated env includes browser credentials and defaults to a loopback/private relay.
+
 Check readiness:
 
 ```bash
@@ -57,6 +59,9 @@ CVM_RELAYS="ws://127.0.0.1:10552"
 ```
 
 For remote clients, use the server's reachable VPN/private IP in the client env, not `127.0.0.1`.
+
+`bin/csh verify` will auto-start this relay shape locally when the env uses a loopback `ws://127.0.0.1:<port>`
+URL and `nak` is installed.
 
 ## SSH Tunnel Fallback
 
@@ -109,6 +114,16 @@ bin/csh browser /tmp/csh-client.env
 ```
 
 Open `http://127.0.0.1:4318`.
+Authenticate with `CSH_BROWSER_AUTH_USER` and `CSH_BROWSER_AUTH_PASSWORD`.
+
+If you intentionally expose the browser UI beyond loopback, set:
+
+```bash
+CSH_BROWSER_ALLOW_REMOTE=1
+CSH_BROWSER_TRUST_PROXY_TLS=1
+```
+
+and put it behind an HTTPS/TLS-terminating reverse proxy.
 
 ## Persistent Service
 

@@ -52,6 +52,9 @@ Start the browser terminal UI:
 bin/csh browser .env.phase1.local
 ```
 
+The browser will prompt for the credentials from `CSH_BROWSER_AUTH_USER` and
+`CSH_BROWSER_AUTH_PASSWORD`.
+
 Run the end-to-end verification loop:
 
 ```bash
@@ -64,6 +67,8 @@ bin/csh verify /tmp/csh-verify.env
 - host mode requires an allowlist unless `GW_ALLOW_UNLISTED_CLIENTS=1`
 - default log level is `error` to reduce transport noise in normal operation
 - interactive sessions are owner-bound when the ContextVM gateway injects the authenticated client pubkey
+- browser mode is authenticated even on loopback, and remote browser mode also requires
+  `CSH_BROWSER_TRUST_PROXY_TLS=1`
 - the `systemd` unit uses `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=read-only`, and `UMask=0077`
 - transport posture and deployment guidance live in [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md)
 

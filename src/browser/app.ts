@@ -149,7 +149,6 @@ async function reconnectOrOpenSession(): Promise<void> {
 
   const result = await queueRpc(() =>
     postJson<OpenResult>("session/open", {
-      command: "/bin/sh",
       ...getTerminalSize(),
     }),
   );
@@ -249,6 +248,7 @@ async function pollRemote(): Promise<void> {
   const result = await queueRpc(() =>
     postJson<PollResult>("session/poll", {
       sessionId: activeSessionId,
+      keepAlive: document.visibilityState === "visible",
       ...(cursor === null ? {} : { cursor }),
     }),
   );
@@ -312,6 +312,9 @@ function setControlsDisabled(disabled: boolean, closedState = false): void {
 
 function reportError(error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
+  if (sessionId) {
+    closed = true;
+  }
   setStatus(`Error: ${message}`);
   setControlsDisabled(false, true);
   console.error(error);

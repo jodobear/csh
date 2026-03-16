@@ -3,9 +3,12 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUTPUT_FILE="${1:-$ROOT_DIR/.env.phase1.local}"
+umask 077
 
 server_json="$(cd "$ROOT_DIR" && bun run csh:keys)"
 client_json="$(cd "$ROOT_DIR" && bun run csh:keys)"
+browser_auth_user="csh"
+browser_auth_password="$(cd "$ROOT_DIR" && bun -e 'console.log(globalThis.crypto.randomUUID())')"
 
 server_private_key="$(printf '%s' "$server_json" | jq -r '.privateKeyHex')"
 server_public_key="$(printf '%s' "$server_json" | jq -r '.publicKeyHex')"
@@ -32,11 +35,13 @@ client_public_key="$(printf '%s' "$client_json" | jq -r '.publicKeyHex')"
   printf 'CSH_BROWSER_HOST=%q\n' '127.0.0.1'
   printf 'CSH_BROWSER_PORT=%q\n' '4318'
   printf 'CSH_BROWSER_ALLOW_REMOTE=%q\n' '0'
-  printf 'CSH_BROWSER_AUTH_USER=%q\n' ''
-  printf 'CSH_BROWSER_AUTH_PASSWORD=%q\n' ''
+  printf 'CSH_BROWSER_AUTH_USER=%q\n' "$browser_auth_user"
+  printf 'CSH_BROWSER_AUTH_PASSWORD=%q\n' "$browser_auth_password"
+  printf 'CSH_BROWSER_TRUST_PROXY_TLS=%q\n' '0'
   printf 'CSH_SESSION_IDLE_TTL_SECONDS=%q\n' '1800'
   printf 'CSH_CLOSED_SESSION_TTL_SECONDS=%q\n' '300'
 } > "$OUTPUT_FILE"
+chmod 600 "$OUTPUT_FILE"
 
 echo "Wrote $OUTPUT_FILE"
 echo "Allowed client pubkey: $client_public_key"

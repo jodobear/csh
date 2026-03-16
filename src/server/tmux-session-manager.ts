@@ -27,10 +27,18 @@ const CLOSED_SESSION_TTL_MS = parseDurationMs(
   process.env.CSH_CLOSED_SESSION_TTL_SECONDS,
   5 * 60 * 1000,
 );
+const KEEPALIVE_THROTTLE_MS = Math.max(
+  1_000,
+  Math.min(
+    15_000,
+    SESSION_IDLE_TTL_MS > 0 ? Math.max(1_000, Math.trunc(SESSION_IDLE_TTL_MS / 2)) : 15_000,
+  ),
+);
 const SESSION_SCAVENGE_INTERVAL_MS = parseDurationMs(
   process.env.CSH_SESSION_SCAVENGE_INTERVAL_SECONDS,
   60 * 1000,
 );
+const SAFE_SESSION_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/;
 
 export type ShellSession = {
   sessionId: string;
@@ -86,7 +94,9 @@ export class TmuxSessionManager {
     await this.ready;
 
     const ownerId = input.ownerId ?? "local";
-    const requestedSessionId = input.sessionId?.trim() || undefined;
+    const requestedSessionId = input.sessionId?.trim()
+      ? requireSafeSessionId(input.sessionId.trim())
+      : undefined;
     if (requestedSessionId) {
       const existing = this.sessions.get(requestedSessionId);
       if (existing) {
@@ -148,6 +158,7 @@ export class TmuxSessionManager {
 
   public async getSession(sessionId: string): Promise<ShellSession> {
     await this.ready;
+    requireSafeSessionId(sessionId);
 
     const session = this.sessions.get(sessionId);
     if (!session) {
@@ -204,18 +215,31 @@ export class TmuxSessionManager {
     return session;
   }
 
-  public async pollSession(sessionId: string, actorId: string, cursor?: number): Promise<PollResult> {
+  public async pollSession(
+    sessionId: string,
+    actorId: string,
+    cursor?: number,
+    keepAlive = false,
+  ): Promise<PollResult> {
     const session = await this.getSessionForActor(sessionId, actorId);
-    await this.refreshSessionState(session);
+    let dirty = await this.refreshSessionState(session);
 
     const snapshot = session.closedAt ? session.lastSnapshot : await capturePane(session.paneTarget);
 
     if (snapshot !== session.lastSnapshot) {
       session.revision += 1;
       session.lastSnapshot = snapshot;
+      dirty = true;
     }
 
-    await this.persistSession(session);
+    if (keepAlive && !session.closedAt && shouldRefreshKeepAlive(session)) {
+      session.lastActivityAt = new Date().toISOString();
+      dirty = true;
+    }
+
+    if (dirty) {
+      await this.persistSession(session);
+    }
 
     const requestedRevision = cursor ?? -1;
     const changed = requestedRevision !== session.revision;
@@ -268,9 +292,9 @@ export class TmuxSessionManager {
     return session;
   }
 
-  private async refreshSessionState(session: ShellSession): Promise<void> {
+  private async refreshSessionState(session: ShellSession): Promise<boolean> {
     if (session.closedAt) {
-      return;
+      return false;
     }
 
     const paneState = await getPaneState(session.paneTarget);
@@ -278,7 +302,7 @@ export class TmuxSessionManager {
       session.closedAt = new Date().toISOString();
       session.exitStatus ??= null;
       await this.persistSession(session);
-      return;
+      return true;
     }
 
     if (paneState.dead) {
@@ -295,7 +319,10 @@ export class TmuxSessionManager {
       session.closedAt = session.closedAt ?? new Date().toISOString();
       session.exitStatus = paneState.exitStatus;
       await this.persistSession(session);
+      return true;
     }
+
+    return false;
   }
 
   private async loadPersistedSessions(): Promise<void> {
@@ -581,11 +608,22 @@ function isPersistedSession(value: unknown): value is ShellSession {
     value !== null &&
     "sessionId" in value &&
     typeof value.sessionId === "string" &&
+    SAFE_SESSION_ID_RE.test(value.sessionId) &&
     "tmuxSessionName" in value &&
     typeof value.tmuxSessionName === "string" &&
     "ownerId" in value &&
     typeof value.ownerId === "string"
   );
+}
+
+function requireSafeSessionId(sessionId: string): string {
+  if (!SAFE_SESSION_ID_RE.test(sessionId)) {
+    throw new Error(
+      "sessionId must start with an alphanumeric character and contain only letters, digits, '_' or '-'",
+    );
+  }
+
+  return sessionId;
 }
 
 function safeDateMs(value: string | undefined): number | null {
@@ -627,6 +665,14 @@ function clampDimension(value: number | undefined, fallback: number): number {
 }
 
 function tmuxSessionNameFor(sessionId: string): string {
-  const safeId = sessionId.replace(/[^A-Za-z0-9_-]/g, "_");
-  return `csh-${safeId}`;
+  return `csh-${requireSafeSessionId(sessionId)}`;
+}
+
+function shouldRefreshKeepAlive(session: ShellSession): boolean {
+  const lastActivityMs = safeDateMs(session.lastActivityAt);
+  if (lastActivityMs === null) {
+    return true;
+  }
+
+  return Date.now() - lastActivityMs >= KEEPALIVE_THROTTLE_MS;
 }

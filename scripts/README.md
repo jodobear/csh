@@ -37,6 +37,8 @@ These scripts compose the repo-local interactive shell path:
    ```
 
 3. Inspect or edit `.env.phase1.local` if you want different relays or metadata.
+   The browser UI now expects credentials from `CSH_BROWSER_AUTH_USER` and
+   `CSH_BROWSER_AUTH_PASSWORD`.
 
 ## Run
 
@@ -76,6 +78,9 @@ These scripts compose the repo-local interactive shell path:
    bin/csh verify
    ```
 
+   When the env points at a loopback relay like `ws://127.0.0.1:10552`, `verify` will start a
+   repo-local `nak` relay automatically if one is not already listening.
+
 7. Run one real operator command:
 
    ```bash
@@ -94,12 +99,16 @@ These scripts compose the repo-local interactive shell path:
    bin/csh browser .env.phase1.local
    ```
 
+   Then authenticate in the browser with the credentials from `.env.phase1.local`.
+
 ## Notes
 
 - The host path is now repo-local: `src/main.ts` exposes the `session_*` tools and
   `src/contextvm-gateway.ts` exposes that server over ContextVM with pubkey injection enabled.
 - The current default operator path is the interactive client at `bin/csh shell`, with `bin/csh exec`
   kept for one-shot commands and `bin/csh browser` available for the browser terminal UI.
+- Browser UI access is authenticated even on loopback. Remote browser mode additionally requires
+  `CSH_BROWSER_TRUST_PROXY_TLS=1` behind an HTTPS/TLS-terminating reverse proxy.
 - The repo-local SDK proxy path also works and is available when you want a stdio MCP bridge.
 - The repo no longer depends on the external `proxy-cli` binary for normal operation.
 - See [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md) for the short

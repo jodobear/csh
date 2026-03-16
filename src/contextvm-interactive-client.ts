@@ -187,6 +187,7 @@ async function pollUntilStopped(): Promise<void> {
             arguments: {
               sessionId,
               cursor,
+              keepAlive: true,
             },
           }),
         )
@@ -232,6 +233,7 @@ async function ensureSession(): Promise<{
             arguments: {
               sessionId,
               cursor: 0,
+              keepAlive: true,
             },
           }),
         ),

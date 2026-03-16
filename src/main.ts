@@ -5,6 +5,10 @@ import { TmuxSessionManager } from "./server/tmux-session-manager.js";
 
 const manager = new TmuxSessionManager();
 const ownerInputSchema = z.string().min(1).optional();
+const sessionIdSchema = z.string().regex(
+  /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/,
+  "sessionId must start with an alphanumeric character and contain only letters, digits, '_' or '-'",
+);
 
 const server = new McpServer({
   name: "csh-local-terminal",
@@ -16,7 +20,7 @@ server.registerTool(
   {
     description: "Open a new tmux-backed shell session.",
     inputSchema: {
-      sessionId: z.string().min(1).optional(),
+      sessionId: sessionIdSchema.optional(),
       command: z.string().optional(),
       cwd: z.string().optional(),
       cols: z.number().int().positive().optional(),
@@ -69,7 +73,7 @@ server.registerTool(
   {
     description: "Write terminal input text to an existing shell session.",
     inputSchema: {
-      sessionId: z.string(),
+      sessionId: sessionIdSchema,
       input: z.string(),
       ownerId: ownerInputSchema,
     },
@@ -106,7 +110,7 @@ server.registerTool(
   {
     description: "Resize the shell session window.",
     inputSchema: {
-      sessionId: z.string(),
+      sessionId: sessionIdSchema,
       cols: z.number().int().positive(),
       rows: z.number().int().positive(),
       ownerId: ownerInputSchema,
@@ -149,7 +153,7 @@ server.registerTool(
   {
     description: "Send an operating-system signal to the shell session.",
     inputSchema: {
-      sessionId: z.string(),
+      sessionId: sessionIdSchema,
       signal: z.enum(["SIGINT", "SIGTERM", "SIGHUP"]),
       ownerId: ownerInputSchema,
     },
@@ -186,16 +190,18 @@ server.registerTool(
   {
     description: "Poll the current session snapshot. Returns a new snapshot when the revision changed.",
     inputSchema: {
-      sessionId: z.string(),
+      sessionId: sessionIdSchema,
       cursor: z.number().int().min(0).optional(),
+      keepAlive: z.boolean().optional(),
       ownerId: ownerInputSchema,
     },
   },
-  async ({ sessionId, cursor, ownerId }, extra) => {
+  async ({ sessionId, cursor, keepAlive, ownerId }, extra) => {
     const result = await manager.pollSession(
       sessionId,
       resolveActorId(ownerId, extra),
       cursor,
+      keepAlive ?? false,
     );
 
     return {
@@ -237,7 +243,7 @@ server.registerTool(
   {
     description: "Close a shell session and its backing tmux runtime.",
     inputSchema: {
-      sessionId: z.string(),
+      sessionId: sessionIdSchema,
       ownerId: ownerInputSchema,
     },
   },
