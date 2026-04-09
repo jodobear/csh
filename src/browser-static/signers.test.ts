@@ -4,8 +4,8 @@ import {
   createAmberSigner,
   createBunkerSignerAdapter,
   createNip07Signer,
-  createTestSigner,
 } from "./signers";
+import { createTestSigner } from "./signers-test";
 
 const PUBKEY = "a".repeat(64);
 const EVENT_TEMPLATE: EventTemplate = {
@@ -83,12 +83,14 @@ describe("browser signer adapters", () => {
   });
 
   test("provides a deterministic test signer", async () => {
-    const signer = createTestSigner({ pubkey: PUBKEY });
+    const signer = createTestSigner({
+      privateKeyHex: "1".repeat(64),
+      signEvent: async (event) => signed(event, PUBKEY),
+    });
     const signedEvent = await signer.signEvent(EVENT_TEMPLATE);
 
-    expect(await signer.getPublicKey()).toBe(PUBKEY);
+    expect(await signer.getPublicKey()).toHaveLength(64);
     expect(signedEvent.pubkey).toBe(PUBKEY);
-    expect(signedEvent.id).toBe("test-event-id");
   });
 });
 

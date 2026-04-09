@@ -95,31 +95,6 @@ export function createAmberSigner(input: {
   };
 }
 
-export function createTestSigner(input: {
-  pubkey: string;
-  signEvent?: (event: EventTemplate) => Promise<VerifiedEvent>;
-}): BrowserSigner {
-  return {
-    kind: "test",
-    label: "Test signer",
-    async getPublicKey(): Promise<string> {
-      return input.pubkey;
-    },
-    async signEvent(event: EventTemplate): Promise<VerifiedEvent> {
-      if (input.signEvent) {
-        return await input.signEvent(event);
-      }
-
-      return {
-        ...event,
-        id: "test-event-id",
-        pubkey: input.pubkey,
-        sig: "test-signature",
-      };
-    },
-  };
-}
-
 async function defaultBunkerSignerFactory(input: {
   connectionUri: string;
   clientSecretKeyHex: string;

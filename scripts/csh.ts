@@ -130,8 +130,9 @@ Commands:
   proxy [config-path]            Run the stdio proxy smoke test
   exec <command> [config-path]   Execute one shell command in a fresh remote shell session
   shell [config-path]            Start the interactive operator shell
-  browser [config-path]          Start the browser terminal UI over ContextVM
-  browser-local                  Start the browser terminal UI against a local stdio server
+  browser [config-path]          Start the static browser client preview server
+  browser-bridge [config-path]   Start the deprecated browser bridge over ContextVM
+  browser-bridge-local           Start the deprecated browser bridge against local stdio
   verify [config-path]           Run the routine verification loop
   verify release [config-path]   Run the release-grade verification flow
   help                           Show this help
@@ -813,6 +814,29 @@ async function commandShell(parsed: ParsedArgs): Promise<void> {
 
 async function commandBrowser(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
+  let browserHost = process.env.CSH_BROWSER_HOST || "127.0.0.1";
+  let browserPort = process.env.CSH_BROWSER_PORT || "4318";
+  const extraEnv: Record<string, string> = {};
+
+  if (await Bun.file(configPath).exists()) {
+    const config = requireHealthyConfig(configPath, "client");
+    process.env.CVM_ENV_FILE = configPath;
+    loadEnvFile(configPath);
+    browserHost = process.env.CSH_BROWSER_HOST || config.browserHost;
+    browserPort = process.env.CSH_BROWSER_PORT || String(config.browserPort);
+    if (process.env.CVM_CLIENT_PRIVATE_KEY || process.env.CSH_CLIENT_PRIVATE_KEY) {
+      extraEnv.CSH_BROWSER_DEFAULT_SIGNER = "test";
+    }
+  }
+
+  console.error(`Browser URL: http://${browserHost}:${browserPort}`);
+  console.error("Use Ctrl-C in this terminal to stop the static browser preview.");
+  const code = await runCommand("bun", ["run", "src/browser-static/preview-server.ts"], extraEnv);
+  process.exit(code);
+}
+
+async function commandBrowserBridge(parsed: ParsedArgs): Promise<void> {
+  const configPath = configPathFrom(parsed, parsed.positionals[1]);
   const config = requireHealthyConfig(configPath, "client");
   process.env.CVM_ENV_FILE = configPath;
   loadEnvFile(configPath);
@@ -829,19 +853,19 @@ async function commandBrowser(parsed: ParsedArgs): Promise<void> {
   } else {
     console.error("Browser auth credentials will be generated at startup because none are set in the config.");
   }
-  console.error("Use Ctrl-C in this terminal to stop the local browser bridge.");
+  console.error("Use Ctrl-C in this terminal to stop the deprecated browser bridge.");
   const code = await runCommand("bun", ["run", "src/browser/contextvm-server.ts"]);
   process.exit(code);
 }
 
-async function commandBrowserLocal(): Promise<void> {
+async function commandBrowserBridgeLocal(): Promise<void> {
   const host = process.env.CSH_BROWSER_HOST || "127.0.0.1";
   const port = process.env.CSH_BROWSER_PORT || "4318";
   const scrollback = process.env.CSH_SCROLLBACK_LINES || "10000";
   console.error(`Browser URL: http://${host}:${port}`);
   console.error(`Scrollback lines: ${scrollback}`);
   console.error("Browser auth credentials will be generated at startup if they are not already set in the environment.");
-  console.error("Use Ctrl-C in this terminal to stop the local browser bridge.");
+  console.error("Use Ctrl-C in this terminal to stop the deprecated local browser bridge.");
   const code = await runCommand("bun", ["run", "src/browser/server.ts"]);
   process.exit(code);
 }
@@ -878,7 +902,8 @@ function completionScript(shell: string): string {
     "exec",
     "shell",
     "browser",
-    "browser-local",
+    "browser-bridge",
+    "browser-bridge-local",
     "verify",
     "help",
   ];
@@ -1094,8 +1119,12 @@ async function main(): Promise<void> {
     await commandBrowser(parsed);
     return;
   }
-  if (command === "browser-local") {
-    await commandBrowserLocal();
+  if (command === "browser-bridge") {
+    await commandBrowserBridge(parsed);
+    return;
+  }
+  if (command === "browser-bridge-local" || command === "browser-local") {
+    await commandBrowserBridgeLocal();
     return;
   }
   if (command === "verify") {

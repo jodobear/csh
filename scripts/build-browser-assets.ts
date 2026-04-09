@@ -5,11 +5,11 @@ import path from "node:path";
 import { repoRoot } from "./config";
 
 const rootDir = repoRoot();
-const outdir = path.join(rootDir, "dist", "browser");
+const outdir = path.join(rootDir, "dist", "browser-static");
 await mkdir(outdir, { recursive: true });
 
 const build = await Bun.build({
-  entrypoints: [path.join(rootDir, "src", "browser", "app.ts")],
+  entrypoints: [path.join(rootDir, "src", "browser-static", "app.ts")],
   outdir,
   target: "browser",
   format: "esm",
@@ -17,6 +17,9 @@ const build = await Bun.build({
   minify: false,
   sourcemap: "none",
   naming: "[name].[ext]",
+  define: {
+    __CSH_BROWSER_ENABLE_TEST_SIGNER__: "false",
+  },
 });
 
 if (!build.success) {
