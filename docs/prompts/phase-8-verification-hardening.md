@@ -7,6 +7,7 @@ the real verification surface.
 Target findings:
 - deployment-resilience-restart-01
 - deployment-resilience-verify-02
+- deployment-resilience-relay-01
 - operator-workflow-reconnect-03
 
 ## Current Truth
@@ -20,6 +21,9 @@ Target findings:
 - A fresh-checkout proof now exists via `scripts/fresh-checkout.ts`, which clones the repo into an
   isolated temporary directory, runs `bun install --frozen-lockfile`, and then runs
   `bun run scripts/csh.ts verify .env.csh.local` from that clone.
+- Relay interruption and recovery are now proven in the canonical verify loop via
+  `scripts/relay-recovery.ts`, with the loop selecting a temporary loopback relay port so it owns
+  the relay process it interrupts.
 
 ## Synchronization Touchpoints
 - teaching surface: maybe; only if supported operator guarantees change
@@ -74,16 +78,17 @@ Target findings:
   - the hardening lane is no longer relying only on this worked tree for proof
 
 ### Next Slice
-- Goal: move from restart/fresh-checkout recovery to transport fault hardening.
+- Goal: move from transport fault recovery to longer-lived session hardening.
 - Candidate write set:
   - `scripts/run-autonomous-loop.sh`
-  - targeted fault-injection helpers
-  - relay lifecycle helpers and tests
+  - targeted soak or idle-expiry helpers
+  - high-output or long-idle verification scripts
   - `handoff.md`
   - `docs/audits/*.md`
 - Candidate gates:
-  - relay interruption / recovery proof
   - longer-lived idle and high-output session proof
+  - reconnect after longer idle windows
+  - browser attach after extended session age
 
 ## Acceptance Gates
 - claims and proof table
@@ -96,5 +101,6 @@ Target findings:
 ## Exit Criteria
 - the canonical verify loop covers relay-backed host restart recovery
 - a fresh-checkout proof exists for isolated bootstrap + verify
+- the canonical verify loop covers relay interruption and recovery on a verify-owned relay
 - restart-proof logs are stable enough for autonomous follow-on passes
 - open restart-related risks are either closed or narrowed explicitly in docs

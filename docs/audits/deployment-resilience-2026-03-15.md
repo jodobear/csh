@@ -173,3 +173,30 @@ Question: where can startup, verification, persistence, or long-running operatio
     2026-04-09
   - the isolated clone verify reported `restart_status=0`, `proxy_status=0`, `exec_status=7`, and
     `browser_status=0`
+
+### `deployment-resilience-relay-01`
+
+- Severity: medium
+- Summary: relay interruption and recovery were previously unproven in the canonical verify path,
+  and the host/proxy startup wrappers would clobber runtime relay overrides from the env file,
+  which blocked deterministic relay fault injection.
+- Evidence:
+  - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh)
+  - [relay-recovery.ts](/workspace/projects/csh/scripts/relay-recovery.ts)
+  - [startup-env.ts](/workspace/projects/csh/scripts/startup-env.ts)
+  - [start-host.ts](/workspace/projects/csh/scripts/start-host.ts)
+  - [start-proxy.ts](/workspace/projects/csh/scripts/start-proxy.ts)
+- Status: closed 2026-04-09
+- Resolution: `scripts/run-autonomous-loop.sh` now selects a verify-owned loopback relay port,
+  starts a private relay on that port, and runs `scripts/relay-recovery.ts` to terminate and
+  replace that relay while a named session stays alive. `scripts/startup-env.ts` now preserves
+  explicit runtime overrides when startup wrappers apply env-file defaults, so the host, proxy,
+  browser, and clients all stay on the same temporary relay during fault-injection runs.
+- Proof:
+  - local `bun test --timeout 15000 scripts/startup-env.test.ts` passed
+  - local `bun test --timeout 15000 scripts/host-control.test.ts` passed
+  - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with
+    `relay_recovery_status=0`, `restart_status=0`, `proxy_status=0`, `exec_status=7`, and
+    `browser_status=0`
+  - `relay-recovery.log` captured matching `initialPid` and `postRecoveryPid` on relay port
+    `10553`

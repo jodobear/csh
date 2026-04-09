@@ -276,3 +276,10 @@ Append-only project communication history.
 - When: 2026-04-09 16:20 WEST
 - What: Closed the next Phase 8 hardening slice with an isolated-clone proof. Added `scripts/fresh-checkout.ts` plus `scripts/fresh-checkout.test.ts`, exposed them through `test:fresh-checkout` and `csh:fresh-checkout`, and verified that a fresh local clone can run `bun install --frozen-lockfile` and then pass `bun run scripts/csh.ts verify .env.csh.local` with `restart_status=0`, `proxy_status=0`, `exec_status=7`, and `browser_status=0`. The active prompt, handoff, and deployment-resilience audit were updated to mark fresh-checkout verification as closed and move the next focus to relay fault hardening.
 - Session: local repo execution
+
+### 2026-04-09 16:59 WEST
+
+- Who: Codex
+- When: 2026-04-09 16:59 WEST
+- What: Closed the next Phase 8 hardening slice around relay interruption and recovery. Added `scripts/relay-recovery.ts`, extended `scripts/host-control.ts` with a tested TCP-listener readiness helper, added `scripts/startup-env.ts` plus `scripts/startup-env.test.ts` so startup wrappers preserve explicit runtime overrides, and changed `scripts/run-autonomous-loop.sh` to allocate a verify-owned loopback relay port before running the gate. After an initial failure exposed that `scripts/start-host.ts` and `scripts/start-proxy.ts` were clobbering relay overrides from the env file, those wrappers were moved onto `applyEnvDefaults()`, the browser log path was corrected to report the real overridden port, and `bun run scripts/csh.ts verify .env.csh.local` then passed end to end with `relay_recovery_status=0`, `restart_status=0`, `proxy_status=0`, `exec_status=7`, and `browser_status=0`.
+- Session: local repo execution
