@@ -1,5 +1,6 @@
 .csh-runtime/
 output/
+.codex
 dist/
 node_modules/
 .env.local
