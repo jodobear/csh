@@ -4,18 +4,21 @@ import {
   NostrMCPGateway,
   PrivateKeySigner,
 } from "@contextvm/sdk";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { loadContextVmConfig } from "./contextvm/config.js";
 
 const config = loadContextVmConfig();
 const signer = new PrivateKeySigner(config.privateKey);
 const relayHandler = new ApplesauceRelayPool(config.relayUrls);
+const projectRoot = fileURLToPath(new URL("..", import.meta.url));
 
 const gateway = new NostrMCPGateway({
   createMcpClientTransport: () =>
     new StdioClientTransport({
       command: process.execPath,
-      args: ["run", "src/main.ts"],
-      cwd: process.cwd(),
+      args: ["run", path.join(projectRoot, "src", "main.ts")],
+      cwd: projectRoot,
       stderr: "inherit",
     }),
   nostrTransportOptions: {

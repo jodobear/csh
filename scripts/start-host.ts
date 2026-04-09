@@ -33,7 +33,6 @@ for (const [key, value] of Object.entries(parsedEnv)) {
   process.env[key] = value;
 }
 
-process.env.CSH_TMUX_SOCKET = process.env.CSH_TMUX_SOCKET || paths.tmuxSocket;
 process.env.CSH_NOSTR_PRIVATE_KEY = process.env.CSH_NOSTR_PRIVATE_KEY || config.gatewayPrivateKey;
 process.env.CSH_NOSTR_RELAY_URLS = process.env.CSH_NOSTR_RELAY_URLS || config.relays.join(",");
 process.env.CSH_ALLOWED_PUBLIC_KEYS =

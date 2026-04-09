@@ -1,9 +1,9 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { TmuxSessionManager } from "./server/tmux-session-manager.js";
+import { PtySessionManager } from "./server/pty-session-manager.js";
 
-const manager = new TmuxSessionManager();
+const manager = new PtySessionManager();
 const ownerInputSchema = z.string().min(1).optional();
 const sessionIdSchema = z.string().regex(
   /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/,
@@ -18,7 +18,7 @@ const server = new McpServer({
 server.registerTool(
   "session_open",
   {
-    description: "Open a new tmux-backed shell session.",
+    description: "Open a new native PTY-backed shell session.",
     inputSchema: {
       sessionId: sessionIdSchema.optional(),
       command: z.string().optional(),
@@ -71,15 +71,29 @@ server.registerTool(
 server.registerTool(
   "session_write",
   {
-    description: "Write terminal input text to an existing shell session.",
+    description: "Write terminal input bytes or text to an existing shell session.",
     inputSchema: {
       sessionId: sessionIdSchema,
-      input: z.string(),
+      input: z.string().optional(),
+      inputBase64: z.string().optional(),
       ownerId: ownerInputSchema,
     },
   },
-  async ({ sessionId, input, ownerId }, extra) => {
-    const session = await manager.writeToSession(sessionId, input, resolveActorId(ownerId, extra));
+  async ({ sessionId, input, inputBase64, ownerId }, extra) => {
+    if (input === undefined && inputBase64 === undefined) {
+      throw new Error("session_write requires input or inputBase64");
+    }
+
+    const session = await manager.writeToSession(
+      sessionId,
+      resolveActorId(ownerId, extra),
+      input,
+      inputBase64,
+    );
+    const acceptedBytes =
+      inputBase64 !== undefined
+        ? Buffer.from(inputBase64, "base64").length
+        : Buffer.byteLength(input ?? "", "utf8");
 
     return {
       content: [
@@ -88,7 +102,7 @@ server.registerTool(
           text: JSON.stringify(
             {
               sessionId: session.sessionId,
-              acceptedChars: input.length,
+              acceptedBytes,
               lastActivityAt: session.lastActivityAt,
             },
             null,
@@ -98,7 +112,7 @@ server.registerTool(
       ],
       structuredContent: {
         sessionId: session.sessionId,
-        acceptedChars: input.length,
+        acceptedBytes,
         lastActivityAt: session.lastActivityAt,
       },
     };
@@ -214,7 +228,9 @@ server.registerTool(
               changed: result.changed,
               cursor: result.revision,
               snapshot: result.snapshot ?? null,
+              snapshotBase64: result.snapshotBase64 ?? null,
               delta: result.delta ?? null,
+              deltaBase64: result.deltaBase64 ?? null,
               cols: result.session.cols,
               rows: result.session.rows,
               closedAt: result.session.closedAt ?? null,
@@ -230,7 +246,9 @@ server.registerTool(
         changed: result.changed,
         cursor: result.revision,
         snapshot: result.snapshot ?? null,
+        snapshotBase64: result.snapshotBase64 ?? null,
         delta: result.delta ?? null,
+        deltaBase64: result.deltaBase64 ?? null,
         cols: result.session.cols,
         rows: result.session.rows,
         closedAt: result.session.closedAt ?? null,
@@ -243,7 +261,7 @@ server.registerTool(
 server.registerTool(
   "session_close",
   {
-    description: "Close a shell session and its backing tmux runtime.",
+    description: "Close a shell session and its backing PTY runtime.",
     inputSchema: {
       sessionId: sessionIdSchema,
       ownerId: ownerInputSchema,

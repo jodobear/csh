@@ -311,7 +311,6 @@ export function runtimePaths(rootDir = repoRoot()): Record<string, string> {
     rootDir,
     runtimeDir,
     logsDir: path.join(runtimeDir, "logs"),
-    tmuxSocket: path.join(runtimeDir, "tmux.sock"),
     srcMain: path.join(rootDir, "src", "main.ts"),
     srcGateway: path.join(rootDir, "src", "contextvm-gateway.ts"),
   };

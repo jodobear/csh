@@ -4,15 +4,9 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 RUNTIME_DIR="${CSH_RUNTIME_DIR:-$ROOT_DIR/.csh-runtime}"
 LOGS_DIR="$RUNTIME_DIR/logs"
-TMUX_SOCKET="$RUNTIME_DIR/tmux.sock"
 
 if ! command -v bun >/dev/null 2>&1; then
   echo "bun is required" >&2
-  exit 1
-fi
-
-if ! command -v tmux >/dev/null 2>&1; then
-  echo "tmux is required" >&2
   exit 1
 fi
 
@@ -31,5 +25,4 @@ echo "Installing JavaScript dependencies"
 )
 
 echo "Runtime installed."
-echo "tmux socket: $TMUX_SOCKET"
 echo "logs dir: $LOGS_DIR"
