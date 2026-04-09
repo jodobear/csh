@@ -269,3 +269,10 @@ Append-only project communication history.
 - When: 2026-04-09 15:49 WEST
 - What: Started Phase 8 verification hardening. Added a tested process-control helper in `scripts/host-control.ts`, added `scripts/restart-recovery.ts` to prove named-session survival across a real relay-backed host restart, and wired that proof into `scripts/run-autonomous-loop.sh` with stable `restart-recovery.log` and `restart-host.log` artifacts. While rerunning the gate, a stale local browser bridge exposed a verify-port collision; the loop now selects its own free loopback browser port so `csh verify` no longer depends on port `4318` being unused. Local `bun test --timeout 15000 scripts/host-control.test.ts`, `bun run test:phase7-contract`, and `bun run scripts/csh.ts verify .env.csh.local` all passed afterward.
 - Session: local repo execution
+
+### 2026-04-09 16:20 WEST
+
+- Who: Codex
+- When: 2026-04-09 16:20 WEST
+- What: Closed the next Phase 8 hardening slice with an isolated-clone proof. Added `scripts/fresh-checkout.ts` plus `scripts/fresh-checkout.test.ts`, exposed them through `test:fresh-checkout` and `csh:fresh-checkout`, and verified that a fresh local clone can run `bun install --frozen-lockfile` and then pass `bun run scripts/csh.ts verify .env.csh.local` with `restart_status=0`, `proxy_status=0`, `exec_status=7`, and `browser_status=0`. The active prompt, handoff, and deployment-resilience audit were updated to mark fresh-checkout verification as closed and move the next focus to relay fault hardening.
+- Session: local repo execution

@@ -151,3 +151,25 @@ Question: where can startup, verification, persistence, or long-running operatio
 - Proof:
   - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with `browser_port=43180`
   - the browser path completed with `browser_status=0` on the same run
+
+### `deployment-resilience-bootstrap-02`
+
+- Severity: medium
+- Summary: the hardening lane previously relied on the actively worked tree for proof, so clone-time
+  install or bootstrap drift could hide behind a green local verify run.
+- Evidence:
+  - [fresh-checkout.ts](/workspace/projects/csh/scripts/fresh-checkout.ts)
+  - [fresh-checkout.test.ts](/workspace/projects/csh/scripts/fresh-checkout.test.ts)
+  - [package.json](/workspace/projects/csh/package.json)
+- Status: closed 2026-04-09
+- Resolution: `scripts/fresh-checkout.ts` now performs an isolated local clone, runs
+  `bun install --frozen-lockfile`, and then runs `bun run scripts/csh.ts verify .env.csh.local`
+  from that clone. The helper is covered by `scripts/fresh-checkout.test.ts` and exposed as
+  `bun run csh:fresh-checkout`.
+- Proof:
+  - local `bun test --timeout 15000 scripts/fresh-checkout.test.ts` passed
+  - outside the sandbox,
+    `BUN_TMPDIR=/tmp BUN_INSTALL=/tmp/bun-install bun run scripts/fresh-checkout.ts` passed on
+    2026-04-09
+  - the isolated clone verify reported `restart_status=0`, `proxy_status=0`, `exec_status=7`, and
+    `browser_status=0`

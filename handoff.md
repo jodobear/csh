@@ -3,19 +3,23 @@
 ## Current Status
 
 - Active phase: [phase-8-verification-hardening.md](/workspace/projects/csh/docs/prompts/phase-8-verification-hardening.md)
-- Current objective: harden the autonomous verify loop around the native PTY backend, starting with relay-backed host restart recovery
+- Current objective: harden the autonomous verify loop around the native PTY backend, with
+  restart recovery and fresh-checkout proof now established
 - Repo state:
   - Git repository initialized on `master`
-  - `master` is pushed to `origin/master`
-  - current work is local-only until the next push
+  - `master` tracks `origin/master`
+  - check `git status --short --branch` for the exact ahead/behind state at handoff time
 - Working-tree truth:
   - the checked-in native PTY runtime is live on `master`
   - the working tree is runnable through the current autonomous gate
-  - the first Phase 8 hardening slice is now present in the working tree and not yet pushed
+  - the hardening lane now has both restart-recovery proof and an isolated fresh-checkout proof
 - Canonical verify gate:
   - `bun test --timeout 15000 scripts/host-control.test.ts` passes locally
+  - `bun test --timeout 15000 scripts/fresh-checkout.test.ts` passes locally
   - `bun run test:phase7-contract` passes
   - `bun run scripts/csh.ts verify .env.csh.local` passed locally on 2026-04-09
+  - outside the sandbox, `BUN_TMPDIR=/tmp BUN_INSTALL=/tmp/bun-install bun run scripts/fresh-checkout.ts`
+    passed on 2026-04-09 from an isolated clone
   - the verify loop now records stable artifact paths, including `host-control.log`, `phase7-contract.log`, `exec.log`, `host.log`, `restart-recovery.log`, `restart-host.log`, `proxy.log`, `browser.log`, and `browser-smoke.log`
 - Active prompt: [phase-8-verification-hardening.md](/workspace/projects/csh/docs/prompts/phase-8-verification-hardening.md)
 - Default audit postures for refinement work:
@@ -88,12 +92,14 @@ These proofs reflect the native-PTY backend plus the refreshed 2026-04-09 verifi
 | install lifecycle is complete for the Bun-backed launcher | `bun run csh install --prefix /tmp/csh-lifecycle --no-runtime`, `bun run csh upgrade --prefix /tmp/csh-lifecycle --no-runtime`, and `bun run csh uninstall --prefix /tmp/csh-lifecycle` all succeeded | proven locally | uninstall only removes managed launchers unless forced |
 | Native PTY runtime preserves reconnect, restart survival, byte-safe input, resize, high-output handling, browser forwarding, and exit-status reporting | `bun run test:phase7-contract` passed locally on 2026-04-08 | proven locally | end-to-end browser attach on the migrated backend still needs a fresh live proof |
 | The autonomous gate is strong enough to drive the native PTY lane | `bun run scripts/csh.ts verify .env.csh.local` passed locally on 2026-04-09 and reported `restart_status=0`, `exec_status=7`, `proxy_status=0`, `browser_status=0`, plus stable artifact paths for host-control/contract/restart/exec/host/proxy/browser logs | proven locally | the audit set should stay fresh as the backend hardens further |
+| The repo can bootstrap and pass verify from an isolated clone | outside the sandbox, `BUN_TMPDIR=/tmp BUN_INSTALL=/tmp/bun-install bun run scripts/fresh-checkout.ts` cloned the repo into `/tmp`, ran `bun install --frozen-lockfile`, and then passed `bun run scripts/csh.ts verify .env.csh.local` with `restart_status=0`, `proxy_status=0`, `exec_status=7`, and `browser_status=0` on 2026-04-09 | proven locally | it is still a separate hardening proof, not yet part of every routine verify run |
 
 ## Open Risks
 
 - `relay.contextvm.org` now works as a compatibility path, but it should still not be the primary operator relay.
 - The migrated backend now passes the layered contract and verify loops, including the browser-over-ContextVM smoke path.
-- The canonical verify path is still local/private-relay-first; fresh-checkout proof and broader fault injection are the next hardening targets.
+- The canonical verify path is still local/private-relay-first; broader relay fault injection is the
+  next hardening target.
 - The browser UI is an operator-side bridge, not a public multi-user shell surface.
 - Interactive disconnect still uses a bounded grace window, not a hard delivery guarantee under a broken transport.
 - The installed `csh` launcher is checkout-backed by design; moving or deleting the repo checkout breaks that launcher until it is reinstalled.
@@ -106,8 +112,8 @@ These proofs reflect the native-PTY backend plus the refreshed 2026-04-09 verifi
 
 ## Next Actions
 
-1. Run a fresh-checkout verify proof so the hardening lane is not relying only on this worked tree.
-2. Add the next failure-oriented verify slice: relay interruption / recovery or longer-lived idle/high-output session proof.
+1. Add the next failure-oriented verify slice: relay interruption / recovery or longer-lived idle/high-output session proof.
+2. Decide whether the isolated fresh-checkout proof should stay as a periodic hardening command or be folded into a broader release-grade verify flow.
 3. Decide whether to capture a fresh public-relay compatibility rerun on the native PTY backend or keep the last public-relay proof as sufficient secondary evidence.
 
 ## Process Notes
