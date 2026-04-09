@@ -9,6 +9,7 @@ PROXY_LOG="${CSH_PROXY_LOG:-$ROOT_DIR/.csh-runtime/logs/proxy.log}"
 CONTRACT_LOG="${CSH_CONTRACT_LOG:-$ROOT_DIR/.csh-runtime/logs/phase7-contract.log}"
 HOST_CONTROL_LOG="${CSH_HOST_CONTROL_LOG:-$ROOT_DIR/.csh-runtime/logs/host-control.log}"
 EXEC_LOG="${CSH_EXEC_LOG:-$ROOT_DIR/.csh-runtime/logs/exec.log}"
+SOAK_LOG="${CSH_SOAK_LOG:-$ROOT_DIR/.csh-runtime/logs/session-soak.log}"
 RELAY_RECOVERY_LOG="${CSH_RELAY_RECOVERY_LOG:-$ROOT_DIR/.csh-runtime/logs/relay-recovery.log}"
 RELAY_RECOVERY_RELAY_LOG="${CSH_RELAY_RECOVERY_RELAY_LOG:-$ROOT_DIR/.csh-runtime/logs/relay-recovery-relay.log}"
 RESTART_LOG="${CSH_RESTART_LOG:-$ROOT_DIR/.csh-runtime/logs/restart-recovery.log}"
@@ -194,6 +195,15 @@ fi
 CVM_ENV_FILE="$ENV_FILE" bun run csh:smoke
 CVM_ENV_FILE="$ENV_FILE" bun run csh:lifecycle
 
+set +e
+CVM_ENV_FILE="$ENV_FILE" bun run csh:session-soak >"$SOAK_LOG" 2>&1
+soak_status=$?
+set -e
+
+if [[ "$soak_status" != "0" ]]; then
+  exit "$soak_status"
+fi
+
 relay_recovery_status=0
 if [[ -n "$relay_pid" ]]; then
   set +e
@@ -257,6 +267,8 @@ printf 'browser_port=%s\n' "$CSH_BROWSER_PORT"
 printf 'host_control_log=%s\n' "$HOST_CONTROL_LOG"
 printf 'phase7_contract_log=%s\n' "$CONTRACT_LOG"
 printf 'exec_log=%s\n' "$EXEC_LOG"
+printf 'soak_status=%s\n' "$soak_status"
+printf 'soak_log=%s\n' "$SOAK_LOG"
 printf 'relay_log=%s\n' "$RELAY_LOG"
 printf 'relay_recovery_status=%s\n' "$relay_recovery_status"
 printf 'relay_recovery_log=%s\n' "$RELAY_RECOVERY_LOG"

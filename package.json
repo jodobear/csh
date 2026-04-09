@@ -26,6 +26,7 @@
     "csh:lifecycle": "bun run scripts/lifecycle-client.ts",
     "csh:restart-recovery": "bun run scripts/restart-recovery.ts",
     "csh:relay-recovery": "bun run scripts/relay-recovery.ts",
+    "csh:session-soak": "bun run scripts/session-soak.ts",
     "csh:fresh-checkout": "bun run scripts/fresh-checkout.ts",
     "csh:proxy-smoke": "bun run scripts/proxy-smoke.ts",
     "csh:browser-smoke": "bun run scripts/browser-smoke.ts"
