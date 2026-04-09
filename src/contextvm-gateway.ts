@@ -27,7 +27,7 @@ const gateway = new NostrMCPGateway({
   nostrTransportOptions: {
     signer,
     relayHandler,
-    allowedPublicKeys: config.allowedPublicKeys,
+    allowedPublicKeys: [],
     injectClientPubkey: true,
     encryptionMode: config.encryptionMode,
     giftWrapMode: config.giftWrapMode,
@@ -60,7 +60,7 @@ await gateway.start();
 console.error("csh ContextVM gateway started");
 console.error(`Server pubkey: ${await signer.getPublicKey()}`);
 console.error(`Relay URLs: ${config.relayUrls.join(", ")}`);
-console.error(`Allowed client pubkeys: ${config.allowedPublicKeys.join(", ")}`);
+console.error(`Shell allowlist seed pubkeys: ${config.allowlistSeedPublicKeys.join(", ")}`);
 
 async function shutdown(exitCode: number): Promise<never> {
   if (gateway.isActive()) {

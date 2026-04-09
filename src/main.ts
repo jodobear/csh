@@ -1,9 +1,11 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
+import { AuthService } from "./auth/server.js";
 import { PtySessionManager } from "./server/pty-session-manager.js";
 
 const manager = new PtySessionManager();
+const auth = new AuthService();
 const ownerInputSchema = z.string().min(1).optional();
 const sessionIdSchema = z.string().regex(
   /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/,
@@ -14,6 +16,58 @@ const server = new McpServer({
   name: "csh-local-terminal",
   version: "0.1.0",
 });
+
+server.registerTool(
+  "auth_status",
+  {
+    description: "Return the authenticated Nostr signer pubkey and shell allowlist status.",
+    inputSchema: {},
+  },
+  async (_args, extra) => {
+    const status = await auth.authStatus(extra);
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(status, null, 2),
+        },
+      ],
+      structuredContent: status,
+    };
+  },
+);
+
+server.registerTool(
+  "auth_redeem_invite",
+  {
+    description: "Redeem a one-time invite token for the authenticated Nostr signer.",
+    inputSchema: {
+      inviteToken: z.string().min(1),
+    },
+  },
+  async ({ inviteToken }, extra) => {
+    const status = await auth.redeemInvite(inviteToken, extra);
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(
+            {
+              ...status,
+              redeemed: true,
+            },
+            null,
+            2,
+          ),
+        },
+      ],
+      structuredContent: {
+        ...status,
+        redeemed: true,
+      },
+    };
+  },
+);
 
 server.registerTool(
   "session_open",
@@ -35,7 +89,7 @@ server.registerTool(
       cwd,
       cols,
       rows,
-      ownerId: resolveActorId(ownerId, extra),
+      ownerId: await auth.resolveShellActorId(ownerId, extra),
     });
 
     return {
@@ -86,7 +140,7 @@ server.registerTool(
 
     const session = await manager.writeToSession(
       sessionId,
-      resolveActorId(ownerId, extra),
+      await auth.resolveShellActorId(ownerId, extra),
       input,
       inputBase64,
     );
@@ -135,7 +189,7 @@ server.registerTool(
       sessionId,
       cols,
       rows,
-      resolveActorId(ownerId, extra),
+      await auth.resolveShellActorId(ownerId, extra),
     );
 
     return {
@@ -173,7 +227,11 @@ server.registerTool(
     },
   },
   async ({ sessionId, signal, ownerId }, extra) => {
-    const session = await manager.signalSession(sessionId, signal, resolveActorId(ownerId, extra));
+    const session = await manager.signalSession(
+      sessionId,
+      signal,
+      await auth.resolveShellActorId(ownerId, extra),
+    );
 
     return {
       content: [
@@ -213,7 +271,7 @@ server.registerTool(
   async ({ sessionId, cursor, keepAlive, ownerId }, extra) => {
     const result = await manager.pollSession(
       sessionId,
-      resolveActorId(ownerId, extra),
+      await auth.resolveShellActorId(ownerId, extra),
       cursor,
       keepAlive ?? false,
     );
@@ -268,7 +326,7 @@ server.registerTool(
     },
   },
   async ({ sessionId, ownerId }, extra) => {
-    const session = await manager.closeSession(sessionId, resolveActorId(ownerId, extra));
+    const session = await manager.closeSession(sessionId, await auth.resolveShellActorId(ownerId, extra));
 
     return {
       content: [
@@ -296,42 +354,3 @@ server.registerTool(
 
 const transport = new StdioServerTransport();
 await server.connect(transport);
-
-function resolveActorId(
-  requestedOwnerId: string | undefined,
-  extra: unknown,
-): string {
-  const forcedOwnerId = process.env.CSH_FORCED_OWNER_ID?.trim() || undefined;
-  const metadataOwnerId =
-    typeof extra === "object" &&
-    extra !== null &&
-    "_meta" in extra &&
-    typeof extra._meta === "object" &&
-    extra._meta !== null &&
-    "clientPubkey" in extra._meta &&
-    typeof extra._meta.clientPubkey === "string"
-      ? extra._meta.clientPubkey
-      : undefined;
-
-  if (forcedOwnerId) {
-    if (requestedOwnerId && requestedOwnerId !== forcedOwnerId) {
-      throw new Error("ownerId does not match the enforced server-side identity");
-    }
-
-    return forcedOwnerId;
-  }
-
-  if (metadataOwnerId && requestedOwnerId && requestedOwnerId !== metadataOwnerId) {
-    throw new Error("ownerId does not match the authenticated client identity");
-  }
-
-  if (metadataOwnerId) {
-    return metadataOwnerId;
-  }
-
-  if (process.env.CSH_ALLOW_UNAUTHENTICATED_OWNER === "1") {
-    return requestedOwnerId ?? "local";
-  }
-
-  throw new Error("Authenticated client identity is required for session access");
-}

@@ -30,7 +30,7 @@ const envSchema = z.object({
 export type ContextVmConfig = {
   privateKey: string;
   relayUrls: string[];
-  allowedPublicKeys: string[];
+  allowlistSeedPublicKeys: string[];
   encryptionMode: EncryptionMode;
   giftWrapMode: GiftWrapMode;
   serverInfo: {
@@ -52,22 +52,14 @@ export function loadContextVmConfig(env: NodeJS.ProcessEnv = process.env): Conte
     throw new Error("Missing CVM_RELAYS or CSH_NOSTR_RELAY_URLS");
   }
 
-  const allowedPublicKeys = parseCsvList(
+  const allowlistSeedPublicKeys = parseCsvList(
     parsed.GW_ALLOWED_PUBLIC_KEYS ?? parsed.CSH_ALLOWED_PUBLIC_KEYS ?? "",
   );
-  const allowUnlistedClients =
-    parsed.GW_ALLOW_UNLISTED_CLIENTS === "1" ||
-    parsed.GW_ALLOW_UNLISTED_CLIENTS?.toLowerCase() === "true" ||
-    parsed.CSH_ALLOW_UNLISTED_CLIENTS === "1" ||
-    parsed.CSH_ALLOW_UNLISTED_CLIENTS?.toLowerCase() === "true";
-  if (!allowUnlistedClients && allowedPublicKeys.length === 0) {
-    throw new Error("GW_ALLOWED_PUBLIC_KEYS or CSH_ALLOWED_PUBLIC_KEYS must contain at least one pubkey");
-  }
 
   return {
     privateKey,
     relayUrls: parseCsvList(relaySource),
-    allowedPublicKeys,
+    allowlistSeedPublicKeys,
     encryptionMode: parseEncryptionMode(parsed.GW_ENCRYPTION_MODE ?? parsed.CSH_ENCRYPTION_MODE),
     giftWrapMode: GiftWrapMode.EPHEMERAL,
     serverInfo: {
