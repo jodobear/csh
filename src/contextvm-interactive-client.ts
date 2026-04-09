@@ -20,7 +20,9 @@ type OpenResult = {
 type PollResult = {
   cursor: number;
   snapshot: string | null;
+  snapshotBase64?: string | null;
   delta?: string | null;
+  deltaBase64?: string | null;
   changed: boolean;
   closedAt: string | null;
   exitStatus: number | null;
@@ -51,7 +53,6 @@ const transport = new SkewTolerantNostrClientTransport(
 
 let sessionId: string | undefined = process.env.CSH_SESSION_ID;
 let cursor = 0;
-let lastSnapshot = "";
 let screenInitialized = false;
 let pollLoopFailed = false;
 let localExitRequested = false;
@@ -85,10 +86,6 @@ async function runInteractiveClient(): Promise<void> {
     sessionId = initialState.sessionId;
     cursor = initialState.cursor;
 
-    if (initialState.snapshot !== null) {
-      lastSnapshot = initialState.snapshot;
-    }
-
     if (initialState.reconnected) {
       console.error(`Reconnected to remote session ${sessionId}`);
       console.error("Ctrl-] disconnects. Ctrl-C sends SIGINT to the remote session.");
@@ -101,6 +98,9 @@ async function runInteractiveClient(): Promise<void> {
     }
 
     restoreTerminal = configureTerminal();
+    if (initialState.snapshotBase64 !== null) {
+      renderSnapshot(initialState.snapshotBase64);
+    }
 
     onResize = () => {
       void resizeRemote().catch(reportBackgroundError);
@@ -137,7 +137,7 @@ async function runInteractiveClient(): Promise<void> {
             name: "session_write",
             arguments: {
               sessionId,
-              input: chunk.toString("utf8"),
+              inputBase64: chunk.toString("base64"),
             },
           }),
         )
@@ -183,7 +183,6 @@ async function runInteractiveClient(): Promise<void> {
 async function pollUntilStopped(): Promise<void> {
   while (!localExitRequested && sessionId) {
     try {
-      const requestedCursor = cursor;
       const result = await queueRpc(() =>
         parseToolResult<PollResult>(
           client.callTool({
@@ -199,15 +198,10 @@ async function pollUntilStopped(): Promise<void> {
 
       cursor = result.cursor;
 
-      const shouldRenderSnapshot =
-        result.snapshot !== null && (!result.delta || requestedCursor === 0) && result.snapshot !== lastSnapshot;
-
-      if (shouldRenderSnapshot) {
-        renderSnapshot(result.snapshot);
-      } else if (result.delta) {
-        renderDelta(result.delta);
-      } else if (result.snapshot !== null) {
-        lastSnapshot = result.snapshot;
+      if (result.snapshotBase64) {
+        renderSnapshot(result.snapshotBase64);
+      } else if (result.deltaBase64) {
+        renderDelta(result.deltaBase64);
       }
 
       if (result.closedAt) {
@@ -232,7 +226,7 @@ async function pollUntilStopped(): Promise<void> {
 async function ensureSession(): Promise<{
   sessionId: string;
   cursor: number;
-  snapshot: string | null;
+  snapshotBase64: string | null;
   reconnected: boolean;
 }> {
   if (sessionId) {
@@ -254,7 +248,7 @@ async function ensureSession(): Promise<{
         return {
           sessionId,
           cursor: result.cursor,
-          snapshot: result.snapshot ?? null,
+          snapshotBase64: result.snapshotBase64 ?? null,
           reconnected: true,
         };
       }
@@ -282,7 +276,7 @@ async function ensureSession(): Promise<{
   return {
     sessionId: openResult.sessionId,
     cursor: openResult.cursor,
-    snapshot: null,
+    snapshotBase64: null,
     reconnected: false,
   };
 }
@@ -311,28 +305,22 @@ function getTerminalSize(): { cols: number; rows: number } {
   };
 }
 
-function renderSnapshot(nextSnapshot: string): void {
+function renderSnapshot(snapshotBase64: string): void {
   if (!screenInitialized) {
     stdout.write("\x1b[?1049h");
     screenInitialized = true;
   }
 
-  if (lastSnapshot && nextSnapshot.startsWith(lastSnapshot)) {
-    stdout.write(nextSnapshot.slice(lastSnapshot.length));
-  } else {
-    stdout.write("\x1b[H\x1b[2J");
-    stdout.write(nextSnapshot);
-  }
-  lastSnapshot = nextSnapshot;
+  stdout.write("\x1b[H\x1b[2J");
+  stdout.write(Buffer.from(snapshotBase64, "base64"));
 }
 
-function renderDelta(delta: string): void {
+function renderDelta(deltaBase64: string): void {
   if (!screenInitialized) {
     stdout.write("\x1b[?1049h");
     screenInitialized = true;
   }
-
-  stdout.write(delta);
+  stdout.write(Buffer.from(deltaBase64, "base64"));
 }
 
 async function resizeRemote(): Promise<void> {
@@ -405,9 +393,9 @@ async function settleRpcChain(): Promise<void> {
 function reconnectHint(activeSessionId: string): string {
   const envFile = process.env.CVM_ENV_FILE;
   if (envFile) {
-    return `bin/csh shell --session ${activeSessionId} --config ${envFile}`;
+    return `csh shell --session ${activeSessionId} ${envFile}`;
   }
-  return `bin/csh shell --session ${activeSessionId}`;
+  return `csh shell --session ${activeSessionId}`;
 }
 
 function isUnknownSessionError(error: unknown): boolean {

@@ -9,6 +9,7 @@ import {
   loadEnvFile,
   openSession,
   pollSession,
+  sessionOutputText,
   sleep,
   writeSession,
 } from "./client-common";
@@ -183,11 +184,10 @@ async function gatherRuntimeCheck(): Promise<RuntimeCheck> {
     srcGateway: paths.srcGateway,
     browserServer: path.join(paths.rootDir, "src", "browser", "contextvm-server.ts"),
     browserBuild: path.join(paths.rootDir, "dist", "browser", "app.js"),
-    ptyAttach: path.join(paths.rootDir, "scripts", "pty-attach.py"),
+    ptySession: path.join(paths.rootDir, "scripts", "pty-session.py"),
   };
   const commands = {
     bun: Bun.which("bun"),
-    tmux: Bun.which("tmux"),
     python3: Bun.which("python3"),
     nak: Bun.which("nak"),
     csh: Bun.which("csh"),
@@ -201,9 +201,6 @@ async function gatherRuntimeCheck(): Promise<RuntimeCheck> {
 
   if (!commands.bun) {
     errors.push("Missing bun in PATH.");
-  }
-  if (!commands.tmux) {
-    errors.push("Missing tmux in PATH.");
   }
   if (!commands.python3) {
     errors.push("Missing python3 in PATH.");
@@ -567,6 +564,7 @@ async function commandExec(parsed: ParsedArgs): Promise<void> {
     rows: 40,
   });
   let shouldCloseSession = true;
+  let exitCode = 0;
 
   try {
     await writeSession(client, session.sessionId, `${remoteCommand}\nexit\n`);
@@ -574,19 +572,26 @@ async function commandExec(parsed: ParsedArgs): Promise<void> {
     const timeoutMs = 15_000;
     const startedAt = Date.now();
     let cursor = session.cursor;
-    let lastSnapshot: string | null = null;
+    let renderedOutput = "";
     let remoteClosed = false;
+    let remoteExitStatus: number | null = null;
 
     while (Date.now() - startedAt < timeoutMs) {
       const result = await pollSession(client, session.sessionId, cursor, true);
       cursor = result.cursor;
 
-      if (result.snapshot !== null) {
-        lastSnapshot = result.snapshot;
+      const text = sessionOutputText(result);
+      if (text !== null) {
+        if (result.snapshot !== null || result.snapshotBase64) {
+          renderedOutput = text;
+        } else {
+          renderedOutput += text;
+        }
       }
 
       if (result.closedAt) {
         remoteClosed = true;
+        remoteExitStatus = result.exitStatus;
         break;
       }
 
@@ -596,8 +601,8 @@ async function commandExec(parsed: ParsedArgs): Promise<void> {
     if (!remoteClosed) {
       shouldCloseSession = false;
       const reconnectHint = `csh shell --session ${session.sessionId} --config ${configPath}`;
-      if (lastSnapshot) {
-        process.stderr.write(stripDeadPaneFooter(lastSnapshot).trimEnd());
+      if (renderedOutput) {
+        process.stderr.write(stripDeadPaneFooter(renderedOutput).trimEnd());
         process.stderr.write("\n");
       }
       throw new Error(
@@ -605,16 +610,19 @@ async function commandExec(parsed: ParsedArgs): Promise<void> {
       );
     }
 
-    if (lastSnapshot) {
-      process.stdout.write(stripDeadPaneFooter(lastSnapshot).trimEnd());
+    if (renderedOutput) {
+      process.stdout.write(stripDeadPaneFooter(renderedOutput).trimEnd());
       process.stdout.write("\n");
     }
+    exitCode = remoteExitStatus ?? 0;
   } finally {
     if (shouldCloseSession) {
       await closeSession(client, session.sessionId).catch(() => undefined);
     }
     await client.close();
   }
+
+  process.exit(exitCode);
 }
 
 function stripDeadPaneFooter(snapshot: string): string {
@@ -670,7 +678,9 @@ async function commandBrowserLocal(): Promise<void> {
 
 async function commandVerify(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
-  requireHealthyConfig(configPath, "full");
+  if (await Bun.file(configPath).exists()) {
+    requireHealthyConfig(configPath, "full");
+  }
   const code = await runCommand("bash", ["scripts/run-autonomous-loop.sh", configPath]);
   process.exit(code);
 }

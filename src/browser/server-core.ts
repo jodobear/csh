@@ -1,12 +1,15 @@
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import type { ShellBridge } from "./shell-bridge.js";
 
+const PROJECT_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+
 const envSchema = z.object({
   CSH_BROWSER_HOST: z.string().trim().min(1).default("127.0.0.1"),
-  CSH_BROWSER_PORT: z.coerce.number().int().min(1).max(65535).default(4318),
+  CSH_BROWSER_PORT: z.coerce.number().int().min(0).max(65535).default(4318),
   CSH_BROWSER_ALLOW_REMOTE: z
     .string()
     .trim()
@@ -31,7 +34,16 @@ const openSchema = z.object({
 
 const writeSchema = z.object({
   sessionId: z.string().min(1),
-  input: z.string(),
+  input: z.string().optional(),
+  inputBase64: z.string().optional(),
+}).superRefine((value, ctx) => {
+  if (value.input === undefined && value.inputBase64 === undefined) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "session/write requires input or inputBase64",
+      path: ["input"],
+    });
+  }
 });
 
 const resizeSchema = z.object({
@@ -48,6 +60,7 @@ const signalSchema = z.object({
 const pollSchema = z.object({
   sessionId: z.string().min(1),
   cursor: z.number().int().min(0).optional(),
+  keepAlive: z.boolean().optional(),
 });
 
 const closeSchema = z.object({
@@ -148,7 +161,7 @@ export async function startBrowserServer(options: BrowserServerOptions): Promise
   });
 }
 
-async function handleRequest(
+export async function handleRequest(
   request: Request,
   bridge: ShellBridge,
   bundledAssets: BundledAssets,
@@ -266,7 +279,7 @@ async function buildBrowserAssets(): Promise<BundledAssets> {
     return prebuilt;
   }
 
-  const entrypoint = path.join(process.cwd(), "src", "browser", "app.ts");
+  const entrypoint = path.join(PROJECT_ROOT, "src", "browser", "app.ts");
   const build = await Bun.build({
     entrypoints: [entrypoint],
     target: "browser",
@@ -313,7 +326,7 @@ async function buildBrowserAssets(): Promise<BundledAssets> {
 }
 
 async function readPrebuiltBrowserAssets(): Promise<BundledAssets | null> {
-  const prebuiltDir = path.join(process.cwd(), "dist", "browser");
+  const prebuiltDir = path.join(PROJECT_ROOT, "dist", "browser");
   const scriptCandidate = path.join(prebuiltDir, "app.js");
   if (!(await Bun.file(scriptCandidate).exists())) {
     return null;

@@ -26,7 +26,9 @@ type SessionPollResult = {
   changed: boolean;
   cursor: number;
   snapshot: string | null;
+  snapshotBase64?: string | null;
   delta?: string | null;
+  deltaBase64?: string | null;
   cols: number;
   rows: number;
   closedAt: string | null;
@@ -162,6 +164,19 @@ export async function writeSession(
   });
 }
 
+export async function writeSessionBytes(
+  client: Client,
+  sessionId: string,
+  input: Buffer,
+  ownerId?: string,
+): Promise<void> {
+  await callTool(client, "session_write", {
+    sessionId,
+    inputBase64: input.toString("base64"),
+    ...(ownerId ? { ownerId } : {}),
+  });
+}
+
 export async function pollSession(
   client: Client,
   sessionId: string,
@@ -206,8 +221,9 @@ export async function waitForSnapshot(
     const result = await pollSession(client, sessionId, cursor, options?.ownerId);
     cursor = result.cursor;
     lastResult = result;
+    const text = sessionOutputText(result);
 
-    if (result.snapshot !== null && predicate(result.snapshot, result)) {
+    if (text !== null && predicate(text, result)) {
       return result;
     }
 
@@ -223,4 +239,14 @@ export async function waitForSnapshot(
 
 export function newOwnerId(): string {
   return randomUUID();
+}
+
+export function sessionOutputText(result: SessionPollResult): string | null {
+  if (result.snapshotBase64) {
+    return Buffer.from(result.snapshotBase64, "base64").toString("utf8");
+  }
+  if (result.deltaBase64) {
+    return Buffer.from(result.deltaBase64, "base64").toString("utf8");
+  }
+  return result.snapshot ?? result.delta ?? null;
 }

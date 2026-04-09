@@ -4,6 +4,7 @@ import {
   loadEnvFile,
   openSession,
   pollSession,
+  sessionOutputText,
   sleep,
   waitForSnapshot,
   writeSession,
@@ -28,7 +29,7 @@ const firstResult = await waitForSnapshot(
   (snapshot) => snapshot.includes("__PWD__/") && snapshot.includes("__PID__"),
   { cursor: opened.cursor },
 );
-const firstPid = parsePidFromSnapshot(firstResult.snapshot);
+const firstPid = parsePidFromSnapshot(sessionOutputText(firstResult));
 assert(firstPid, "Could not parse initial shell PID");
 
 await writeSession(firstClient, opened.sessionId, "cd /tmp\nprintf '__PWD__%s\\n' \"$PWD\"\necho __PID__$$\n");
@@ -38,7 +39,7 @@ const secondResult = await waitForSnapshot(
   (snapshot) => snapshot.includes("__PWD__/tmp") && snapshot.includes("__PID__"),
   { cursor: firstResult.cursor },
 );
-assert(parsePidFromSnapshot(secondResult.snapshot) === firstPid, "PID changed during the initial session");
+assert(parsePidFromSnapshot(sessionOutputText(secondResult)) === firstPid, "PID changed during the initial session");
 
 await firstClient.close();
 
@@ -56,7 +57,7 @@ const reconnectResult = await waitForSnapshot(
   (snapshot) => snapshot.includes("__PWD__/tmp") && snapshot.includes("__PID__"),
   { cursor: secondResult.cursor },
 );
-assert(parsePidFromSnapshot(reconnectResult.snapshot) === firstPid, "PID changed across reconnect");
+assert(parsePidFromSnapshot(sessionOutputText(reconnectResult)) === firstPid, "PID changed across reconnect");
 
 await closeSession(reconnectClient, opened.sessionId);
 const closedPoll = await pollSession(reconnectClient, opened.sessionId, reconnectResult.cursor);
@@ -70,7 +71,7 @@ const freshResult = await waitForSnapshot(
   (snapshot) => snapshot.includes("__PID__"),
   { cursor: reopened.cursor },
 );
-const freshPid = parsePidFromSnapshot(freshResult.snapshot);
+const freshPid = parsePidFromSnapshot(sessionOutputText(freshResult));
 assert(freshPid && freshPid !== firstPid, "Session close did not force a new shell PID");
 await reconnectClient.close();
 
@@ -80,7 +81,7 @@ console.log(
       sessionId: opened.sessionId,
       reconnectDelayMs,
       initialPid: firstPid,
-      postReconnectPid: parsePidFromSnapshot(reconnectResult.snapshot),
+      postReconnectPid: parsePidFromSnapshot(sessionOutputText(reconnectResult)),
       postClosePid: freshPid,
     },
     null,

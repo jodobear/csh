@@ -17,7 +17,9 @@ type PollResult = {
   changed: boolean;
   cursor: number;
   snapshot: string | null;
+  snapshotBase64?: string | null;
   delta?: string | null;
+  deltaBase64?: string | null;
   cols: number;
   rows: number;
   closedAt: string | null;
@@ -42,6 +44,7 @@ type BrowserRuntimeConfig = {
 const pollIntervalMs = 60;
 const browserConfig = readBrowserRuntimeConfig();
 const storedSessionKey = `csh.browser.sessionId.${browserConfig.stateNamespace}`;
+const textEncoder = new TextEncoder();
 
 const ui = getUiElements();
 const terminal = new Terminal({
@@ -73,7 +76,6 @@ window.addEventListener("focus", () => {
 
 let sessionId: string | null = readStoredSessionId();
 let cursor: number | null = null;
-let lastSnapshot = "";
 let closed = false;
 let stopping = false;
 let pollTimer: number | null = null;
@@ -118,7 +120,6 @@ async function reconnectOrOpenSession(): Promise<void> {
   cancelPollLoop();
   stopping = false;
   closed = false;
-  lastSnapshot = "";
   cursor = null;
   terminal.reset();
   fitAddon.fit();
@@ -182,6 +183,10 @@ async function interruptRemote(): Promise<void> {
 }
 
 async function sendInput(input: string): Promise<void> {
+  await sendBytes(textEncoder.encode(input));
+}
+
+async function sendBytes(input: Uint8Array): Promise<void> {
   if (!sessionId || stopping) {
     return;
   }
@@ -189,7 +194,7 @@ async function sendInput(input: string): Promise<void> {
   await queueRpc(() =>
     postJson("session/write", {
       sessionId,
-      input,
+      inputBase64: encodeBase64(input),
     }),
   );
 }
@@ -248,7 +253,6 @@ async function pollRemote(): Promise<void> {
   }
 
   const activeSessionId = sessionId;
-  const requestedCursor = cursor;
   const result = await queueRpc(() =>
     postJson<PollResult>("session/poll", {
       sessionId: activeSessionId,
@@ -259,15 +263,10 @@ async function pollRemote(): Promise<void> {
 
   cursor = result.cursor;
 
-  const shouldRenderSnapshot =
-    result.snapshot !== null && (!result.delta || requestedCursor === null) && result.snapshot !== lastSnapshot;
-
-  if (shouldRenderSnapshot) {
-    renderSnapshot(result.snapshot);
-  } else if (result.delta) {
-    terminal.write(result.delta);
-  } else if (result.snapshot !== null) {
-    lastSnapshot = result.snapshot;
+  if (result.snapshotBase64) {
+    renderSnapshot(result.snapshotBase64);
+  } else if (result.deltaBase64) {
+    renderDelta(result.deltaBase64);
   }
 
   if (result.closedAt) {
@@ -285,20 +284,30 @@ async function pollRemote(): Promise<void> {
   schedulePoll();
 }
 
-function renderSnapshot(snapshot: string): void {
-  const normalized = normalizeSnapshot(snapshot);
-  if (lastSnapshot && snapshot.startsWith(lastSnapshot)) {
-    terminal.write(normalized.slice(normalizeSnapshot(lastSnapshot).length));
-  } else {
-    terminal.write("\x1b[H\x1b[2J");
-    terminal.write(normalized);
-  }
-  lastSnapshot = snapshot;
+function renderSnapshot(snapshotBase64: string): void {
+  terminal.reset();
+  terminal.write(decodeBase64(snapshotBase64));
 }
 
-function normalizeSnapshot(snapshot: string): string {
-  const trimmed = snapshot.replace(/(?:\r?\n)+$/u, "\n");
-  return trimmed.length > 0 ? trimmed : snapshot;
+function renderDelta(deltaBase64: string): void {
+  terminal.write(decodeBase64(deltaBase64));
+}
+
+function decodeBase64(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) {
+    bytes[index] = binary.charCodeAt(index);
+  }
+  return bytes;
+}
+
+function encodeBase64(bytes: Uint8Array): string {
+  let binary = "";
+  for (const byte of bytes) {
+    binary += String.fromCharCode(byte);
+  }
+  return btoa(binary);
 }
 
 function getTerminalSize(): { cols: number; rows: number } {

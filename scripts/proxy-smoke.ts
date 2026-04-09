@@ -56,7 +56,13 @@ try {
   let snapshot: string | null = null;
   const startedAt = Date.now();
   while (Date.now() - startedAt < 10_000) {
-    const result = await parseToolResult<{ cursor: number; snapshot: string | null }>(
+    const result = await parseToolResult<{
+      cursor: number;
+      snapshot: string | null;
+      snapshotBase64?: string | null;
+      delta?: string | null;
+      deltaBase64?: string | null;
+    }>(
       client.callTool({
         name: "session_poll",
         arguments: {
@@ -66,11 +72,12 @@ try {
       }),
     );
     cursor = result.cursor;
-    if (result.snapshot !== null) {
-      snapshot = result.snapshot;
-      if (snapshot.includes("__PWD__/tmp")) {
-        break;
-      }
+    const text = renderOutput(result);
+    if (text !== null) {
+      snapshot = text;
+    }
+    if (snapshot && snapshot.includes("__PWD__/tmp")) {
+      break;
     }
     await Bun.sleep(50);
   }
@@ -98,7 +105,7 @@ try {
     }),
   ).catch(() => undefined);
 } catch (error) {
-  console.error("proxy-cli path failed");
+  console.error("proxy path failed");
   if (stderrBuffer) {
     console.error(stderrBuffer.trim());
   }
@@ -108,3 +115,18 @@ try {
 }
 
 process.exit(0);
+
+function renderOutput(result: {
+  snapshot: string | null;
+  snapshotBase64?: string | null;
+  delta?: string | null;
+  deltaBase64?: string | null;
+}): string | null {
+  if (result.snapshotBase64) {
+    return Buffer.from(result.snapshotBase64, "base64").toString("utf8");
+  }
+  if (result.deltaBase64) {
+    return Buffer.from(result.deltaBase64, "base64").toString("utf8");
+  }
+  return result.snapshot ?? result.delta ?? null;
+}
