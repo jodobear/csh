@@ -6,7 +6,10 @@ ENV_FILE="${1:-$ROOT_DIR/.env.csh.local}"
 HOST_LOG="${CSH_HOST_LOG:-$ROOT_DIR/.csh-runtime/logs/host.log}"
 PROXY_LOG="${CSH_PROXY_LOG:-$ROOT_DIR/.csh-runtime/logs/proxy.log}"
 CONTRACT_LOG="${CSH_CONTRACT_LOG:-$ROOT_DIR/.csh-runtime/logs/phase7-contract.log}"
+HOST_CONTROL_LOG="${CSH_HOST_CONTROL_LOG:-$ROOT_DIR/.csh-runtime/logs/host-control.log}"
 EXEC_LOG="${CSH_EXEC_LOG:-$ROOT_DIR/.csh-runtime/logs/exec.log}"
+RESTART_LOG="${CSH_RESTART_LOG:-$ROOT_DIR/.csh-runtime/logs/restart-recovery.log}"
+RESTART_HOST_LOG="${CSH_RESTART_HOST_LOG:-$ROOT_DIR/.csh-runtime/logs/restart-host.log}"
 BROWSER_LOG="${CSH_BROWSER_LOG:-$ROOT_DIR/.csh-runtime/logs/browser.log}"
 BROWSER_SMOKE_LOG="${CSH_BROWSER_SMOKE_LOG:-$ROOT_DIR/.csh-runtime/logs/browser-smoke.log}"
 
@@ -34,11 +37,41 @@ cd "$ROOT_DIR"
 
 scripts/install-runtime.sh
 
+bun run test:host-control >"$HOST_CONTROL_LOG" 2>&1
 bun run test:phase7-contract >"$CONTRACT_LOG" 2>&1
 
 if [[ ! -f "$ENV_FILE" ]] || [[ "${CSH_VERIFY_BOOTSTRAP:-0}" == "1" ]]; then
   scripts/bootstrap-env.sh "$ENV_FILE"
 fi
+
+verify_browser_port="$(
+  bun -e '
+    const net = await import("node:net");
+    const start = Number.parseInt(process.env.CSH_VERIFY_BROWSER_PORT || "43180", 10);
+    const limit = start + 200;
+
+    async function canListen(port) {
+      return await new Promise((resolve) => {
+        const server = net.createServer();
+        server.once("error", () => resolve(false));
+        server.listen(port, "127.0.0.1", () => {
+          server.close(() => resolve(true));
+        });
+      });
+    }
+
+    for (let port = start; port < limit; port += 1) {
+      if (await canListen(port)) {
+        console.log(port);
+        process.exit(0);
+      }
+    }
+
+    process.exit(1);
+  '
+)"
+export CSH_BROWSER_HOST="${CSH_BROWSER_HOST:-127.0.0.1}"
+export CSH_BROWSER_PORT="$verify_browser_port"
 
 relay_url="$(
   CVM_ENV_FILE="$ENV_FILE" bun -e '
@@ -130,6 +163,23 @@ CVM_ENV_FILE="$ENV_FILE" bun run csh:smoke
 CVM_ENV_FILE="$ENV_FILE" bun run csh:lifecycle
 
 set +e
+CSH_RESTART_HOST_PID="$host_pid" \
+CSH_RESTART_HOST_LOG="$RESTART_HOST_LOG" \
+CVM_ENV_FILE="$ENV_FILE" \
+  bun run csh:restart-recovery "$ENV_FILE" >"$RESTART_LOG" 2>&1
+restart_status=$?
+set -e
+
+replacement_host_pid="$(sed -n 's/^replacement_host_pid=//p' "$RESTART_LOG" | tail -n 1)"
+if [[ -n "$replacement_host_pid" ]]; then
+  host_pid="$replacement_host_pid"
+fi
+
+if [[ "$restart_status" != "0" ]]; then
+  exit "$restart_status"
+fi
+
+set +e
 bun run scripts/csh.ts exec "printf __EXEC__\\\\n; exit 7" "$ENV_FILE" >"$EXEC_LOG" 2>&1
 exec_status=$?
 set -e
@@ -151,12 +201,17 @@ set -e
 
 printf 'default_operator_path=%s\n' "direct-bun-client"
 printf 'proxy_operator_path=%s\n' "local-sdk-proxy"
+printf 'browser_port=%s\n' "$CSH_BROWSER_PORT"
+printf 'host_control_log=%s\n' "$HOST_CONTROL_LOG"
 printf 'phase7_contract_log=%s\n' "$CONTRACT_LOG"
 printf 'exec_log=%s\n' "$EXEC_LOG"
+printf 'restart_status=%s\n' "$restart_status"
 printf 'proxy_status=%s\n' "$proxy_status"
 printf 'exec_status=%s\n' "$exec_status"
 printf 'browser_status=%s\n' "$browser_status"
 printf 'host_log=%s\n' "$HOST_LOG"
+printf 'restart_log=%s\n' "$RESTART_LOG"
+printf 'restart_host_log=%s\n' "$RESTART_HOST_LOG"
 printf 'proxy_log=%s\n' "$PROXY_LOG"
 printf 'browser_log=%s\n' "$BROWSER_LOG"
 printf 'browser_smoke_log=%s\n' "$BROWSER_SMOKE_LOG"
