@@ -101,6 +101,16 @@ Typical negative cases:
 - unauthorized caller or spoofed identity
 - long-running and high-output sessions
 
+When the repo is expected to support uninterrupted autonomous improvement, define one canonical
+verification command or loop for the phase and make it layered:
+
+- fast seam checks
+- operator-path checks
+- end-to-end checks
+
+Keep the failure artifacts stable enough that the next pass can continue from the real failure
+surface instead of re-discovering it.
+
 ### 4. Trust Boundaries
 
 Explicitly document:
@@ -193,6 +203,7 @@ Every implementation phase should leave behind:
 - phase prompt with explicit exit criteria
 - declared synchronization touchpoints when the slice changes teaching, audit, or startup surfaces
 - claims-vs-proof table in the phase artifact or handoff
+- canonical verification command or loop when the phase changes running behavior materially
 - named audit posture(s) and target finding IDs for non-trivial refinement work
 - recorded open risks
 - recorded unsupported behaviors

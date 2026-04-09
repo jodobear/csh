@@ -1,6 +1,6 @@
 # Phase Prompts
 
-- Current active prompt: none.
+- Current active prompt: `phase-7-native-pty.md`.
 - Completed prompts in this directory are provenance, not startup docs, unless one is explicitly reactivated.
 - Use one prompt per phase.
 - Keep outputs phase-local.
