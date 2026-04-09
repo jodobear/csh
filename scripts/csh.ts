@@ -651,10 +651,15 @@ async function commandBrowser(parsed: ParsedArgs): Promise<void> {
   const config = requireHealthyConfig(configPath, "client");
   process.env.CVM_ENV_FILE = configPath;
   loadEnvFile(configPath);
-  console.error(`Browser URL: ${browserUrl(config)}`);
-  console.error(`Scrollback lines: ${config.scrollbackLines}`);
-  if (config.browserAuthUser && config.browserAuthPassword) {
-    console.error(`Browser auth user: ${config.browserAuthUser}`);
+  const browserHost = process.env.CSH_BROWSER_HOST || config.browserHost;
+  const browserPort = process.env.CSH_BROWSER_PORT || String(config.browserPort);
+  const scrollbackLines = process.env.CSH_SCROLLBACK_LINES || String(config.scrollbackLines);
+  const authUser = process.env.CSH_BROWSER_AUTH_USER || config.browserAuthUser;
+  const authPassword = process.env.CSH_BROWSER_AUTH_PASSWORD || config.browserAuthPassword;
+  console.error(`Browser URL: http://${browserHost}:${browserPort}`);
+  console.error(`Scrollback lines: ${scrollbackLines}`);
+  if (authUser && authPassword) {
+    console.error(`Browser auth user: ${authUser}`);
     console.error(`Browser auth password: read from ${configPath}`);
   } else {
     console.error("Browser auth credentials will be generated at startup because none are set in the config.");

@@ -11,6 +11,7 @@ import {
   runtimePaths,
   validateConfig,
 } from "./config";
+import { applyEnvDefaults } from "./startup-env";
 
 const envFilePath = path.resolve(process.argv[2] ?? defaultEnvFile());
 const config = loadConfig(envFilePath);
@@ -28,10 +29,7 @@ chmodSync(paths.runtimeDir, 0o700);
 chmodSync(paths.logsDir, 0o700);
 chmodSync(path.join(paths.runtimeDir, "sessions"), 0o700);
 
-const parsedEnv = parseEnvFile(envFilePath);
-for (const [key, value] of Object.entries(parsedEnv)) {
-  process.env[key] = value;
-}
+applyEnvDefaults(parseEnvFile(envFilePath));
 
 process.env.CSH_NOSTR_PRIVATE_KEY = process.env.CSH_NOSTR_PRIVATE_KEY || config.gatewayPrivateKey;
 process.env.CSH_NOSTR_RELAY_URLS = process.env.CSH_NOSTR_RELAY_URLS || config.relays.join(",");

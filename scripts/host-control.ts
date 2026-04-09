@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { chmodSync, closeSync, mkdirSync, openSync, readFileSync } from "node:fs";
+import net from "node:net";
 import path from "node:path";
 
 export type LoggedProcess = {
@@ -69,6 +70,29 @@ export async function waitForLogMarker(
   throw new Error(`Process ${pid} did not become ready in time: ${marker}`);
 }
 
+export async function waitForTcpListener(
+  host: string,
+  port: number,
+  pid: number,
+  timeoutMs = 30_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+
+  while (Date.now() < deadline) {
+    if (await canConnect(host, port)) {
+      return;
+    }
+
+    if (!isPidAlive(pid)) {
+      throw new Error(`Process ${pid} exited before listening on ${host}:${port}`);
+    }
+
+    await sleep(50);
+  }
+
+  throw new Error(`Process ${pid} did not start listening on ${host}:${port} in time`);
+}
+
 export async function terminateProcess(
   pid: number,
   options?: {
@@ -126,6 +150,20 @@ async function waitForProcessExit(pid: number, timeoutMs: number): Promise<boole
     await sleep(50);
   }
   return !isPidAlive(pid);
+}
+
+async function canConnect(host: string, port: number): Promise<boolean> {
+  return await new Promise((resolve) => {
+    const socket = net.createConnection({ host, port });
+    const settle = (value: boolean) => {
+      socket.removeAllListeners();
+      socket.destroy();
+      resolve(value);
+    };
+
+    socket.once("connect", () => settle(true));
+    socket.once("error", () => settle(false));
+  });
 }
 
 function readLogFile(logFile: string): string {

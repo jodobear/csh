@@ -16,6 +16,7 @@
     "test:phase7-browser-contract": "bun test --timeout 15000 src/browser/server-core.test.ts",
     "test:phase7-contract": "bun test --timeout 15000 src/server/session-contract.test.ts src/browser/server-core.test.ts",
     "test:host-control": "bun test --timeout 15000 scripts/host-control.test.ts",
+    "test:startup-env": "bun test --timeout 15000 scripts/startup-env.test.ts",
     "test:fresh-checkout": "bun test --timeout 15000 scripts/fresh-checkout.test.ts",
     "demo:contextvm:interactive": "bun run src/contextvm-interactive-client.ts",
     "csh:operator": "bash scripts/operator.sh",
@@ -24,6 +25,7 @@
     "csh:smoke": "bun run scripts/smoke-client.ts",
     "csh:lifecycle": "bun run scripts/lifecycle-client.ts",
     "csh:restart-recovery": "bun run scripts/restart-recovery.ts",
+    "csh:relay-recovery": "bun run scripts/relay-recovery.ts",
     "csh:fresh-checkout": "bun run scripts/fresh-checkout.ts",
     "csh:proxy-smoke": "bun run scripts/proxy-smoke.ts",
     "csh:browser-smoke": "bun run scripts/browser-smoke.ts"

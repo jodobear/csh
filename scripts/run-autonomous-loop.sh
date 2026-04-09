@@ -4,10 +4,13 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${1:-$ROOT_DIR/.env.csh.local}"
 HOST_LOG="${CSH_HOST_LOG:-$ROOT_DIR/.csh-runtime/logs/host.log}"
+RELAY_LOG="${CSH_RELAY_LOG:-$ROOT_DIR/.csh-runtime/logs/relay.log}"
 PROXY_LOG="${CSH_PROXY_LOG:-$ROOT_DIR/.csh-runtime/logs/proxy.log}"
 CONTRACT_LOG="${CSH_CONTRACT_LOG:-$ROOT_DIR/.csh-runtime/logs/phase7-contract.log}"
 HOST_CONTROL_LOG="${CSH_HOST_CONTROL_LOG:-$ROOT_DIR/.csh-runtime/logs/host-control.log}"
 EXEC_LOG="${CSH_EXEC_LOG:-$ROOT_DIR/.csh-runtime/logs/exec.log}"
+RELAY_RECOVERY_LOG="${CSH_RELAY_RECOVERY_LOG:-$ROOT_DIR/.csh-runtime/logs/relay-recovery.log}"
+RELAY_RECOVERY_RELAY_LOG="${CSH_RELAY_RECOVERY_RELAY_LOG:-$ROOT_DIR/.csh-runtime/logs/relay-recovery-relay.log}"
 RESTART_LOG="${CSH_RESTART_LOG:-$ROOT_DIR/.csh-runtime/logs/restart-recovery.log}"
 RESTART_HOST_LOG="${CSH_RESTART_HOST_LOG:-$ROOT_DIR/.csh-runtime/logs/restart-host.log}"
 BROWSER_LOG="${CSH_BROWSER_LOG:-$ROOT_DIR/.csh-runtime/logs/browser.log}"
@@ -86,30 +89,59 @@ relay_url="$(
 )"
 if [[ "$relay_url" =~ ^ws://(127\.0\.0\.1|localhost):([0-9]+)$ ]]; then
   relay_host="${BASH_REMATCH[1]}"
-  relay_port="${BASH_REMATCH[2]}"
-  if ! ss -ltn 2>/dev/null | grep -q ":$relay_port "; then
-    if ! command -v nak >/dev/null 2>&1; then
-      echo "loopback relay $relay_url is not running and nak is not installed" >&2
+  relay_base_port="${BASH_REMATCH[2]}"
+  relay_port="$(
+    CSH_VERIFY_RELAY_PORT_START="$relay_base_port" bun -e '
+      const net = await import("node:net");
+      const start = Number.parseInt(process.env.CSH_VERIFY_RELAY_PORT_START || "10552", 10);
+      const limit = start + 200;
+
+      async function canListen(port) {
+        return await new Promise((resolve) => {
+          const server = net.createServer();
+          server.once("error", () => resolve(false));
+          server.listen(port, "127.0.0.1", () => {
+            server.close(() => resolve(true));
+          });
+        });
+      }
+
+      for (let port = start; port < limit; port += 1) {
+        if (await canListen(port)) {
+          console.log(port);
+          process.exit(0);
+        }
+      }
+
+      process.exit(1);
+    '
+  )"
+  relay_url="ws://$relay_host:$relay_port"
+  export CVM_RELAYS="$relay_url"
+  export CSH_NOSTR_RELAY_URLS="$relay_url"
+
+  if ! command -v nak >/dev/null 2>&1; then
+    echo "loopback relay verification requires nak in PATH" >&2
+    exit 1
+  fi
+
+  CSH_TEST_RELAY_HOST="$relay_host" CSH_TEST_RELAY_PORT="$relay_port" scripts/start-test-relay.sh >"$RELAY_LOG" 2>&1 &
+  relay_pid=$!
+  relay_ready=0
+  for _ in $(seq 1 30); do
+    if ss -ltn 2>/dev/null | grep -q ":$relay_port "; then
+      relay_ready=1
+      break
+    fi
+    if ! kill -0 "$relay_pid" 2>/dev/null; then
+      echo "relay process exited before becoming ready" >&2
       exit 1
     fi
-    CSH_TEST_RELAY_HOST="$relay_host" CSH_TEST_RELAY_PORT="$relay_port" scripts/start-test-relay.sh >"$ROOT_DIR/.csh-runtime/logs/relay.log" 2>&1 &
-    relay_pid=$!
-    relay_ready=0
-    for _ in $(seq 1 30); do
-      if ss -ltn 2>/dev/null | grep -q ":$relay_port "; then
-        relay_ready=1
-        break
-      fi
-      if ! kill -0 "$relay_pid" 2>/dev/null; then
-        echo "relay process exited before becoming ready" >&2
-        exit 1
-      fi
-      sleep 1
-    done
-    if [[ "$relay_ready" != "1" ]]; then
-      echo "relay did not become ready in time" >&2
-      exit 1
-    fi
+    sleep 1
+  done
+  if [[ "$relay_ready" != "1" ]]; then
+    echo "relay did not become ready in time" >&2
+    exit 1
   fi
 fi
 
@@ -162,6 +194,26 @@ fi
 CVM_ENV_FILE="$ENV_FILE" bun run csh:smoke
 CVM_ENV_FILE="$ENV_FILE" bun run csh:lifecycle
 
+relay_recovery_status=0
+if [[ -n "$relay_pid" ]]; then
+  set +e
+  CSH_RELAY_RECOVERY_RELAY_PID="$relay_pid" \
+  CSH_RELAY_RECOVERY_RELAY_LOG="$RELAY_RECOVERY_RELAY_LOG" \
+  CVM_ENV_FILE="$ENV_FILE" \
+    bun run csh:relay-recovery "$ENV_FILE" >"$RELAY_RECOVERY_LOG" 2>&1
+  relay_recovery_status=$?
+  set -e
+
+  replacement_relay_pid="$(sed -n 's/^replacement_relay_pid=//p' "$RELAY_RECOVERY_LOG" | tail -n 1)"
+  if [[ -n "$replacement_relay_pid" ]]; then
+    relay_pid="$replacement_relay_pid"
+  fi
+
+  if [[ "$relay_recovery_status" != "0" ]]; then
+    exit "$relay_recovery_status"
+  fi
+fi
+
 set +e
 CSH_RESTART_HOST_PID="$host_pid" \
 CSH_RESTART_HOST_LOG="$RESTART_HOST_LOG" \
@@ -205,6 +257,10 @@ printf 'browser_port=%s\n' "$CSH_BROWSER_PORT"
 printf 'host_control_log=%s\n' "$HOST_CONTROL_LOG"
 printf 'phase7_contract_log=%s\n' "$CONTRACT_LOG"
 printf 'exec_log=%s\n' "$EXEC_LOG"
+printf 'relay_log=%s\n' "$RELAY_LOG"
+printf 'relay_recovery_status=%s\n' "$relay_recovery_status"
+printf 'relay_recovery_log=%s\n' "$RELAY_RECOVERY_LOG"
+printf 'relay_recovery_relay_log=%s\n' "$RELAY_RECOVERY_RELAY_LOG"
 printf 'restart_status=%s\n' "$restart_status"
 printf 'proxy_status=%s\n' "$proxy_status"
 printf 'exec_status=%s\n' "$exec_status"
