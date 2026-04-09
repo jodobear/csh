@@ -2,20 +2,22 @@
 
 ## Current Status
 
-- Active phase: [phase-7-native-pty.md](/workspace/projects/csh/docs/prompts/phase-7-native-pty.md)
-- Current objective: finish the native PTY backend while preserving reconnect and operator surfaces
+- Active phase: [phase-8-verification-hardening.md](/workspace/projects/csh/docs/prompts/phase-8-verification-hardening.md)
+- Current objective: harden the autonomous verify loop around the native PTY backend, starting with relay-backed host restart recovery
 - Repo state:
   - Git repository initialized on `master`
   - `master` is pushed to `origin/master`
+  - current work is local-only until the next push
 - Working-tree truth:
-  - the checked-in Phase 6 baseline was functional
-  - the native PTY runtime is now present again in the working tree
-  - the working tree is runnable through the current autonomous gate, but the post-migration audit closeout is still pending
-- Phase 7 contract gate:
+  - the checked-in native PTY runtime is live on `master`
+  - the working tree is runnable through the current autonomous gate
+  - the first Phase 8 hardening slice is now present in the working tree and not yet pushed
+- Canonical verify gate:
+  - `bun test --timeout 15000 scripts/host-control.test.ts` passes locally
   - `bun run test:phase7-contract` passes
-  - `bun run scripts/csh.ts verify .env.csh.local` passed outside the sandbox on 2026-04-08
-  - the verify loop now records stable artifact paths, including `phase7-contract.log`, `exec.log`, `host.log`, `proxy.log`, `browser.log`, and `browser-smoke.log`
-- Active prompt: [phase-7-native-pty.md](/workspace/projects/csh/docs/prompts/phase-7-native-pty.md)
+  - `bun run scripts/csh.ts verify .env.csh.local` passed locally on 2026-04-09
+  - the verify loop now records stable artifact paths, including `host-control.log`, `phase7-contract.log`, `exec.log`, `host.log`, `restart-recovery.log`, `restart-host.log`, `proxy.log`, `browser.log`, and `browser-smoke.log`
+- Active prompt: [phase-8-verification-hardening.md](/workspace/projects/csh/docs/prompts/phase-8-verification-hardening.md)
 - Default audit postures for refinement work:
   - `security-exposure`
   - `operator-workflow`
@@ -69,8 +71,7 @@
 
 ## Baseline Claims Vs Proof
 
-These proofs reflect the native-PTY backend plus the refreshed 2026-04-08 verification and browser
-proofs.
+These proofs reflect the native-PTY backend plus the refreshed 2026-04-09 verification hardening.
 
 | Claim | Proof | Result | Unproven edge cases |
 | --- | --- | --- | --- |
@@ -78,7 +79,7 @@ proofs.
 | Named shell reconnect works | `csh shell --session live-test ...` can reuse the same server-side session | proven | remote human UX should be rerun when shell ergonomics change |
 | Browser-over-ContextVM works on a controlled relay | `bin/csh browser /tmp/csh-browser-test.env` plus token-gated `POST /api/session/write` rendered `__BROWSER__/workspace/projects/csh` and the Playwright snapshot captured it | proven | browser remains operator-local, not public multi-user |
 | Ownership and browser auth are enforced server-side | unauthenticated `session_open`, wrong-owner polling, non-loopback bind, and missing-token browser POSTs all fail | proven | transport-specific identity assumptions still matter for authenticated remote paths |
-| Restart recovery and cleanup exist | local restart and TTL cleanup tests with shared `CSH_SESSION_STATE_DIR` passed | proven locally | relay-backed restart was not rerun separately |
+| Restart recovery and cleanup exist | local PTY-manager restart tests plus `bun run scripts/csh.ts verify .env.csh.local` on 2026-04-09 passed with `restart_status=0` and the `restart-recovery.log` proof | proven locally | public-relay restart remains unproven and is still secondary to the private-relay posture |
 | Remote browser auth is enforced before page load | in-process browser auth check returned `401` for unauthenticated/wrong-password requests and `200` for correct credentials | proven locally | remote browser mode is still an explicitly opt-in operator workflow |
 | Session metadata stays private on disk | isolated session-manager check produced session dir mode `700`, file mode `600`, and unchanged `lastActivityAt` across polling | proven locally | runtime depends on host filesystem honoring POSIX modes |
 | Public relay compatibility works | outside the sandbox, `/tmp/csh-public-shell.sh` returned `/workspace/projects/csh` and `/tmp/csh-public-browser.sh` rendered `__BROWSER__/workspace/projects/csh` over `wss://relay.contextvm.org` | proven as a compatibility path | still not the preferred operator transport; private relay remains the default posture |
@@ -86,12 +87,13 @@ proofs.
 | The operator surface has stable preflight commands | `bun run csh doctor /tmp/csh-cli-polish.env`, `bun run csh status /tmp/csh-cli-polish.env`, and `bun run csh config check /tmp/csh-cli-polish.env` all succeeded against a fresh bootstrap config | proven locally | `doctor` is preflight evidence, not a substitute for end-to-end relay verification |
 | install lifecycle is complete for the Bun-backed launcher | `bun run csh install --prefix /tmp/csh-lifecycle --no-runtime`, `bun run csh upgrade --prefix /tmp/csh-lifecycle --no-runtime`, and `bun run csh uninstall --prefix /tmp/csh-lifecycle` all succeeded | proven locally | uninstall only removes managed launchers unless forced |
 | Native PTY runtime preserves reconnect, restart survival, byte-safe input, resize, high-output handling, browser forwarding, and exit-status reporting | `bun run test:phase7-contract` passed locally on 2026-04-08 | proven locally | end-to-end browser attach on the migrated backend still needs a fresh live proof |
-| The autonomous gate is strong enough to drive the native PTY lane | outside the sandbox, `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-08 and reported `exec_status=7`, `proxy_status=0`, plus stable artifact paths for contract/exec/host/proxy logs | proven outside sandbox | the audit set should stay fresh as the backend hardens further |
+| The autonomous gate is strong enough to drive the native PTY lane | `bun run scripts/csh.ts verify .env.csh.local` passed locally on 2026-04-09 and reported `restart_status=0`, `exec_status=7`, `proxy_status=0`, `browser_status=0`, plus stable artifact paths for host-control/contract/restart/exec/host/proxy/browser logs | proven locally | the audit set should stay fresh as the backend hardens further |
 
 ## Open Risks
 
 - `relay.contextvm.org` now works as a compatibility path, but it should still not be the primary operator relay.
 - The migrated backend now passes the layered contract and verify loops, including the browser-over-ContextVM smoke path.
+- The canonical verify path is still local/private-relay-first; fresh-checkout proof and broader fault injection are the next hardening targets.
 - The browser UI is an operator-side bridge, not a public multi-user shell surface.
 - Interactive disconnect still uses a bounded grace window, not a hard delivery guarantee under a broken transport.
 - The installed `csh` launcher is checkout-backed by design; moving or deleting the repo checkout breaks that launcher until it is reinstalled.
@@ -104,9 +106,9 @@ proofs.
 
 ## Next Actions
 
-1. Reconcile the proof table and Phase 7 packet against the now-closed browser/verify findings, then call the phase complete.
-2. Decide whether to capture a fresh public-relay compatibility rerun on the native PTY backend or keep the last public-relay proof as sufficient secondary evidence.
-3. Keep public-relay checks secondary while the operator transport posture remains private-relay-first.
+1. Run a fresh-checkout verify proof so the hardening lane is not relying only on this worked tree.
+2. Add the next failure-oriented verify slice: relay interruption / recovery or longer-lived idle/high-output session proof.
+3. Decide whether to capture a fresh public-relay compatibility rerun on the native PTY backend or keep the last public-relay proof as sufficient secondary evidence.
 
 ## Process Notes
 

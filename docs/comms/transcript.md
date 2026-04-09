@@ -262,3 +262,10 @@ Append-only project communication history.
 - When: 2026-04-08 21:28 WEST
 - What: Removed the generated browser artifact trees (`.playwright-cli`, `output`, and `scripts/__pycache__`), added `output/` to `.gitignore`, and tore down the live local browser/relay stack before cleanup. The remaining `.csh-runtime/go-mod-cache` is an ignored stale cache tree with root-owned files from older installs; Codex could not fully purge it because `sudo rm -rf .csh-runtime` requires an interactive password outside the sandbox.
 - Session: local repo execution
+
+### 2026-04-09 15:49 WEST
+
+- Who: Codex
+- When: 2026-04-09 15:49 WEST
+- What: Started Phase 8 verification hardening. Added a tested process-control helper in `scripts/host-control.ts`, added `scripts/restart-recovery.ts` to prove named-session survival across a real relay-backed host restart, and wired that proof into `scripts/run-autonomous-loop.sh` with stable `restart-recovery.log` and `restart-host.log` artifacts. While rerunning the gate, a stale local browser bridge exposed a verify-port collision; the loop now selects its own free loopback browser port so `csh verify` no longer depends on port `4318` being unused. Local `bun test --timeout 15000 scripts/host-control.test.ts`, `bun run test:phase7-contract`, and `bun run scripts/csh.ts verify .env.csh.local` all passed afterward.
+- Session: local repo execution

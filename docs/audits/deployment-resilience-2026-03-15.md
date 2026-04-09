@@ -123,3 +123,31 @@ Question: where can startup, verification, persistence, or long-running operatio
   - local `bun run test:phase7-contract` still passes
   - outside the sandbox, `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-08 with `browser_status=0`
   - the loop now leaves `browser_log` and `browser_smoke_log` artifacts alongside the existing contract/exec/host/proxy logs
+
+### `deployment-resilience-restart-01`
+
+- Severity: medium
+- Summary: relay-backed restart recovery previously existed only at the PTY-manager seam. The canonical `csh verify` loop now proves that a named session survives a real host restart over the private-relay ContextVM path.
+- Evidence:
+  - [restart-recovery.ts](/workspace/projects/csh/scripts/restart-recovery.ts)
+  - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh)
+  - [host-control.ts](/workspace/projects/csh/scripts/host-control.ts)
+- Status: closed 2026-04-09
+- Resolution: `scripts/restart-recovery.ts` now opens a named session, records shell state, terminates the current host, starts a replacement host, and verifies reconnect against the surviving session. `scripts/run-autonomous-loop.sh` now runs that proof and records `restart-recovery.log` plus `restart-host.log`.
+- Proof:
+  - local `bun test --timeout 15000 scripts/host-control.test.ts` passed
+  - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with `restart_status=0`
+  - `restart-recovery.log` captured matching `initialPid` and `postRestartPid`
+
+### `deployment-resilience-verify-02`
+
+- Severity: medium
+- Summary: the canonical verify loop previously assumed the configured browser port was free, so a stale local browser bridge could make `csh verify` fail before the real operator path was exercised.
+- Evidence:
+  - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh)
+  - [browser-smoke.ts](/workspace/projects/csh/scripts/browser-smoke.ts)
+- Status: closed 2026-04-09
+- Resolution: `scripts/run-autonomous-loop.sh` now selects a free loopback browser port for the verify run and exports it to the browser bridge and browser smoke path.
+- Proof:
+  - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with `browser_port=43180`
+  - the browser path completed with `browser_status=0` on the same run
