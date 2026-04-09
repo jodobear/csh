@@ -283,3 +283,10 @@ Append-only project communication history.
 - When: 2026-04-09 16:59 WEST
 - What: Closed the next Phase 8 hardening slice around relay interruption and recovery. Added `scripts/relay-recovery.ts`, extended `scripts/host-control.ts` with a tested TCP-listener readiness helper, added `scripts/startup-env.ts` plus `scripts/startup-env.test.ts` so startup wrappers preserve explicit runtime overrides, and changed `scripts/run-autonomous-loop.sh` to allocate a verify-owned loopback relay port before running the gate. After an initial failure exposed that `scripts/start-host.ts` and `scripts/start-proxy.ts` were clobbering relay overrides from the env file, those wrappers were moved onto `applyEnvDefaults()`, the browser log path was corrected to report the real overridden port, and `bun run scripts/csh.ts verify .env.csh.local` then passed end to end with `relay_recovery_status=0`, `restart_status=0`, `proxy_status=0`, `exec_status=7`, and `browser_status=0`.
 - Session: local repo execution
+
+### 2026-04-09 17:12 WEST
+
+- Who: Codex
+- When: 2026-04-09 17:12 WEST
+- What: Closed the follow-on Phase 8 session-soak slice. Added `scripts/session-soak.ts`, wired it into `scripts/run-autonomous-loop.sh`, and reran `bun run scripts/csh.ts verify .env.csh.local` so the canonical gate now proves a longer-lived operator path: 800 lines of output through one session, 6000 ms of read-only `keepAlive` polling, another 6000 ms of disconnected time, and then delayed reconnect to the same shell PID. The prompt, handoff, and deployment-resilience audit were updated to mark this longer-lived proof as closed and move the next focus to explicit idle-expiry and aged-browser-attach checks.
+- Session: local repo execution

@@ -200,3 +200,23 @@ Question: where can startup, verification, persistence, or long-running operatio
     `browser_status=0`
   - `relay-recovery.log` captured matching `initialPid` and `postRecoveryPid` on relay port
     `10553`
+
+### `deployment-resilience-soak-01`
+
+- Severity: medium
+- Summary: the canonical verify path previously proved clean startup and recovery edges, but it did
+  not keep one session alive long enough to catch regressions in high-output handling, read-only
+  keepAlive refresh, or delayed reconnect.
+- Evidence:
+  - [session-soak.ts](/workspace/projects/csh/scripts/session-soak.ts)
+  - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh)
+  - [lifecycle-client.ts](/workspace/projects/csh/scripts/lifecycle-client.ts)
+- Status: closed 2026-04-09
+- Resolution: `scripts/session-soak.ts` now opens a named session, pushes 800 lines of output
+  through it, keeps it alive read-only for 6000 ms with `keepAlive` polls, disconnects for another
+  6000 ms, and then reconnects to the same shell. `scripts/run-autonomous-loop.sh` now runs that
+  proof and records `session-soak.log` before the relay and host recovery checks.
+- Proof:
+  - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with `soak_status=0`
+  - `session-soak.log` captured `initialPid`, `postKeepAlivePid`, and `postReconnectPid` all equal
+    for the same session

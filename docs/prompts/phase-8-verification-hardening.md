@@ -24,6 +24,9 @@ Target findings:
 - Relay interruption and recovery are now proven in the canonical verify loop via
   `scripts/relay-recovery.ts`, with the loop selecting a temporary loopback relay port so it owns
   the relay process it interrupts.
+- A longer-lived session proof now exists via `scripts/session-soak.ts`, which pushes high output
+  through one session, keeps it alive read-only for a longer window, disconnects, and then
+  reconnects to the same shell.
 
 ## Synchronization Touchpoints
 - teaching surface: maybe; only if supported operator guarantees change
@@ -78,15 +81,15 @@ Target findings:
   - the hardening lane is no longer relying only on this worked tree for proof
 
 ### Next Slice
-- Goal: move from transport fault recovery to longer-lived session hardening.
+- Goal: move from longer-lived session hardening to explicit expiry and browser-age proof.
 - Candidate write set:
   - `scripts/run-autonomous-loop.sh`
-  - targeted soak or idle-expiry helpers
-  - high-output or long-idle verification scripts
+  - targeted idle-expiry helpers
+  - browser-age verification scripts
   - `handoff.md`
   - `docs/audits/*.md`
 - Candidate gates:
-  - longer-lived idle and high-output session proof
+  - explicit idle-expiry proof with short verify-only TTLs
   - reconnect after longer idle windows
   - browser attach after extended session age
 
@@ -102,5 +105,6 @@ Target findings:
 - the canonical verify loop covers relay-backed host restart recovery
 - a fresh-checkout proof exists for isolated bootstrap + verify
 - the canonical verify loop covers relay interruption and recovery on a verify-owned relay
+- the canonical verify loop covers a longer-lived high-output + keepAlive + delayed reconnect path
 - restart-proof logs are stable enough for autonomous follow-on passes
 - open restart-related risks are either closed or narrowed explicitly in docs
