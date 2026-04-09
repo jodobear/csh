@@ -4,6 +4,14 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 
 import {
+  addAllowlistEntry,
+  createInvite,
+  listAllowlistEntries,
+  listInvites,
+  removeAllowlistEntry,
+  revokeInvite,
+} from "./auth-cli";
+import {
   closeSession,
   createDirectClient,
   loadEnvFile,
@@ -105,6 +113,18 @@ Commands:
   host check [config-path]       Validate host config and runtime readiness
   host print-config [config-path] Print redacted config
   host systemd-unit [config-path] Print or write a hardened systemd unit
+  auth allowlist list [config-path]
+                                List persisted shell allowlist entries
+  auth allowlist add <pubkey> [config-path]
+                                Add a persisted shell allowlist entry
+  auth allowlist remove <pubkey> [config-path]
+                                Remove a persisted shell allowlist entry
+  auth invite create [config-path]
+                                Create a one-time browser onboarding invite
+  auth invite list [config-path]
+                                List invite metadata without plaintext tokens
+  auth invite revoke <invite-id> [config-path]
+                                Revoke a one-time browser onboarding invite
   direct [config-path]           Run the direct smoke test
   lifecycle [config-path]        Run reconnect/session cleanup verification
   proxy [config-path]            Run the stdio proxy smoke test
@@ -124,6 +144,8 @@ Flags:
   --prefix <dir>                 Install prefix for csh install
   --user <user>                  User for rendered systemd unit
   --group <group>                Group for rendered systemd unit
+  --label <text>                 Optional label for auth allowlist/invite entries
+  --ttl-seconds <seconds>        Invite lifetime in seconds for auth invite create
   --json                         Emit JSON for status/check/doctor
   --force                        Overwrite a non-managed launcher during install
   --no-runtime                   Skip bun install/build during install
@@ -451,6 +473,148 @@ async function commandHostSystemdUnit(parsed: ParsedArgs): Promise<void> {
   process.stdout.write(unitText);
 }
 
+async function commandAuth(parsed: ParsedArgs): Promise<void> {
+  const area = parsed.positionals[1];
+  const action = parsed.positionals[2];
+
+  if (area === "allowlist" && action === "list") {
+    const configPath = configPathFrom(parsed, parsed.positionals[3]);
+    const entries = await listAllowlistEntries(configPath);
+    if (shouldUseJson(parsed)) {
+      console.log(JSON.stringify({ configPath, allowlist: entries }, null, 2));
+      return;
+    }
+    if (entries.length === 0) {
+      console.log("No allowlist entries.");
+      return;
+    }
+    for (const entry of entries) {
+      console.log(
+        [
+          entry.pubkey,
+          entry.label ? `label=${entry.label}` : null,
+          `source=${entry.source}`,
+          `createdAt=${entry.createdAt}`,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      );
+    }
+    return;
+  }
+
+  if (area === "allowlist" && action === "add") {
+    const pubkey = parsed.positionals[3];
+    if (!pubkey) {
+      throw new Error("auth allowlist add requires a pubkey argument.");
+    }
+    const configPath = configPathFrom(parsed, parsed.positionals[4]);
+    const entry = await addAllowlistEntry(pubkey, {
+      configPath,
+      label: typeof parsed.flags.label === "string" ? parsed.flags.label : null,
+    });
+    if (shouldUseJson(parsed)) {
+      console.log(JSON.stringify({ configPath, entry }, null, 2));
+      return;
+    }
+    console.log(`Added allowlist entry: ${entry.pubkey}`);
+    return;
+  }
+
+  if (area === "allowlist" && action === "remove") {
+    const pubkey = parsed.positionals[3];
+    if (!pubkey) {
+      throw new Error("auth allowlist remove requires a pubkey argument.");
+    }
+    const configPath = configPathFrom(parsed, parsed.positionals[4]);
+    const removed = await removeAllowlistEntry(pubkey, configPath);
+    if (shouldUseJson(parsed)) {
+      console.log(JSON.stringify({ configPath, pubkey, removed }, null, 2));
+    } else if (removed) {
+      console.log(`Removed allowlist entry: ${pubkey}`);
+    } else {
+      console.log(`Allowlist entry not found: ${pubkey}`);
+    }
+    if (!removed) {
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (area === "invite" && action === "create") {
+    const configPath = configPathFrom(parsed, parsed.positionals[3]);
+    const ttlValue = parsed.flags["ttl-seconds"];
+    const ttlSeconds =
+      typeof ttlValue === "string" && ttlValue.length > 0 ? Number(ttlValue) : null;
+    if (ttlValue && (ttlSeconds === null || !Number.isFinite(ttlSeconds) || ttlSeconds <= 0)) {
+      throw new Error("--ttl-seconds must be a positive number");
+    }
+    const invite = await createInvite({
+      configPath,
+      label: typeof parsed.flags.label === "string" ? parsed.flags.label : null,
+      ttlSeconds,
+    });
+    if (shouldUseJson(parsed)) {
+      console.log(JSON.stringify({ configPath, invite }, null, 2));
+      return;
+    }
+    console.log(`Invite id: ${invite.inviteId}`);
+    console.log(`Invite token: ${invite.inviteToken}`);
+    console.log("Store the token now; it is not persisted in plaintext.");
+    return;
+  }
+
+  if (area === "invite" && action === "list") {
+    const configPath = configPathFrom(parsed, parsed.positionals[3]);
+    const invites = await listInvites(configPath);
+    if (shouldUseJson(parsed)) {
+      console.log(JSON.stringify({ configPath, invites }, null, 2));
+      return;
+    }
+    if (invites.length === 0) {
+      console.log("No invites.");
+      return;
+    }
+    for (const invite of invites) {
+      console.log(
+        [
+          invite.id,
+          invite.label ? `label=${invite.label}` : null,
+          invite.expiresAt ? `expiresAt=${invite.expiresAt}` : null,
+          invite.revokedAt ? `revokedAt=${invite.revokedAt}` : null,
+          invite.redeemedAt ? `redeemedAt=${invite.redeemedAt}` : null,
+          invite.redeemedBy ? `redeemedBy=${invite.redeemedBy}` : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      );
+    }
+    return;
+  }
+
+  if (area === "invite" && action === "revoke") {
+    const inviteId = parsed.positionals[3];
+    if (!inviteId) {
+      throw new Error("auth invite revoke requires an invite id.");
+    }
+    const configPath = configPathFrom(parsed, parsed.positionals[4]);
+    const revoked = await revokeInvite(inviteId, configPath);
+    if (shouldUseJson(parsed)) {
+      console.log(JSON.stringify({ configPath, inviteId, revoked }, null, 2));
+    } else if (revoked) {
+      console.log(`Revoked invite: ${inviteId}`);
+    } else {
+      console.log(`Invite not found: ${inviteId}`);
+    }
+    if (!revoked) {
+      process.exit(1);
+    }
+    return;
+  }
+
+  throw new Error(`Unknown auth command: ${[area, action].filter(Boolean).join(" ") || "(missing)"}`);
+}
+
 async function commandStatus(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
   const config = loadConfig(configPath);
@@ -707,6 +871,7 @@ function completionScript(shell: string): string {
     "config",
     "runtime",
     "host",
+    "auth",
     "direct",
     "lifecycle",
     "proxy",
@@ -725,6 +890,8 @@ function completionScript(shell: string): string {
     "--prefix",
     "--user",
     "--group",
+    "--label",
+    "--ttl-seconds",
     "--json",
     "--force",
     "--no-runtime",
@@ -897,6 +1064,10 @@ async function main(): Promise<void> {
   }
   if (command === "host" && subcommand === "systemd-unit") {
     await commandHostSystemdUnit(parsed);
+    return;
+  }
+  if (command === "auth") {
+    await commandAuth(parsed);
     return;
   }
   if (command === "direct") {
