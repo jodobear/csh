@@ -142,3 +142,28 @@ Question: where does the operator-facing workflow mislead the user, lose state, 
 - Resolution: scrollback depth is now configurable through `CSH_SCROLLBACK_LINES` and defaults to
   `10000` lines across the tmux capture path and browser terminal.
 - Residual limit: snapshot recovery still depends on tmux capture rather than a full durable stream log.
+
+### `operator-workflow-exec-02`
+
+- Severity: medium
+- Summary: the native PTY migration briefly regressed `csh exec` so command output could return while the local CLI still lost the real remote exit status. The live implementation now exits with the remote status.
+- Evidence:
+  - [csh.ts](/workspace/projects/csh/scripts/csh.ts#L552)
+  - [csh.ts](/workspace/projects/csh/scripts/csh.ts#L583)
+  - [csh.ts](/workspace/projects/csh/scripts/csh.ts#L617)
+  - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh#L103)
+- Status: closed 2026-04-08
+- Resolution: `commandExec()` now accumulates snapshot-or-delta output, waits for the remote session to close, and exits with `result.exitStatus` instead of always succeeding locally.
+- Proof: outside the sandbox, `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-08 and reported `exec_status=7`.
+
+### `operator-workflow-terminal-04`
+
+- Severity: medium
+- Summary: the browser operator path still sends terminal input as UTF-8 text only, so the native PTY backend's byte-safe input guarantee does not yet extend to browser operators.
+- Evidence:
+  - [app.ts](/workspace/projects/csh/src/browser/app.ts#L184)
+  - [server-core.ts](/workspace/projects/csh/src/browser/server-core.ts#L35)
+  - [main.ts](/workspace/projects/csh/src/main.ts#L72)
+- Status: closed 2026-04-08
+- Resolution: the browser write API now accepts `inputBase64`, and the browser terminal path now forwards terminal input as bytes encoded to base64 instead of forcing everything through the text-only `input` field.
+- Proof: `bun run test:phase7-browser-contract` now covers byte-safe browser writes, and the end-to-end browser smoke in `csh verify` passed on 2026-04-08.

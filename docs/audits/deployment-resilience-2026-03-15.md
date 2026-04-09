@@ -107,3 +107,19 @@ Question: where can startup, verification, persistence, or long-running operatio
   `csh uninstall` removes them cleanly, while still refusing to touch non-managed launchers unless
   `--force` is supplied.
 - Proof: `bun run csh install --prefix /tmp/csh-lifecycle --no-runtime`, `bun run csh upgrade --prefix /tmp/csh-lifecycle --no-runtime`, and `bun run csh uninstall --prefix /tmp/csh-lifecycle` completed successfully and removed the managed launcher.
+
+### `deployment-resilience-poll-01`
+
+- Severity: medium
+- Summary: `csh verify` is now strong on the native PTY contract, direct path, lifecycle path, proxy path, and `csh exec` status handling, but it still does not run the end-to-end browser attach/poll path. A browser-only regression can therefore hide behind a green verify.
+- Evidence:
+  - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh#L29)
+  - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh#L31)
+  - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh#L100)
+  - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh#L113)
+- Status: closed 2026-04-08
+- Resolution: `scripts/run-autonomous-loop.sh` now starts the browser-over-ContextVM operator path and runs `csh:browser-smoke`, which checks authenticated browser access plus session open/write/poll/close on the migrated backend.
+- Proof:
+  - local `bun run test:phase7-contract` still passes
+  - outside the sandbox, `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-08 with `browser_status=0`
+  - the loop now leaves `browser_log` and `browser_smoke_log` artifacts alongside the existing contract/exec/host/proxy logs

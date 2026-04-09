@@ -12,7 +12,7 @@ bun run csh install
 ```
 
 That installs a Bun-backed launcher to `~/.local/bin/csh` by default.
-The runtime expects `bun`, `tmux`, and `python3` on the host.
+The runtime expects `bun` and `python3` on the host.
 
 Useful follow-up checks:
 
@@ -54,7 +54,7 @@ csh bootstrap .env.csh.local
 ```
 
 The generated env includes browser credentials and defaults to a loopback/private relay.
-It also sets `CSH_SCROLLBACK_LINES=10000` for the tmux/browser snapshot path.
+It also sets `CSH_SCROLLBACK_LINES=10000` for the persisted session scrollback path.
 
 Check readiness and the resolved runtime state:
 
@@ -165,14 +165,14 @@ The browser UI is an operator-side bridge, not a public multi-user shell surface
 
 Current behavior is intentionally described narrowly:
 
-- richer shell-editing input is supported through the tmux bridge
-- terminal I/O now goes through a PTY-attached tmux client
+- terminal I/O is handled by the native PTY session manager
+- byte-safe input is available across CLI and browser operators
 - deeper scrollback is available through `CSH_SCROLLBACK_LINES`
 - reconnect and session persistence work
-- a native PTY session model end to end is still not implemented
+- `csh exec` reports the real remote exit status
 
-If the next phase pushes fidelity further, it should be about the backend session model rather than
-more CLI surface.
+If the next phase pushes fidelity further, it should be about hardening and verification depth rather
+than more CLI surface.
 
 ## Persistent Service
 

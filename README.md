@@ -4,7 +4,7 @@
 
 It currently provides:
 
-- a repo-local `tmux`-backed MCP server for interactive shell sessions
+- a repo-local MCP server for persisted interactive shell sessions
 - a ContextVM gateway that exposes that server over Nostr
 - a CLI for bootstrap, host startup, one-shot exec, interactive shell, proxy checks, and browser access
 - a browser terminal UI for operator use
@@ -18,7 +18,7 @@ bun install
 bun run csh install
 ```
 
-The runtime expects `bun`, `tmux`, and `python3` on the host.
+The runtime expects `bun` and `python3` on the host.
 
 Create a local config:
 
@@ -92,9 +92,8 @@ Use a relay you control for real operator work. The canonical deployment path li
 
 - The browser UI is operator-local and loopback-bound by default.
 - Sessions persist across client reconnects and can survive host restart when the same runtime state is reused.
-- The backend now uses PTY-attached tmux clients for terminal I/O while keeping tmux for session
-  persistence. That materially improves interactive behavior, but it is still not the same as a
-  native PTY session model end to end.
+- The backend now runs a native PTY session manager with byte-safe input handling, reconnect support,
+  and snapshot-or-delta polling for CLI and browser operators.
 - `csh install` writes a Bun-backed launcher into `~/.local/bin/csh` by default.
 
 For the current verified state and operational details, see [handoff.md](/workspace/projects/csh/handoff.md), [docs/README.md](/workspace/projects/csh/docs/README.md), [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md), and [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md).

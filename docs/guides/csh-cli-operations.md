@@ -112,17 +112,14 @@ csh version
 
 ## Terminal Behavior
 
-The current shell path now uses a PTY-attached tmux client for terminal I/O while still polling a
-tmux snapshot for recovery and compatibility. In practice that gives a broader practical
-shell-editing set:
+The current shell path is native-PTY-backed with reconnect and snapshot-or-delta polling for
+recovery. In practice that gives the expected shell-editing set:
 
 - history recall via arrow keys
 - backspace/delete/home/end/page keys
 - common `Ctrl-<letter>` shell-editing shortcuts
 - browser scrollback sized from `CSH_SCROLLBACK_LINES` (default `10000`)
-
-The residual limitation is still architectural: this is better than `tmux send-keys`, but it is not
-yet a native PTY session model end to end.
+- byte-safe input across CLI and browser operators
 
 ## Secure Defaults
 

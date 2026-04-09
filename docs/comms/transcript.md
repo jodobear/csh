@@ -213,3 +213,52 @@ Append-only project communication history.
 - When: 2026-03-16 02:40 WET
 - What: Replaced the new-control-key-only approach with a stronger backend seam: terminal I/O now goes through a PTY-attached tmux client helper in `scripts/pty-attach.py`, while tmux still preserves the persistent session. `session_poll` now carries both snapshot recovery and stream deltas, the shell/browser clients use those deltas when available, and the repo docs/handoff/decision log were updated to describe this as a hybrid PTY-over-tmux design rather than just richer `send-keys` handling.
 - Session: local repo execution
+
+### 2026-04-08 18:33 WEST
+
+- Who: Codex
+- When: 2026-04-08 18:33 WEST
+- What: Re-aligned the control surface for the active native-PTY lane. Updated prompt routing so Phase 7 is explicitly active again, updated `handoff.md` to state that the current working tree is mid-migration and not yet runnable end to end, expanded the Phase 7 packet with a layered verification matrix so `csh verify` can become the canonical autonomous gate for backend recovery and follow-on shell hardening, and added the matching implementation-gate rule that materially changing runtime behavior should leave behind a canonical layered verification loop with stable failure artifacts.
+- Session: local repo execution
+
+### 2026-04-08 19:00 WEST
+
+- Who: Codex
+- When: 2026-04-08 19:00 WEST
+- What: Added the first concrete Phase 7 contract suites and the stepwise implementation program. `package.json` now exposes `test:phase7-browser-contract`, `test:phase7-session-contract`, and `test:phase7-contract`; the Phase 7 packet now names the recovery slices explicitly; the browser request-handler contract suite passes; and the session contract suite currently fails on the real Phase 7 blocker, the missing `src/server/pty-session-manager.ts`.
+- Session: local repo execution
+
+### 2026-04-08 20:05 WEST
+
+- Who: Codex
+- When: 2026-04-08 20:05 WEST
+- What: Recovered the native PTY backend and promoted it into the autonomous gate. Added `src/server/pty-session-manager.ts` as the new persisted PTY runtime, rewrote `scripts/pty-session.py` into a detached helper with persisted output and restart survival, aligned the client/browser/session helpers with delta-oriented polling, fixed `csh exec` to return the remote exit status, and strengthened `scripts/run-autonomous-loop.sh` to run the Phase 7 contract suite plus an explicit `exec_status=7` proof. Local `bun run test:phase7-contract` now passes, and outside the sandbox `bun run scripts/csh.ts verify .env.csh.local` passed end to end with stable contract/exec/host/proxy log artifacts.
+- Session: local repo execution
+
+### 2026-04-08 20:30 WEST
+
+- Who: Codex
+- When: 2026-04-08 20:30 WEST
+- What: Reran the live posture audits against the migrated native PTY backend. Recorded `security-exposure-runtime-02` closed after a fresh permission proof on the new PTY control-plane artifacts, recorded `operator-workflow-exec-02` closed after the `exec_status=7` verify proof, and captured a fresh browser-over-ContextVM proof with Playwright against the migrated backend. The audit also left two live open findings: `operator-workflow-terminal-04` because the browser path still sends text-only input rather than byte-safe `inputBase64`, and `deployment-resilience-poll-01` because `csh verify` still does not exercise the browser attach/poll path end to end.
+- Session: local repo execution
+
+### 2026-04-08 20:45 WEST
+
+- Who: Codex
+- When: 2026-04-08 20:45 WEST
+- What: Closed the two remaining Phase 7 audit findings. The browser server and browser app now forward `inputBase64` writes end to end, `src/browser/server-core.test.ts` now covers byte-safe browser writes, `scripts/browser-smoke.ts` now provides an authenticated browser-over-ContextVM open/write/poll/close proof, and `scripts/run-autonomous-loop.sh` now starts the browser operator path and records `browser_log` plus `browser_smoke_log`. Outside the sandbox, `bun run scripts/csh.ts verify .env.csh.local` passed with `browser_status=0`, closing both `operator-workflow-terminal-04` and `deployment-resilience-poll-01`.
+- Session: local repo execution
+
+### 2026-04-08 21:10 WEST
+
+- Who: Codex
+- When: 2026-04-08 21:10 WEST
+- What: Ran a surgical legacy-removal pass on the live product surface. Updated the active README and operator guides to describe the native PTY backend rather than the older tmux path, removed the dead `tmuxSocket` runtime field, updated the reconnect hint and proxy-smoke error text to the current `csh` surface, and tightened the PTY startup handshake plus the high-output contract expectation so the canonical `bun run test:phase7-contract` suite stays green after cleanup.
+- Session: local repo execution
+
+### 2026-04-08 21:28 WEST
+
+- Who: Codex
+- When: 2026-04-08 21:28 WEST
+- What: Removed the generated browser artifact trees (`.playwright-cli`, `output`, and `scripts/__pycache__`), added `output/` to `.gitignore`, and tore down the live local browser/relay stack before cleanup. The remaining `.csh-runtime/go-mod-cache` is an ignored stale cache tree with root-owned files from older installs; Codex could not fully purge it because `sudo rm -rf .csh-runtime` requires an interactive password outside the sandbox.
+- Session: local repo execution

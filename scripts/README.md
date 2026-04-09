@@ -2,7 +2,7 @@
 
 These scripts compose the repo-local interactive shell path:
 
-- repo-local `tmux`-backed MCP server in `src/main.ts`
+- repo-local MCP server in `src/main.ts`
 - repo-local ContextVM gateway in `src/contextvm-gateway.ts`
 - interactive Bun client and browser terminal UI
 - a repo-local SDK proxy path for stdio MCP compatibility
@@ -53,8 +53,7 @@ These scripts compose the repo-local interactive shell path:
 
 4. Inspect or edit `.env.csh.local` if you want different relays or metadata.
    The browser UI now expects credentials from `CSH_BROWSER_AUTH_USER` and
-   `CSH_BROWSER_AUTH_PASSWORD`. The tmux/browser scrollback depth is controlled by
-   `CSH_SCROLLBACK_LINES`.
+   `CSH_BROWSER_AUTH_PASSWORD`. Session scrollback depth is controlled by `CSH_SCROLLBACK_LINES`.
 
 ## Run
 
@@ -121,15 +120,15 @@ These scripts compose the repo-local interactive shell path:
 
 - The host path is now repo-local: `src/main.ts` exposes the `session_*` tools and
   `src/contextvm-gateway.ts` exposes that server over ContextVM with pubkey injection enabled.
-- Terminal I/O now uses a PTY-attached tmux client helper (`scripts/pty-attach.py`) while tmux still
-  holds the persistent session state.
+- Terminal I/O now runs through the native PTY session manager in `src/server/pty-session-manager.ts`
+  backed by the detached helper in `scripts/pty-session.py`.
 - The current default operator path is the interactive client at `csh shell`, with `csh exec`
   kept for one-shot commands and `csh browser` available for the browser terminal UI.
 - Browser UI access is authenticated even on loopback. Remote browser mode additionally requires
   `CSH_BROWSER_TRUST_PROXY_TLS=1` behind an HTTPS/TLS-terminating reverse proxy.
-- Terminal fidelity is still snapshot-backed, but common shell-editing keys now work more naturally
-  through the tmux bridge and default scrollback depth is larger.
+- Terminal fidelity is now native-PTY-backed, with reconnect and browser polling driven by the
+  session log plus snapshot-or-delta reads.
 - The repo-local SDK proxy path also works and is available when you want a stdio MCP bridge.
-- The repo no longer depends on the external `proxy-cli` binary for normal operation.
+- The repo no longer depends on a separate external proxy binary for normal operation.
 - See [csh-cli-operations.md](/workspace/projects/csh/docs/guides/csh-cli-operations.md) for the short
   user-facing operations guide.

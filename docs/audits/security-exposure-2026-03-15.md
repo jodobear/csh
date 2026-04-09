@@ -82,3 +82,18 @@ Question: where can this repo expose a shell, identity, or secret more broadly t
   - [csh.ts](/workspace/projects/csh/scripts/csh.ts#L617)
 - Status: closed 2026-03-16
 - Resolution: `csh browser` now prints the auth username and points operators back to the config file for the password instead of echoing the secret.
+
+### `security-exposure-runtime-02`
+
+- Severity: medium
+- Summary: the native PTY migration introduced a new on-disk control plane (`session.json`, `runtime.json`, `output.bin`, `control.fifo`, and `replies/`). Those artifacts remain private by mode in the live implementation.
+- Evidence:
+  - [pty-session-manager.ts](/workspace/projects/csh/src/server/pty-session-manager.ts#L422)
+  - [pty-session-manager.ts](/workspace/projects/csh/src/server/pty-session-manager.ts#L429)
+  - [pty-session-manager.ts](/workspace/projects/csh/src/server/pty-session-manager.ts#L436)
+  - [pty-session.py](/workspace/projects/csh/scripts/pty-session.py#L94)
+  - [pty-session.py](/workspace/projects/csh/scripts/pty-session.py#L102)
+  - [pty-session.py](/workspace/projects/csh/scripts/pty-session.py#L123)
+- Status: closed 2026-04-08
+- Resolution: the native PTY runtime now forces the per-session directory and `replies/` directory to `0700`, and forces `session.json`, `runtime.json`, `output.bin`, and `control.fifo` to `0600`.
+- Proof: a fresh local PTY-runtime permission check on 2026-04-08 reported `dirMode=700`, `repliesMode=700`, and `sessionMode=runtimeMode=outputMode=controlMode=600`.
