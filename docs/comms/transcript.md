@@ -290,3 +290,10 @@ Append-only project communication history.
 - When: 2026-04-09 17:12 WEST
 - What: Closed the follow-on Phase 8 session-soak slice. Added `scripts/session-soak.ts`, wired it into `scripts/run-autonomous-loop.sh`, and reran `bun run scripts/csh.ts verify .env.csh.local` so the canonical gate now proves a longer-lived operator path: 800 lines of output through one session, 6000 ms of read-only `keepAlive` polling, another 6000 ms of disconnected time, and then delayed reconnect to the same shell PID. The prompt, handoff, and deployment-resilience audit were updated to mark this longer-lived proof as closed and move the next focus to explicit idle-expiry and aged-browser-attach checks.
 - Session: local repo execution
+
+### 2026-04-09 18:47 WEST
+
+- Who: Codex
+- When: 2026-04-09 18:47 WEST
+- What: Closed the next Phase 8 hardening slice around explicit expiry and aged browser attach. Added `scripts/idle-expiry.ts` plus `scripts/aged-browser-attach.ts`, wired both into `scripts/run-autonomous-loop.sh`, and fixed the real runtime blocker that surfaced while driving those proofs: `src/contextvm-gateway.ts` now forwards the full process environment into the spawned MCP server, so verify-time TTL overrides actually reach `src/main.ts`. The PTY runtime now scavenges on poll, escalates forced close when a helper ignores the first hangup, and records stable idle/aged-browser artifacts. Local `bun test --timeout 15000 scripts/host-control.test.ts`, `bun run test:phase7-contract`, and `bun run scripts/csh.ts verify .env.csh.local` all passed afterward with `idle_expiry_status=0`, `aged_browser_attach_status=0`, `soak_status=0`, `relay_recovery_status=0`, `restart_status=0`, `proxy_status=0`, `exec_status=7`, and `browser_status=0`.
+- Session: local repo execution

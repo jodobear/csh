@@ -167,3 +167,23 @@ Question: where does the operator-facing workflow mislead the user, lose state, 
 - Status: closed 2026-04-08
 - Resolution: the browser write API now accepts `inputBase64`, and the browser terminal path now forwards terminal input as bytes encoded to base64 instead of forcing everything through the text-only `input` field.
 - Proof: `bun run test:phase7-browser-contract` now covers byte-safe browser writes, and the end-to-end browser smoke in `csh verify` passed on 2026-04-08.
+
+### `operator-workflow-browser-04`
+
+- Severity: low
+- Summary: the canonical browser proof previously covered only a freshly opened browser session, so
+  regressions in attaching to an already-aged live session could hide behind a green verify run.
+- Evidence:
+  - [aged-browser-attach.ts](/workspace/projects/csh/scripts/aged-browser-attach.ts)
+  - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh)
+  - [app.ts](/workspace/projects/csh/src/browser/app.ts)
+- Status: closed 2026-04-09
+- Resolution: `scripts/aged-browser-attach.ts` now opens a named session over the normal operator
+  path, lets that session age for a bounded window, and then attaches through the authenticated
+  browser bridge while `scripts/run-autonomous-loop.sh` records `aged-browser-attach.log` as part
+  of the canonical verify loop.
+- Proof:
+  - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with
+    `aged_browser_attach_status=0`
+  - `aged-browser-attach.log` captured `ageMs: 6000` plus `__BROWSER_ATTACH__/tmp` from the aged
+    session

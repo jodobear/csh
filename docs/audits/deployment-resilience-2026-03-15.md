@@ -220,3 +220,27 @@ Question: where can startup, verification, persistence, or long-running operatio
   - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with `soak_status=0`
   - `session-soak.log` captured `initialPid`, `postKeepAlivePid`, and `postReconnectPid` all equal
     for the same session
+
+### `deployment-resilience-idle-01`
+
+- Severity: medium
+- Summary: the canonical verify path previously proved keepAlive and reconnect behavior, but it did
+  not prove the opposite edge: that a truly idle session expires under the configured TTL and does
+  not survive only because of background poll traffic or a stuck helper process.
+- Evidence:
+  - [idle-expiry.ts](/workspace/projects/csh/scripts/idle-expiry.ts)
+  - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh)
+  - [contextvm-gateway.ts](/workspace/projects/csh/src/contextvm-gateway.ts)
+  - [pty-session-manager.ts](/workspace/projects/csh/src/server/pty-session-manager.ts)
+  - [pty-session.py](/workspace/projects/csh/scripts/pty-session.py)
+- Status: closed 2026-04-09
+- Resolution: `scripts/run-autonomous-loop.sh` now launches a dedicated short-TTL host from a
+  verify-only env file, runs `scripts/idle-expiry.ts` against it, and records `idle-expiry.log`,
+  `idle-host.log`, and `verify-idle.env`. The gateway now forwards the full process env into the
+  spawned MCP server, and the PTY runtime now escalates close handling so expired sessions are
+  forced down even if a helper ignores the first hangup.
+- Proof:
+  - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with
+    `idle_expiry_status=0`
+  - `idle-expiry.log` captured `idleTtlMs: 2000`, `closedAt` for the original session, and a
+    different `freshPid` after expiry

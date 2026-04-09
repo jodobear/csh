@@ -15,7 +15,9 @@ Target findings:
 - `bun run test:phase7-contract` passes locally.
 - `bun test --timeout 15000 scripts/host-control.test.ts` now passes locally.
 - `bun run scripts/csh.ts verify .env.csh.local` passed locally on 2026-04-09 with
-  `restart_status=0`, `browser_status=0`, and a verify-selected `browser_port`.
+  `idle_expiry_status=0`, `aged_browser_attach_status=0`, `soak_status=0`,
+  `relay_recovery_status=0`, `restart_status=0`, `proxy_status=0`, `exec_status=7`,
+  `browser_status=0`, and a verify-selected `browser_port`.
 - Relay-backed restart recovery is now proven in the canonical verify loop via
   `scripts/restart-recovery.ts`.
 - A fresh-checkout proof now exists via `scripts/fresh-checkout.ts`, which clones the repo into an
@@ -27,6 +29,11 @@ Target findings:
 - A longer-lived session proof now exists via `scripts/session-soak.ts`, which pushes high output
   through one session, keeps it alive read-only for a longer window, disconnects, and then
   reconnects to the same shell.
+- An explicit idle-expiry proof now exists via `scripts/idle-expiry.ts`, which runs against a
+  short-TTL verify-only host and confirms the original session closes before a fresh session opens.
+- An aged browser attach proof now exists via `scripts/aged-browser-attach.ts`, which keeps a
+  named session alive, waits for it to age, and then attaches through the authenticated browser
+  bridge against that existing session.
 
 ## Synchronization Touchpoints
 - teaching surface: maybe; only if supported operator guarantees change
@@ -80,18 +87,44 @@ Target findings:
   - the repo has a repeatable isolated-clone verification command
   - the hardening lane is no longer relying only on this worked tree for proof
 
+### Slice: idle expiry and aged browser attach
+- Goal: prove that the canonical verify loop catches idle-session expiry under short verify-only
+  TTLs and still allows browser attach against an already-aged live session.
+- Write set:
+  - `scripts/idle-expiry.ts`
+  - `scripts/aged-browser-attach.ts`
+  - `scripts/run-autonomous-loop.sh`
+  - `src/contextvm-gateway.ts`
+  - `src/server/pty-session-manager.ts`
+  - `scripts/pty-session.py`
+  - `package.json`
+- Non-goals:
+  - changing production default TTLs
+  - turning fresh-checkout verification into an every-run gate
+  - public-relay compatibility rerun
+- Gate:
+  - `bun test --timeout 15000 scripts/host-control.test.ts`
+  - `bun run test:phase7-contract`
+  - `bun run scripts/csh.ts verify .env.csh.local`
+- Closeout:
+  - `verify` now proves short-TTL idle expiry with stable `idle-expiry.log`, `idle-host.log`, and
+    `verify-idle.env` artifacts
+  - `verify` now proves browser attach against an aged named session with a stable
+    `aged-browser-attach.log` artifact
+
 ### Next Slice
-- Goal: move from longer-lived session hardening to explicit expiry and browser-age proof.
+- Goal: decide which hardening proofs should graduate into the routine gate versus stay periodic,
+  and close the remaining external-path proof question on the native PTY backend.
 - Candidate write set:
   - `scripts/run-autonomous-loop.sh`
-  - targeted idle-expiry helpers
-  - browser-age verification scripts
+  - release-grade verify helpers
+  - public-relay compatibility helpers or docs
   - `handoff.md`
   - `docs/audits/*.md`
 - Candidate gates:
-  - explicit idle-expiry proof with short verify-only TTLs
-  - reconnect after longer idle windows
-  - browser attach after extended session age
+  - policy for routine versus periodic fresh-checkout proof
+  - release-grade verify artifact retention
+  - optional public-relay compatibility rerun on the hardened backend
 
 ## Acceptance Gates
 - claims and proof table
@@ -106,5 +139,7 @@ Target findings:
 - a fresh-checkout proof exists for isolated bootstrap + verify
 - the canonical verify loop covers relay interruption and recovery on a verify-owned relay
 - the canonical verify loop covers a longer-lived high-output + keepAlive + delayed reconnect path
+- the canonical verify loop covers explicit idle expiry under short verify-only TTLs
+- the canonical verify loop covers browser attach against an already-aged live session
 - restart-proof logs are stable enough for autonomous follow-on passes
 - open restart-related risks are either closed or narrowed explicitly in docs
