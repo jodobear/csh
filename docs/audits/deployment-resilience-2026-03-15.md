@@ -244,3 +244,24 @@ Question: where can startup, verification, persistence, or long-running operatio
     `idle_expiry_status=0`
   - `idle-expiry.log` captured `idleTtlMs: 2000`, `closedAt` for the original session, and a
     different `freshPid` after expiry
+
+### `deployment-resilience-release-01`
+
+- Severity: low
+- Summary: the repo previously had a strong routine verify path plus separate ad hoc heavy proofs,
+  but no checked-in release-grade command for re-running fresh-checkout and public-relay
+  compatibility from one place.
+- Evidence:
+  - [release-verify.ts](/workspace/projects/csh/scripts/release-verify.ts)
+  - [release-verify.test.ts](/workspace/projects/csh/scripts/release-verify.test.ts)
+  - [csh.ts](/workspace/projects/csh/scripts/csh.ts)
+  - [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md)
+- Status: closed 2026-04-09
+- Resolution: `csh verify` remains the routine local/private-relay-first gate, while
+  `scripts/release-verify.ts` and `csh verify release` now own the heavier periodic checks: fresh
+  checkout plus public-relay compatibility.
+- Proof:
+  - local `bun test --timeout 15000 scripts/release-verify.test.ts` passed
+  - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09
+  - outside the sandbox, `bun run scripts/release-verify.ts .env.csh.local` passed on 2026-04-09
+    with `release_verify_public_shell_status=0` and `release_verify_public_browser_status=0`

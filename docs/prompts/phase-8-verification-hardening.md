@@ -1,5 +1,7 @@
 # Phase 8: Verification Hardening
 
+Status: complete 2026-04-09.
+
 Goal: turn the recovered native-PTY stack into a stronger autonomous gate by proving
 restart recovery, fresh-checkout reproducibility, and other long-lived operator invariants from
 the real verification surface.
@@ -34,6 +36,9 @@ Target findings:
 - An aged browser attach proof now exists via `scripts/aged-browser-attach.ts`, which keeps a
   named session alive, waits for it to age, and then attaches through the authenticated browser
   bridge against that existing session.
+- A release-grade verification path now exists via `scripts/release-verify.ts` and
+  `csh verify release`, which rerun the fresh-checkout proof and public-relay compatibility proof
+  without overloading the routine local/private-relay gate.
 
 ## Synchronization Touchpoints
 - teaching surface: maybe; only if supported operator guarantees change
@@ -112,19 +117,38 @@ Target findings:
   - `verify` now proves browser attach against an aged named session with a stable
     `aged-browser-attach.log` artifact
 
-### Next Slice
-- Goal: decide which hardening proofs should graduate into the routine gate versus stay periodic,
-  and close the remaining external-path proof question on the native PTY backend.
-- Candidate write set:
-  - `scripts/run-autonomous-loop.sh`
-  - release-grade verify helpers
-  - public-relay compatibility helpers or docs
-  - `handoff.md`
-  - `docs/audits/*.md`
-- Candidate gates:
-  - policy for routine versus periodic fresh-checkout proof
-  - release-grade verify artifact retention
-  - optional public-relay compatibility rerun on the hardened backend
+### Slice: routine versus release-grade verification
+- Goal: keep `csh verify` as the routine autonomous gate, move heavier proofs into a checked-in
+  release-grade flow, and rerun public-relay compatibility on the hardened native-PTY backend.
+- Write set:
+  - `scripts/release-verify.ts`
+  - `scripts/release-verify.test.ts`
+  - `scripts/csh.ts`
+  - `package.json`
+  - `scripts/README.md`
+  - `docs/guides/server-setup.md`
+- Non-goals:
+  - changing routine verify coverage again
+  - turning public-relay compatibility into the primary operator path
+  - starting the next engineering phase
+- Gate:
+  - `bun test --timeout 15000 scripts/release-verify.test.ts`
+  - `bun test --timeout 15000 scripts/host-control.test.ts`
+  - `bun run test:phase7-contract`
+  - `bun run scripts/csh.ts verify .env.csh.local`
+  - outside the sandbox, `bun run scripts/release-verify.ts .env.csh.local`
+- Closeout:
+  - `csh verify` remains the routine local/private-relay-first gate
+  - release-grade proof now has a checked-in command and stable logs for fresh checkout and
+    public-relay compatibility
+  - Phase 8 can leave the startup path because its exit criteria are satisfied
+
+## Phase Closeout
+- Routine verification is now `csh verify`.
+- Release-grade verification is now `csh verify release` or `bun run scripts/release-verify.ts`.
+- Fresh-checkout reproducibility and public-relay compatibility have both been rerun through
+  checked-in code on 2026-04-09.
+- The next engineering lane should start from a new phase prompt rather than extending Phase 8.
 
 ## Acceptance Gates
 - claims and proof table
@@ -141,5 +165,6 @@ Target findings:
 - the canonical verify loop covers a longer-lived high-output + keepAlive + delayed reconnect path
 - the canonical verify loop covers explicit idle expiry under short verify-only TTLs
 - the canonical verify loop covers browser attach against an already-aged live session
+- a checked-in release-grade verification flow exists for fresh-checkout and public-relay proof
 - restart-proof logs are stable enough for autonomous follow-on passes
 - open restart-related risks are either closed or narrowed explicitly in docs

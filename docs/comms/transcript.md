@@ -297,3 +297,10 @@ Append-only project communication history.
 - When: 2026-04-09 18:47 WEST
 - What: Closed the next Phase 8 hardening slice around explicit expiry and aged browser attach. Added `scripts/idle-expiry.ts` plus `scripts/aged-browser-attach.ts`, wired both into `scripts/run-autonomous-loop.sh`, and fixed the real runtime blocker that surfaced while driving those proofs: `src/contextvm-gateway.ts` now forwards the full process environment into the spawned MCP server, so verify-time TTL overrides actually reach `src/main.ts`. The PTY runtime now scavenges on poll, escalates forced close when a helper ignores the first hangup, and records stable idle/aged-browser artifacts. Local `bun test --timeout 15000 scripts/host-control.test.ts`, `bun run test:phase7-contract`, and `bun run scripts/csh.ts verify .env.csh.local` all passed afterward with `idle_expiry_status=0`, `aged_browser_attach_status=0`, `soak_status=0`, `relay_recovery_status=0`, `restart_status=0`, `proxy_status=0`, `exec_status=7`, and `browser_status=0`.
 - Session: local repo execution
+
+### 2026-04-09 19:20 WEST
+
+- Who: Codex
+- When: 2026-04-09 19:20 WEST
+- What: Closed the final Phase 8 hardening slice and restored the startup surface to steady state. Added `scripts/release-verify.ts` plus `scripts/release-verify.test.ts`, wired `csh verify release` into the CLI, and split the verification contract into a routine gate (`csh verify`) and a heavier release-grade gate (`csh verify release`). Outside the sandbox, `bun run scripts/release-verify.ts .env.csh.local` passed end to end: fresh-checkout verification succeeded from an isolated clone, the public-relay shell proof returned `/workspace/projects/csh`, and the public-relay browser proof returned `__BROWSER__/workspace/projects/csh` with `release_verify_public_shell_status=0` and `release_verify_public_browser_status=0`. The deployment guide, scripts guide, prompt routing, handoff, and deployment-resilience audit were updated to mark Phase 8 complete.
+- Session: local repo execution
