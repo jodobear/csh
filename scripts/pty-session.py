@@ -9,6 +9,7 @@ import shlex
 import signal
 import struct
 import termios
+import time
 from typing import Any
 
 
@@ -192,9 +193,12 @@ def main() -> int:
     )
 
     closing = False
+    closing_started_at: float | None = None
+    sent_sigterm = False
+    sent_sigkill = False
 
     def handle_request(payload: dict[str, Any]) -> dict[str, Any]:
-        nonlocal closing
+        nonlocal closing, closing_started_at
         request_id = str(payload.get("requestId", ""))
         command_type = payload.get("type")
         if command_type == "ping":
@@ -219,6 +223,7 @@ def main() -> int:
             return {"requestId": request_id, "ok": True}
         if command_type == "close":
             closing = True
+            closing_started_at = time.monotonic()
             kill_process_group(pid, signal.SIGHUP)
             return {"requestId": request_id, "ok": True}
         if command_type == "keepalive":
@@ -234,8 +239,9 @@ def main() -> int:
         )
 
     def terminate_child(_: int, __: Any) -> None:
-        nonlocal closing
+        nonlocal closing, closing_started_at
         closing = True
+        closing_started_at = time.monotonic()
         kill_process_group(pid, signal.SIGHUP)
 
     signal.signal(signal.SIGTERM, terminate_child)
@@ -274,6 +280,14 @@ def main() -> int:
                 persist_reply(str(payload.get("requestId", "")), response)
 
         if closing:
+            if closing_started_at is not None:
+                elapsed = time.monotonic() - closing_started_at
+                if elapsed >= 0.5 and not sent_sigterm:
+                    kill_process_group(pid, signal.SIGTERM)
+                    sent_sigterm = True
+                if elapsed >= 2.0 and not sent_sigkill:
+                    kill_process_group(pid, signal.SIGKILL)
+                    sent_sigkill = True
             try:
                 waited_pid, status = os.waitpid(pid, os.WNOHANG)
             except ChildProcessError:

@@ -126,7 +126,6 @@ export class PtySessionManager {
       const timer = setInterval(() => {
         void this.scavengeSessions().catch(reportBackgroundError);
       }, SESSION_SCAVENGE_INTERVAL_MS);
-      timer.unref?.();
       this.scavengeTimer = timer;
     }
   }
@@ -293,7 +292,28 @@ export class PtySessionManager {
     cursor?: number,
     keepAlive = false,
   ): Promise<PollResult> {
-    const state = await this.getStateForActor(sessionId, actorId);
+    await this.scavengeSessions();
+    let state = await this.getStateForActor(sessionId, actorId);
+
+    if (state.session.closedAt && this.shouldEvictClosedSession(state.session)) {
+      await this.discardSession(sessionId);
+      throw new Error(`Unknown session: ${sessionId}`);
+    }
+
+    if (!state.session.closedAt && this.isSessionIdle(state.session)) {
+      try {
+        await this.sendLiveCommand(sessionId, { type: "close" });
+      } catch {
+        await this.markRuntimeClosed(sessionId, state.runtime, null);
+      }
+
+      try {
+        state = await this.waitForSessionClosed(sessionId, 3_000);
+      } catch {
+        state = await this.forceCloseSession(state);
+      }
+    }
+
     let session = state.session;
 
     if (keepAlive && !session.closedAt && shouldRefreshKeepAlive(session)) {
@@ -340,7 +360,12 @@ export class PtySessionManager {
       await this.markRuntimeClosed(sessionId, state.runtime, null);
     }
 
-    const closed = await this.waitForSessionClosed(sessionId);
+    let closed: SessionState;
+    try {
+      closed = await this.waitForSessionClosed(sessionId);
+    } catch {
+      closed = await this.forceCloseSession(state);
+    }
     return cloneShellSession(closed.session);
   }
 
@@ -513,6 +538,22 @@ export class PtySessionManager {
     }
 
     throw new Error(`Timed out waiting for session ${sessionId} to close`);
+  }
+
+  private async forceCloseSession(state: SessionState): Promise<SessionState> {
+    await terminateProcessGroup(state.runtime.runtimePid, "SIGHUP");
+    await sleep(200);
+    if (state.runtime.runtimePid !== null && isPidAlive(state.runtime.runtimePid)) {
+      await terminateProcessGroup(state.runtime.runtimePid, "SIGTERM");
+      await sleep(500);
+    }
+    if (state.runtime.runtimePid !== null && isPidAlive(state.runtime.runtimePid)) {
+      await terminateProcessGroup(state.runtime.runtimePid, "SIGKILL");
+      await sleep(100);
+    }
+
+    await this.markRuntimeClosed(state.sessionRecord.sessionId, state.runtime, null);
+    return await this.requireState(state.sessionRecord.sessionId);
   }
 
   private async waitForHelperShutdown(
@@ -851,6 +892,23 @@ function isPidAlive(pid: number): boolean {
     return true;
   } catch {
     return false;
+  }
+}
+
+async function terminateProcessGroup(
+  pid: number | null,
+  signalName: NodeJS.Signals,
+): Promise<void> {
+  if (pid === null) {
+    return;
+  }
+
+  try {
+    process.kill(-pid, signalName);
+  } catch (error) {
+    if (!(error instanceof Error) || !("code" in error) || error.code !== "ESRCH") {
+      throw error;
+    }
   }
 }
 

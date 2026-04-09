@@ -19,6 +19,9 @@ const gateway = new NostrMCPGateway({
       command: process.execPath,
       args: ["run", path.join(projectRoot, "src", "main.ts")],
       cwd: projectRoot,
+      env: {
+        ...process.env,
+      },
       stderr: "inherit",
     }),
   nostrTransportOptions: {

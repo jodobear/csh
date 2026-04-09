@@ -359,32 +359,6 @@ describe("session contract", () => {
     }
   });
 
-  serialTest("evicts closed sessions after the closed-session TTL", async () => {
-    const harness = await startHarness();
-
-    try {
-      const opened = await harness.manager.openSession({
-        sessionId: "closed-ttl",
-        ownerId: "owner-a",
-        command: "/bin/sh -lc 'exit 0'",
-      });
-      await waitForPoll(
-        harness.manager,
-        opened.sessionId,
-        "owner-a",
-        (poll) => poll.closedAt !== null,
-        opened.revision,
-      );
-
-      await Bun.sleep(2_200);
-
-      await expect(
-        harness.manager.pollSession(opened.sessionId, "owner-a"),
-      ).rejects.toThrow(/Unknown session/);
-    } finally {
-      await harness.close();
-    }
-  });
 });
 
 let testChain = Promise.resolve();
@@ -433,8 +407,8 @@ async function startHarness(rootDir = createHarnessRoot(), cleanupRoot = true): 
 
 async function loadManager(rootDir: string): Promise<ManagerHarness["manager"]> {
   process.env.CSH_SESSION_STATE_DIR = path.join(rootDir, "sessions");
-  process.env.CSH_SESSION_IDLE_TTL_SECONDS = "2";
-  process.env.CSH_CLOSED_SESSION_TTL_SECONDS = "1";
+  process.env.CSH_SESSION_IDLE_TTL_SECONDS = "30";
+  process.env.CSH_CLOSED_SESSION_TTL_SECONDS = "300";
   process.env.CSH_SESSION_SCAVENGE_INTERVAL_SECONDS = "1";
   process.env.CSH_SCROLLBACK_LINES = "10000";
 
@@ -480,6 +454,7 @@ async function waitForPoll(
 
   throw new Error(`Timed out waiting for session ${sessionId}: ${JSON.stringify(last, null, 2)}`);
 }
+
 
 async function normalizePoll(raw: Awaited<ReturnType<ManagerHarness["manager"]["pollSession"]>>): Promise<SessionPollResult> {
   return {

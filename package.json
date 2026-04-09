@@ -24,6 +24,8 @@
     "csh:build-browser": "bun run scripts/build-browser-assets.ts",
     "csh:smoke": "bun run scripts/smoke-client.ts",
     "csh:lifecycle": "bun run scripts/lifecycle-client.ts",
+    "csh:idle-expiry": "bun run scripts/idle-expiry.ts",
+    "csh:aged-browser-attach": "bun run scripts/aged-browser-attach.ts",
     "csh:restart-recovery": "bun run scripts/restart-recovery.ts",
     "csh:relay-recovery": "bun run scripts/relay-recovery.ts",
     "csh:session-soak": "bun run scripts/session-soak.ts",

@@ -1,6 +1,5 @@
 import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
-import net from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
@@ -8,7 +7,6 @@ import {
   startLoggedProcess,
   terminateProcess,
   waitForLogMarker,
-  waitForTcpListener,
 } from "./host-control";
 
 describe("host control helpers", () => {
@@ -66,24 +64,6 @@ describe("host control helpers", () => {
       );
     } finally {
       rmSync(root, { recursive: true, force: true });
-    }
-  });
-
-  test("waits for a tcp listener to become ready", async () => {
-    const server = net.createServer();
-    await new Promise<void>((resolve, reject) => {
-      server.once("error", reject);
-      server.listen(0, "127.0.0.1", () => resolve());
-    });
-
-    try {
-      const address = server.address();
-      expect(address).not.toBeNull();
-      expect(typeof address).toBe("object");
-      const port = typeof address === "object" && address ? address.port : 0;
-      await waitForTcpListener("127.0.0.1", port, process.pid, 1_000);
-    } finally {
-      await new Promise<void>((resolve) => server.close(() => resolve()));
     }
   });
 });

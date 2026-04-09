@@ -4,11 +4,15 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ENV_FILE="${1:-$ROOT_DIR/.env.csh.local}"
 HOST_LOG="${CSH_HOST_LOG:-$ROOT_DIR/.csh-runtime/logs/host.log}"
+IDLE_HOST_LOG="${CSH_IDLE_HOST_LOG:-$ROOT_DIR/.csh-runtime/logs/idle-host.log}"
+IDLE_ENV_FILE="${CSH_IDLE_ENV_FILE:-$ROOT_DIR/.csh-runtime/verify-idle.env}"
 RELAY_LOG="${CSH_RELAY_LOG:-$ROOT_DIR/.csh-runtime/logs/relay.log}"
 PROXY_LOG="${CSH_PROXY_LOG:-$ROOT_DIR/.csh-runtime/logs/proxy.log}"
 CONTRACT_LOG="${CSH_CONTRACT_LOG:-$ROOT_DIR/.csh-runtime/logs/phase7-contract.log}"
 HOST_CONTROL_LOG="${CSH_HOST_CONTROL_LOG:-$ROOT_DIR/.csh-runtime/logs/host-control.log}"
 EXEC_LOG="${CSH_EXEC_LOG:-$ROOT_DIR/.csh-runtime/logs/exec.log}"
+IDLE_EXPIRY_LOG="${CSH_IDLE_EXPIRY_LOG:-$ROOT_DIR/.csh-runtime/logs/idle-expiry.log}"
+AGED_BROWSER_ATTACH_LOG="${CSH_AGED_BROWSER_ATTACH_LOG:-$ROOT_DIR/.csh-runtime/logs/aged-browser-attach.log}"
 SOAK_LOG="${CSH_SOAK_LOG:-$ROOT_DIR/.csh-runtime/logs/session-soak.log}"
 RELAY_RECOVERY_LOG="${CSH_RELAY_RECOVERY_LOG:-$ROOT_DIR/.csh-runtime/logs/relay-recovery.log}"
 RELAY_RECOVERY_RELAY_LOG="${CSH_RELAY_RECOVERY_RELAY_LOG:-$ROOT_DIR/.csh-runtime/logs/relay-recovery-relay.log}"
@@ -18,10 +22,15 @@ BROWSER_LOG="${CSH_BROWSER_LOG:-$ROOT_DIR/.csh-runtime/logs/browser.log}"
 BROWSER_SMOKE_LOG="${CSH_BROWSER_SMOKE_LOG:-$ROOT_DIR/.csh-runtime/logs/browser-smoke.log}"
 
 mkdir -p "$(dirname "$HOST_LOG")"
+rm -f "$IDLE_ENV_FILE"
 
 relay_pid=""
 
 cleanup() {
+  if [[ -n "${idle_host_pid:-}" ]] && kill -0 "$idle_host_pid" 2>/dev/null; then
+    kill "$idle_host_pid" 2>/dev/null || true
+    wait "$idle_host_pid" 2>/dev/null || true
+  fi
   if [[ -n "${browser_pid:-}" ]] && kill -0 "$browser_pid" 2>/dev/null; then
     kill "$browser_pid" 2>/dev/null || true
     wait "$browser_pid" 2>/dev/null || true
@@ -48,32 +57,18 @@ if [[ ! -f "$ENV_FILE" ]] || [[ "${CSH_VERIFY_BOOTSTRAP:-0}" == "1" ]]; then
   scripts/bootstrap-env.sh "$ENV_FILE"
 fi
 
-verify_browser_port="$(
-  bun -e '
-    const net = await import("node:net");
-    const start = Number.parseInt(process.env.CSH_VERIFY_BROWSER_PORT || "43180", 10);
-    const limit = start + 200;
+verify_browser_port=""
+for port in $(seq "${CSH_VERIFY_BROWSER_PORT:-43180}" $(( ${CSH_VERIFY_BROWSER_PORT:-43180} + 199 ))); do
+  if ! ss -ltn 2>/dev/null | grep -q ":$port "; then
+    verify_browser_port="$port"
+    break
+  fi
+done
 
-    async function canListen(port) {
-      return await new Promise((resolve) => {
-        const server = net.createServer();
-        server.once("error", () => resolve(false));
-        server.listen(port, "127.0.0.1", () => {
-          server.close(() => resolve(true));
-        });
-      });
-    }
-
-    for (let port = start; port < limit; port += 1) {
-      if (await canListen(port)) {
-        console.log(port);
-        process.exit(0);
-      }
-    }
-
-    process.exit(1);
-  '
-)"
+if [[ -z "$verify_browser_port" ]]; then
+  echo "could not find a free browser port for verify" >&2
+  exit 1
+fi
 export CSH_BROWSER_HOST="${CSH_BROWSER_HOST:-127.0.0.1}"
 export CSH_BROWSER_PORT="$verify_browser_port"
 
@@ -91,32 +86,17 @@ relay_url="$(
 if [[ "$relay_url" =~ ^ws://(127\.0\.0\.1|localhost):([0-9]+)$ ]]; then
   relay_host="${BASH_REMATCH[1]}"
   relay_base_port="${BASH_REMATCH[2]}"
-  relay_port="$(
-    CSH_VERIFY_RELAY_PORT_START="$relay_base_port" bun -e '
-      const net = await import("node:net");
-      const start = Number.parseInt(process.env.CSH_VERIFY_RELAY_PORT_START || "10552", 10);
-      const limit = start + 200;
-
-      async function canListen(port) {
-        return await new Promise((resolve) => {
-          const server = net.createServer();
-          server.once("error", () => resolve(false));
-          server.listen(port, "127.0.0.1", () => {
-            server.close(() => resolve(true));
-          });
-        });
-      }
-
-      for (let port = start; port < limit; port += 1) {
-        if (await canListen(port)) {
-          console.log(port);
-          process.exit(0);
-        }
-      }
-
-      process.exit(1);
-    '
-  )"
+  relay_port=""
+  for port in $(seq "$relay_base_port" $(( relay_base_port + 199 ))); do
+    if ! ss -ltn 2>/dev/null | grep -q ":$port "; then
+      relay_port="$port"
+      break
+    fi
+  done
+  if [[ -z "$relay_port" ]]; then
+    echo "could not find a free relay port for verify" >&2
+    exit 1
+  fi
   relay_url="ws://$relay_host:$relay_port"
   export CVM_RELAYS="$relay_url"
   export CSH_NOSTR_RELAY_URLS="$relay_url"
@@ -144,6 +124,55 @@ if [[ "$relay_url" =~ ^ws://(127\.0\.0\.1|localhost):([0-9]+)$ ]]; then
     echo "relay did not become ready in time" >&2
     exit 1
   fi
+fi
+
+idle_ready=0
+cp "$ENV_FILE" "$IDLE_ENV_FILE"
+printf '\nCSH_SESSION_IDLE_TTL_SECONDS=%s\n' "${CSH_VERIFY_IDLE_TTL_SECONDS:-2}" >>"$IDLE_ENV_FILE"
+printf 'CSH_SESSION_SCAVENGE_INTERVAL_SECONDS=%s\n' "${CSH_VERIFY_IDLE_SCAVENGE_SECONDS:-1}" >>"$IDLE_ENV_FILE"
+printf 'CVM_RELAYS=%s\n' "$relay_url" >>"$IDLE_ENV_FILE"
+
+CSH_SESSION_IDLE_TTL_SECONDS="${CSH_VERIFY_IDLE_TTL_SECONDS:-2}" \
+CSH_SESSION_SCAVENGE_INTERVAL_SECONDS="${CSH_VERIFY_IDLE_SCAVENGE_SECONDS:-1}" \
+scripts/start-host.sh "$IDLE_ENV_FILE" >"$IDLE_HOST_LOG" 2>&1 &
+idle_host_pid=$!
+
+for _ in $(seq 1 30); do
+  if grep -q "csh ContextVM gateway started" "$IDLE_HOST_LOG" 2>/dev/null; then
+    idle_ready=1
+    break
+  fi
+
+  if ! kill -0 "$idle_host_pid" 2>/dev/null; then
+    echo "idle-expiry host process exited before becoming ready" >&2
+    exit 1
+  fi
+
+  sleep 1
+done
+
+if [[ "$idle_ready" != "1" ]]; then
+  echo "idle-expiry host did not become ready in time" >&2
+  exit 1
+fi
+
+set +e
+CSH_IDLE_EXPIRY_TTL_MS="${CSH_VERIFY_IDLE_TTL_MS:-2000}" \
+CSH_IDLE_EXPIRY_SCAVENGE_MS="${CSH_VERIFY_IDLE_SCAVENGE_MS:-1000}" \
+CSH_IDLE_EXPIRY_SETTLE_MS="${CSH_VERIFY_IDLE_SETTLE_MS:-2500}" \
+CVM_ENV_FILE="$IDLE_ENV_FILE" \
+  bun run csh:idle-expiry >"$IDLE_EXPIRY_LOG" 2>&1
+idle_expiry_status=$?
+set -e
+
+if [[ -n "${idle_host_pid:-}" ]] && kill -0 "$idle_host_pid" 2>/dev/null; then
+  kill "$idle_host_pid" 2>/dev/null || true
+  wait "$idle_host_pid" 2>/dev/null || true
+fi
+unset idle_host_pid
+
+if [[ "$idle_expiry_status" != "0" ]]; then
+  exit "$idle_expiry_status"
 fi
 
 scripts/start-host.sh "$ENV_FILE" >"$HOST_LOG" 2>&1 &
@@ -194,6 +223,16 @@ fi
 
 CVM_ENV_FILE="$ENV_FILE" bun run csh:smoke
 CVM_ENV_FILE="$ENV_FILE" bun run csh:lifecycle
+
+set +e
+CSH_AGED_BROWSER_ATTACH_MS="${CSH_VERIFY_AGED_BROWSER_ATTACH_MS:-6000}" \
+CVM_ENV_FILE="$ENV_FILE" bun run csh:aged-browser-attach >"$AGED_BROWSER_ATTACH_LOG" 2>&1
+aged_browser_attach_status=$?
+set -e
+
+if [[ "$aged_browser_attach_status" != "0" ]]; then
+  exit "$aged_browser_attach_status"
+fi
 
 set +e
 CVM_ENV_FILE="$ENV_FILE" bun run csh:session-soak >"$SOAK_LOG" 2>&1
@@ -267,6 +306,12 @@ printf 'browser_port=%s\n' "$CSH_BROWSER_PORT"
 printf 'host_control_log=%s\n' "$HOST_CONTROL_LOG"
 printf 'phase7_contract_log=%s\n' "$CONTRACT_LOG"
 printf 'exec_log=%s\n' "$EXEC_LOG"
+printf 'idle_expiry_status=%s\n' "$idle_expiry_status"
+printf 'idle_expiry_log=%s\n' "$IDLE_EXPIRY_LOG"
+printf 'idle_host_log=%s\n' "$IDLE_HOST_LOG"
+printf 'idle_env_file=%s\n' "$IDLE_ENV_FILE"
+printf 'aged_browser_attach_status=%s\n' "$aged_browser_attach_status"
+printf 'aged_browser_attach_log=%s\n' "$AGED_BROWSER_ATTACH_LOG"
 printf 'soak_status=%s\n' "$soak_status"
 printf 'soak_log=%s\n' "$SOAK_LOG"
 printf 'relay_log=%s\n' "$RELAY_LOG"
