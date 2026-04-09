@@ -112,7 +112,8 @@ Commands:
   shell [config-path]            Start the interactive operator shell
   browser [config-path]          Start the browser terminal UI over ContextVM
   browser-local                  Start the browser terminal UI against a local stdio server
-  verify [config-path]           Run the full verification loop
+  verify [config-path]           Run the routine verification loop
+  verify release [config-path]   Run the release-grade verification flow
   help                           Show this help
 
 Flags:
@@ -682,11 +683,14 @@ async function commandBrowserLocal(): Promise<void> {
 }
 
 async function commandVerify(parsed: ParsedArgs): Promise<void> {
-  const configPath = configPathFrom(parsed, parsed.positionals[1]);
+  const isReleaseVerify = parsed.positionals[1] === "release";
+  const configPath = configPathFrom(parsed, isReleaseVerify ? parsed.positionals[2] : parsed.positionals[1]);
   if (await Bun.file(configPath).exists()) {
     requireHealthyConfig(configPath, "full");
   }
-  const code = await runCommand("bash", ["scripts/run-autonomous-loop.sh", configPath]);
+  const code = isReleaseVerify
+    ? await runCommand("bun", ["run", "scripts/release-verify.ts", configPath])
+    : await runCommand("bash", ["scripts/run-autonomous-loop.sh", configPath]);
   process.exit(code);
 }
 

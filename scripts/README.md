@@ -22,7 +22,8 @@ These scripts compose the repo-local interactive shell path:
 - `smoke-client.ts`: connects over ContextVM/Nostr and verifies `session_*` tools
 - `lifecycle-client.ts`: verifies reconnect continuity, session close, and fresh-session recreation
 - `proxy-smoke.ts`: tries the repo-local stdio proxy operator path via stdio
-- `run-autonomous-loop.sh`: installs runtime, bootstraps env, starts host, runs direct smoke, runs lifecycle verification, then compares the proxy path
+- `run-autonomous-loop.sh`: installs runtime, bootstraps env, starts host, runs the routine layered verification gate, then compares the proxy path
+- `release-verify.ts`: runs the heavier release-grade verification flow: fresh checkout plus public-relay compatibility proof
 
 ## Setup
 
@@ -87,7 +88,7 @@ These scripts compose the repo-local interactive shell path:
    csh proxy .env.csh.local
    ```
 
-6. Run the full loop in one command:
+6. Run the routine gate in one command:
 
    ```bash
    csh verify
@@ -96,19 +97,28 @@ These scripts compose the repo-local interactive shell path:
    When the env points at a loopback relay like `ws://127.0.0.1:10552`, `verify` will start a
    repo-local `nak` relay automatically if one is not already listening.
 
-7. Run one real operator command:
+7. Run the release-grade gate before a release or after substantial transport/runtime changes:
+
+   ```bash
+   csh verify release
+   ```
+
+   This reruns the fresh-checkout bootstrap proof and the public-relay compatibility proof on the
+   current tree.
+
+8. Run one real operator command:
 
    ```bash
    csh exec "pwd" .env.csh.local
    ```
 
-8. Start the interactive shell:
+9. Start the interactive shell:
 
    ```bash
    csh shell .env.csh.local
    ```
 
-9. Start the browser terminal UI:
+10. Start the browser terminal UI:
 
    ```bash
    csh browser .env.csh.local
@@ -124,6 +134,8 @@ These scripts compose the repo-local interactive shell path:
   backed by the detached helper in `scripts/pty-session.py`.
 - The current default operator path is the interactive client at `csh shell`, with `csh exec`
   kept for one-shot commands and `csh browser` available for the browser terminal UI.
+- `csh verify` is the routine local/private-relay-first gate. `csh verify release` is the heavier
+  periodic gate for fresh-checkout and public-relay compatibility proof.
 - Browser UI access is authenticated even on loopback. Remote browser mode additionally requires
   `CSH_BROWSER_TRUST_PROXY_TLS=1` behind an HTTPS/TLS-terminating reverse proxy.
 - Terminal fidelity is now native-PTY-backed, with reconnect and browser polling driven by the

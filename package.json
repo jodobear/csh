@@ -30,8 +30,10 @@
     "csh:relay-recovery": "bun run scripts/relay-recovery.ts",
     "csh:session-soak": "bun run scripts/session-soak.ts",
     "csh:fresh-checkout": "bun run scripts/fresh-checkout.ts",
+    "csh:release-verify": "bun run scripts/release-verify.ts",
     "csh:proxy-smoke": "bun run scripts/proxy-smoke.ts",
-    "csh:browser-smoke": "bun run scripts/browser-smoke.ts"
+    "csh:browser-smoke": "bun run scripts/browser-smoke.ts",
+    "test:release-verify": "bun test --timeout 15000 scripts/release-verify.test.ts"
   },
   "dependencies": {
     "@contextvm/sdk": "0.7.3",

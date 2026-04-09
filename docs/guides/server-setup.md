@@ -191,6 +191,7 @@ Recommended host lifecycle:
 3. install the rendered unit as a dedicated non-root service account
 4. keep the relay private by default
 5. use `csh verify` after deployment changes
+6. use `csh verify release` before a release or after substantial transport/runtime changes
 
 ## Compatibility Note
 
