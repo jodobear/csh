@@ -2,38 +2,41 @@
 
 ## Current Status
 
-- Active phase: none. [phase-8-verification-hardening.md](/workspace/projects/csh/docs/prompts/phase-8-verification-hardening.md) is complete provenance.
-- Current objective: start the next engineering lane from a stable verification baseline. Phase 8
-  verification hardening is complete.
+- Active phase on `phase-9-nostr-browser`: [phase-9-nostr-browser-auth.md](/workspace/projects/csh/docs/prompts/phase-9-nostr-browser-auth.md).
+- Current objective: finish Phase 9 branch closeout and merge the Nostr-native browser/auth lane back
+  onto `master` without disturbing the Phase 8 stable baseline.
 - Repo state:
   - Git repository initialized on `master`
-  - `master` tracks `origin/master`
+  - `master` tracks `origin/master` and remains the last pushed stable baseline
+  - active in-progress branch is `phase-9-nostr-browser`
   - check `git status --short --branch` for the exact ahead/behind state at handoff time
 - Working-tree truth:
-  - the checked-in native PTY runtime is live on `master`
-  - the working tree is runnable through the current autonomous gate
-  - Phase 8 closed with the routine local/private-relay gate and the heavier release-grade gate
-    both proven on 2026-04-09
+  - the checked-in native PTY runtime remains the base backend on both branches
+  - `master` still reflects the Phase 8 stable verification baseline
+  - `phase-9-nostr-browser` carries the Nostr-native browser/auth work
+  - the Phase 9 branch is runnable through the current autonomous gate
   - the canonical verify loop exercises restart recovery, relay interruption/recovery,
-    longer-lived session soak, short-TTL idle expiry, and aged browser attach
+    longer-lived session soak, short-TTL idle expiry, aged browser attach, static browser smoke,
+    and invite onboarding
   - the checked-in release-grade verify flow reruns isolated fresh-checkout verification plus
-    public-relay shell/browser compatibility on demand
+    public-relay shell/browser-static compatibility on demand
 - Canonical verify gate:
   - `bun test --timeout 15000 scripts/host-control.test.ts` passes locally
   - `bun test --timeout 15000 scripts/startup-env.test.ts` passes locally
   - `bun test --timeout 15000 scripts/fresh-checkout.test.ts` passes locally
   - `bun run test:phase7-contract` passes
-  - `bun run scripts/csh.ts verify .env.csh.local` passed locally on 2026-04-09 with
+  - `bun run scripts/csh.ts verify .env.csh.local` passed locally on 2026-04-10 on `phase-9-nostr-browser` with
     `idle_expiry_status=0`, `aged_browser_attach_status=0`, `soak_status=0`,
     `relay_recovery_status=0`, `restart_status=0`, `proxy_status=0`, `exec_status=7`, and
-    `browser_status=0`
-  - outside the sandbox, `bun run scripts/release-verify.ts .env.csh.local` passed on 2026-04-09
-    with `release_verify_public_shell_status=0` and `release_verify_public_browser_status=0`
+    `browser_static_status=0`, `invite_onboarding_status=0`
+  - outside the sandbox, `bun run scripts/release-verify.ts .env.csh.local` passed on 2026-04-10
+    on `phase-9-nostr-browser` with `release_verify_public_shell_status=0` and
+    `release_verify_public_browser_static_status=0`
   - the verify loop now records stable artifact paths, including `host-control.log`,
     `phase7-contract.log`, `exec.log`, `idle-expiry.log`, `idle-host.log`, `verify-idle.env`,
     `aged-browser-attach.log`, `session-soak.log`, `relay.log`, `relay-recovery.log`,
     `relay-recovery-relay.log`, `host.log`, `restart-recovery.log`, `restart-host.log`,
-    `proxy.log`, `browser.log`, and `browser-smoke.log`
+    `proxy.log`, `browser.log`, `browser-static-smoke.log`, and `invite-onboarding.log`
 - Release-grade verify artifacts:
   - `release-verify/fresh-checkout.log`
   - `release-public.env`
@@ -41,7 +44,8 @@
   - `release-verify/public-shell.log`
   - `release-verify/public-browser.log`
   - `release-verify/public-browser-smoke.log`
-- Active prompt: none
+- Active prompt on the Phase 9 branch:
+  - [phase-9-nostr-browser-auth.md](/workspace/projects/csh/docs/prompts/phase-9-nostr-browser-auth.md)
 - Default audit postures for refinement work:
   - `security-exposure`
   - `operator-workflow`
@@ -74,8 +78,9 @@
   - private relay you control
   - SSH tunnel fallback
   - `relay.contextvm.org` only as a secondary compatibility check
-- Browser UI remains loopback-bound by default and token-gated for POST requests.
-- Remote browser mode now requires explicit Basic Auth credentials before any page, asset, or API response is served.
+- Browser UI now has a static Nostr-native preview/client path on the Phase 9 branch.
+- Browser shell auth on the Phase 9 branch is signer-based and allowlist/invite-driven rather than
+  Basic Auth for the primary path.
 - Startup paths now treat env files as data-only config, not shell code.
 - CLI/operator surface now includes:
   - `csh install`
@@ -92,6 +97,7 @@
   - steady-state polling uses deltas when possible and falls back to full snapshot recovery when the cursor is absent or stale
   - scrollback depth is controlled by `CSH_SCROLLBACK_LINES` and defaults to `10000`
   - `csh exec` now returns the remote command exit status instead of always exiting successfully
+  - the browser-side signer layer now preserves required NIP-44 capabilities for ContextVM client traffic
 
 ## Baseline Claims Vs Proof
 
@@ -111,8 +117,8 @@ These proofs reflect the native-PTY backend plus the refreshed 2026-04-09 verifi
 | The operator surface has stable preflight commands | `bun run csh doctor /tmp/csh-cli-polish.env`, `bun run csh status /tmp/csh-cli-polish.env`, and `bun run csh config check /tmp/csh-cli-polish.env` all succeeded against a fresh bootstrap config | proven locally | `doctor` is preflight evidence, not a substitute for end-to-end relay verification |
 | install lifecycle is complete for the Bun-backed launcher | `bun run csh install --prefix /tmp/csh-lifecycle --no-runtime`, `bun run csh upgrade --prefix /tmp/csh-lifecycle --no-runtime`, and `bun run csh uninstall --prefix /tmp/csh-lifecycle` all succeeded | proven locally | uninstall only removes managed launchers unless forced |
 | Native PTY runtime preserves reconnect, restart survival, byte-safe input, resize, high-output handling, browser forwarding, and exit-status reporting | `bun run test:phase7-contract` passed locally on 2026-04-08 | proven locally | live human browser ergonomics should still be rerun when the UI changes materially |
-| The autonomous gate is strong enough to drive the native PTY lane | `bun run scripts/csh.ts verify .env.csh.local` passed locally on 2026-04-09 and reported `idle_expiry_status=0`, `aged_browser_attach_status=0`, `soak_status=0`, `relay_recovery_status=0`, `restart_status=0`, `exec_status=7`, `proxy_status=0`, `browser_status=0`, plus stable artifact paths for host-control/contract/idle/aged-browser/soak/relay/restart/exec/host/proxy/browser logs | proven locally | the audit set should stay fresh as the backend hardens further |
-| A checked-in release-grade verification flow exists for heavier periodic proofs | outside the sandbox, `bun run scripts/release-verify.ts .env.csh.local` passed on 2026-04-09, reran fresh-checkout verification, and finished with `release_verify_public_shell_status=0` plus `release_verify_public_browser_status=0` | proven locally | it is intentionally heavier than the routine gate and should stay periodic |
+| The autonomous gate is strong enough to drive the Phase 9 browser/auth lane | `bun run scripts/csh.ts verify .env.csh.local` passed locally on 2026-04-10 on `phase-9-nostr-browser` and reported `idle_expiry_status=0`, `aged_browser_attach_status=0`, `soak_status=0`, `relay_recovery_status=0`, `restart_status=0`, `exec_status=7`, `proxy_status=0`, `browser_static_status=0`, and `invite_onboarding_status=0`, plus stable artifact paths for host-control/contract/idle/aged-browser/soak/relay/restart/exec/host/proxy/browser-static/invite logs | proven locally on branch | merge/push is still pending while Phase 9 lives off `master` |
+| A checked-in release-grade verification flow exists for heavier periodic proofs on the Phase 9 branch | outside the sandbox, `bun run scripts/release-verify.ts .env.csh.local` passed on 2026-04-10 on `phase-9-nostr-browser`, reran fresh-checkout verification, and finished with `release_verify_public_shell_status=0` plus `release_verify_public_browser_static_status=0` | proven locally on branch | it is intentionally heavier than the routine gate and should stay periodic |
 | The repo can bootstrap and pass verify from an isolated clone | outside the sandbox, `bun run scripts/release-verify.ts .env.csh.local` on 2026-04-09 reran the isolated-clone proof; `release-verify/fresh-checkout.log` recorded a fresh clone under `/tmp`, `bun install --frozen-lockfile`, and a passing `bun run scripts/csh.ts verify .env.csh.local` with `restart_status=0`, `proxy_status=0`, `exec_status=7`, and `browser_status=0` | proven locally | it now lives under the release-grade periodic gate rather than the routine gate |
 | The verify loop tolerates relay interruption on its private loopback relay path | local `bun run scripts/csh.ts verify .env.csh.local` on 2026-04-09 selected a verify-owned relay port, terminated that relay, started a replacement relay, reattached to the same named session, and finished with `relay_recovery_status=0` | proven locally | non-loopback or externally owned relay fault injection is still outside the canonical verify scope |
 | The verify loop now covers a longer-lived session path beyond immediate reconnect | local `bun run scripts/csh.ts verify .env.csh.local` on 2026-04-09 ran `scripts/session-soak.ts`, pushed 800 lines through one session, kept it alive read-only for 6000 ms, disconnected for 6000 ms, and reattached with the same shell PID before finishing with `soak_status=0` | proven locally | longer-duration soak windows beyond the current verify budget are still outside the routine gate |
@@ -137,9 +143,9 @@ These proofs reflect the native-PTY backend plus the refreshed 2026-04-09 verifi
 
 ## Next Actions
 
-1. Start the next phase from this stable baseline. Likely candidates are deployment packaging, operator ergonomics, or productizing the install/runtime surface.
-2. Decide whether the checkout-backed launcher should stay as-is or become a more standalone release artifact.
-3. Decide whether any longer-duration soak or harsher transport-chaos checks belong in the periodic release-grade gate.
+1. Push `phase-9-nostr-browser` and decide the merge path back into `master`.
+2. Refresh the Phase 9 audit/docs surface if any operator posture claims still mention the older browser bridge as primary.
+3. After merge, choose the next lane from the new Nostr-native browser/auth baseline.
 
 ## Process Notes
 
