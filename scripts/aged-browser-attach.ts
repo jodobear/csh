@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 import { randomUUID } from "node:crypto";
+import { getPublicKey } from "nostr-tools";
 import {
   closeSession,
   createDirectClient,
@@ -10,7 +11,7 @@ import {
   writeSession,
 } from "./client-common";
 import { runPlaywright } from "./playwright-cli";
-import { deriveStateNamespace } from "../src/browser-static/storage";
+import { deriveSessionStateNamespace } from "../src/browser-static/storage";
 
 loadEnvFile();
 
@@ -21,6 +22,8 @@ const relayUrls = (process.env.CVM_RELAYS || process.env.CSH_NOSTR_RELAY_URLS ||
   .map((value) => value.trim())
   .filter(Boolean);
 const serverPubkey = (process.env.CVM_SERVER_PUBKEY || process.env.CSH_SERVER_PUBKEY || "").trim();
+const actorSecretKeyHex = process.env.CVM_CLIENT_PRIVATE_KEY || process.env.CSH_CLIENT_PRIVATE_KEY || "";
+const actorPubkey = getPublicKey(Buffer.from(actorSecretKeyHex, "hex"));
 const ageMs = Number.parseInt(process.env.CSH_AGED_BROWSER_ATTACH_MS ?? "6000", 10);
 const sessionId =
   process.env.CSH_AGED_BROWSER_SESSION_ID ?? `csh-aged-browser-${Date.now()}-${process.pid}`;
@@ -50,9 +53,10 @@ async function main(): Promise<void> {
     );
     await sleep(ageMs);
 
-    const stateNamespace = deriveStateNamespace({
+    const stateNamespace = deriveSessionStateNamespace({
       relayUrls,
       serverPubkey,
+      actorPubkey,
     });
 
     await runPlaywright(["open", baseUrl], { session: playwrightSession });
@@ -77,7 +81,7 @@ async function main(): Promise<void> {
       [
         "run-code",
         `async page => {
-          await page.locator("[data-action='connect']").click();
+          await page.locator("[data-action='reconnect']").click();
           await page.waitForFunction(() => {
             const status = document.querySelector("[data-status]")?.textContent || "";
             const actor = document.querySelector("[data-actor]")?.textContent || "";

@@ -465,7 +465,7 @@ export class PtySessionManager {
     await mkdir(dirPath, { recursive: true, mode: 0o700 });
     await chmod(dirPath, 0o700).catch(() => undefined);
     const filePath = this.outputPath(sessionId);
-    const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+    const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}-${randomUUID()}`;
     await writeFile(tempPath, output);
     await chmod(tempPath, 0o600).catch(() => undefined);
     await rename(tempPath, filePath);
@@ -781,7 +781,7 @@ function buildSessionState(
 }
 
 async function writeJsonFile(filePath: string, value: unknown): Promise<void> {
-  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}`;
+  const tempPath = `${filePath}.tmp-${process.pid}-${Date.now()}-${randomUUID()}`;
   await writeFile(tempPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
   await chmod(tempPath, 0o600).catch(() => undefined);
   await rename(tempPath, filePath);

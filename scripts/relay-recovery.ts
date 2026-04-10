@@ -17,6 +17,7 @@ import {
   terminateProcess,
   waitForTcpListener,
 } from "./host-control";
+import { parseLatestMarkerInt } from "./session-markers";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -101,7 +102,7 @@ try {
     reconnectClient,
     opened.sessionId,
     (snapshot) => snapshot.includes("__PWD__/tmp"),
-    { cursor: beforeRecovery.cursor, timeoutMs: 15_000 },
+    { cursor: 0, timeoutMs: 15_000 },
   );
   const recoveredText = sessionOutputText(afterRecovery) ?? "";
   assert(recoveredText.includes("__PWD__/tmp"), "Session state changed across relay interruption");
@@ -206,9 +207,5 @@ function parseRequiredLoopbackRelay(relays: string): { host: string; port: numbe
 }
 
 function parseFreshPid(snapshot: string | null): number | null {
-  if (!snapshot) {
-    return null;
-  }
-  const match = snapshot.match(/__FRESH__(\d+)/);
-  return match ? Number(match[1]) : null;
+  return parseLatestMarkerInt(snapshot, "__FRESH__");
 }

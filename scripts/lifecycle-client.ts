@@ -9,6 +9,7 @@ import {
   waitForSnapshot,
   writeSession,
 } from "./client-common";
+import { parseLatestMarkerInt } from "./session-markers";
 
 loadEnvFile();
 
@@ -91,9 +92,5 @@ console.log(
 process.exit(0);
 
 function parsePidFromSnapshot(snapshot: string | null): number | null {
-  if (!snapshot) {
-    return null;
-  }
-  const match = snapshot.match(/__PID__(\d+)/);
-  return match ? Number(match[1]) : null;
+  return parseLatestMarkerInt(snapshot, "__PID__");
 }

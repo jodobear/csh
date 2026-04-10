@@ -17,6 +17,7 @@ import {
   terminateProcess,
   waitForLogMarker,
 } from "./host-control";
+import { parseLatestMarkerInt } from "./session-markers";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -99,7 +100,10 @@ try {
   const postRestartPid = parsePidFromSnapshot(sessionOutputText(afterRestart));
 
   assert(postRestartPid, "Could not parse shell PID after restart");
-  assert(postRestartPid === initialPid, "Shell PID changed across relay-backed host restart");
+  assert(
+    postRestartPid === initialPid,
+    `Shell PID changed across relay-backed host restart (initial=${initialPid}, postRestart=${postRestartPid})`,
+  );
 
   await ignoreCleanupTimeout(() => closeSession(reconnectClient, opened.sessionId));
 
@@ -178,17 +182,9 @@ function parseRequiredInt(name: string): number {
 }
 
 function parsePidFromSnapshot(snapshot: string | null): number | null {
-  if (!snapshot) {
-    return null;
-  }
-  const match = snapshot.match(/__PID__(\d+)/);
-  return match ? Number(match[1]) : null;
+  return parseLatestMarkerInt(snapshot, "__PID__");
 }
 
 function parseFreshPid(snapshot: string | null): number | null {
-  if (!snapshot) {
-    return null;
-  }
-  const match = snapshot.match(/__FRESH__(\d+)/);
-  return match ? Number(match[1]) : null;
+  return parseLatestMarkerInt(snapshot, "__FRESH__");
 }
