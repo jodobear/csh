@@ -11,6 +11,7 @@ import {
   removeAllowlistEntry,
   revokeInvite,
 } from "./auth-cli";
+import { exportProfile } from "./profile-cli";
 import {
   closeSession,
   createDirectClient,
@@ -19,7 +20,6 @@ import {
   pollSession,
   sessionOutputText,
   sleep,
-  writeSession,
 } from "./client-common";
 import {
   currentUsername,
@@ -125,12 +125,16 @@ Commands:
                                 List invite metadata without plaintext tokens
   auth invite revoke <invite-id> [config-path]
                                 Revoke a one-time browser onboarding invite
+  profile export [config-path]   Emit a shareable browser profile JSON payload
   direct [config-path]           Run the direct smoke test
   lifecycle [config-path]        Run reconnect/session cleanup verification
   proxy [config-path]            Run the stdio proxy smoke test
   exec <command> [config-path]   Execute one shell command in a fresh remote shell session
   shell [config-path]            Start the interactive operator shell
   browser [config-path]          Start the static browser client preview server
+  browser build                  Build the static browser client bundle
+  browser serve-static [config-path]
+                                Serve the built static browser client bundle
   browser-bridge [config-path]   Start the deprecated browser bridge over ContextVM
   browser-bridge-local           Start the deprecated browser bridge against local stdio
   verify [config-path]           Run the routine verification loop
@@ -625,6 +629,20 @@ async function commandStatus(parsed: ParsedArgs): Promise<void> {
   printStatus(config, mode, runtime, parsed);
 }
 
+async function commandProfile(parsed: ParsedArgs): Promise<void> {
+  const action = parsed.positionals[1];
+  if (action === "export") {
+    const configPath = configPathFrom(parsed, parsed.positionals[2]);
+    const profile = await exportProfile(configPath, {
+      label: typeof parsed.flags.label === "string" ? parsed.flags.label : undefined,
+    });
+    console.log(JSON.stringify(profile, null, 2));
+    return;
+  }
+
+  throw new Error(`Unknown profile command: ${action ?? "(missing)"}`);
+}
+
 async function commandDoctor(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
   const config = loadConfig(configPath);
@@ -728,13 +746,12 @@ async function commandExec(parsed: ParsedArgs): Promise<void> {
   const session = await openSession(client, {
     cols: 120,
     rows: 40,
+    command: `/bin/sh -lc ${shellQuote(remoteCommand)}`,
   });
   let shouldCloseSession = true;
   let exitCode = 0;
 
   try {
-    await writeSession(client, session.sessionId, `${remoteCommand}\nexit\n`);
-
     const timeoutMs = 15_000;
     const startedAt = Date.now();
     let cursor = session.cursor;
@@ -795,6 +812,10 @@ function stripDeadPaneFooter(snapshot: string): string {
   return snapshot.replace(/\n*Pane is dead \(status[^\n]*\):?\s*$/s, "");
 }
 
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
 async function commandShell(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
   requireHealthyConfig(configPath, "client");
@@ -813,6 +834,34 @@ async function commandShell(parsed: ParsedArgs): Promise<void> {
 }
 
 async function commandBrowser(parsed: ParsedArgs): Promise<void> {
+  const subcommand = parsed.positionals[1];
+  if (subcommand === "build") {
+    const code = await runCommand("bun", ["run", "scripts/build-browser-assets.ts"]);
+    process.exit(code);
+  }
+  if (subcommand === "serve-static") {
+    const configPath = configPathFrom(parsed, parsed.positionals[2]);
+    let browserHost = process.env.CSH_BROWSER_HOST || "127.0.0.1";
+    let browserPort = process.env.CSH_BROWSER_PORT || "4318";
+    const extraEnv: Record<string, string> = {};
+
+    if (await Bun.file(configPath).exists()) {
+      const config = requireHealthyConfig(configPath, "client");
+      process.env.CVM_ENV_FILE = configPath;
+      loadEnvFile(configPath);
+      browserHost = process.env.CSH_BROWSER_HOST || config.browserHost;
+      browserPort = process.env.CSH_BROWSER_PORT || String(config.browserPort);
+      if (process.env.CVM_CLIENT_PRIVATE_KEY || process.env.CSH_CLIENT_PRIVATE_KEY) {
+        extraEnv.CSH_BROWSER_DEFAULT_SIGNER = "test";
+      }
+    }
+
+    console.error(`Browser URL: http://${browserHost}:${browserPort}`);
+    console.error("Use Ctrl-C in this terminal to stop the static browser dist server.");
+    const code = await runCommand("bun", ["run", "scripts/serve-static-browser.ts"], extraEnv);
+    process.exit(code);
+  }
+
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
   let browserHost = process.env.CSH_BROWSER_HOST || "127.0.0.1";
   let browserPort = process.env.CSH_BROWSER_PORT || "4318";
@@ -896,6 +945,7 @@ function completionScript(shell: string): string {
     "runtime",
     "host",
     "auth",
+    "profile",
     "direct",
     "lifecycle",
     "proxy",
@@ -1093,6 +1143,10 @@ async function main(): Promise<void> {
   }
   if (command === "auth") {
     await commandAuth(parsed);
+    return;
+  }
+  if (command === "profile") {
+    await commandProfile(parsed);
     return;
   }
   if (command === "direct") {

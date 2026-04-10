@@ -1,11 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import {
+  clearSelectedProfileLabel,
   clearStoredSettings,
   deriveStateNamespace,
   deriveSessionStateNamespace,
+  importBrowserProfile,
   normalizeStoredSettings,
+  profileToSettings,
   readStoredSettings,
+  readStoredProfiles,
+  readSelectedProfileLabel,
+  upsertStoredProfile,
   writeStoredSettings,
+  writeSelectedProfileLabel,
 } from "./storage";
 
 describe("browser static storage", () => {
@@ -74,6 +81,40 @@ describe("browser static storage", () => {
         actorPubkey: "B".repeat(64),
       }),
     ).toBe(`static:${"a".repeat(64)}:wss://relay.example,wss://second.example:${"b".repeat(64)}`);
+  });
+
+  test("imports, persists, and selects named browser profiles", () => {
+    const storage = createMemoryStorage();
+    const imported = importBrowserProfile(
+      JSON.stringify({
+        version: 1,
+        label: "Private Relay",
+        relayUrls: [" ws://127.0.0.1:10552 ", "ws://127.0.0.1:10552"],
+        serverPubkey: "A".repeat(64),
+        preferredSignerKind: "nip07",
+      }),
+    );
+    upsertStoredProfile(storage, imported);
+    writeSelectedProfileLabel(storage, imported.label);
+
+    expect(readStoredProfiles(storage)).toEqual([{
+      version: 1,
+      label: "Private Relay",
+      relayUrls: ["ws://127.0.0.1:10552"],
+      serverPubkey: "a".repeat(64),
+      preferredSignerKind: "nip07",
+      bunkerConnectionUri: "",
+    }]);
+    expect(readSelectedProfileLabel(storage)).toBe("Private Relay");
+    expect(profileToSettings(imported)).toEqual({
+      relayUrls: ["ws://127.0.0.1:10552"],
+      serverPubkey: "a".repeat(64),
+      signerKind: "nip07",
+      bunkerConnectionUri: "",
+    });
+
+    clearSelectedProfileLabel(storage);
+    expect(readSelectedProfileLabel(storage)).toBeNull();
   });
 });
 

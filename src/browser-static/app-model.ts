@@ -1,4 +1,4 @@
-import { normalizeStoredSettings, type StoredBrowserSettings } from "./storage.js";
+import { normalizeStoredSettings, profileToSettings, type BrowserProfile, type StoredBrowserSettings } from "./storage.js";
 
 export type AuthStatusResult = {
   actorPubkey: string;
@@ -43,4 +43,26 @@ export function appendTerminalMirror(current: string, incoming: string): string 
 
 export function shouldStartWithExpandedSettings(initialSessionId: string | null): boolean {
   return initialSessionId === null;
+}
+
+export function applyProfileSelection(
+  currentSettings: StoredBrowserSettings,
+  profiles: BrowserProfile[],
+  selectedLabel: string,
+): StoredBrowserSettings {
+  if (selectedLabel === "manual") {
+    return currentSettings;
+  }
+  const profile = profiles.find((entry) => entry.label === selectedLabel);
+  return profile ? profileToSettings(profile) : currentSettings;
+}
+
+export function resolveInitialSelectedProfileLabel(
+  profiles: Array<{ label: string }>,
+  storedLabel: string | null,
+): string {
+  if (!storedLabel) {
+    return "manual";
+  }
+  return profiles.some((profile) => profile.label === storedLabel) ? storedLabel : "manual";
 }

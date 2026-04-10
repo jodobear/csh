@@ -3,8 +3,10 @@ import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import "./app.css";
 import {
+  applyProfileSelection,
   appendTerminalMirror,
   resolveInitialSettings,
+  resolveInitialSelectedProfileLabel,
   shouldRedeemInvite,
   shouldStartWithExpandedSettings,
   type PreviewConfig,
@@ -12,11 +14,18 @@ import {
 import { createBrowserShellClient } from "./client.js";
 import { createAmberSigner, createBunkerSignerAdapter, createNip07Signer, type BrowserSigner } from "./signers.js";
 import {
+  clearSelectedProfileLabel,
   clearStoredSettings,
   deriveSessionStateNamespace,
+  importBrowserProfile,
   normalizeStoredSettings,
   readStoredSettings,
+  readStoredProfiles,
+  readSelectedProfileLabel,
+  upsertStoredProfile,
   writeStoredSettings,
+  writeSelectedProfileLabel,
+  type BrowserProfile,
   type BrowserSignerSelection,
   type StoredBrowserSettings,
 } from "./storage.js";
@@ -46,6 +55,9 @@ type PollResult = {
 
 type UiElements = {
   appRoot: HTMLElement;
+  profileSelect: HTMLSelectElement;
+  profileImportInput: HTMLTextAreaElement;
+  importProfileButton: HTMLButtonElement;
   relayInput: HTMLTextAreaElement;
   serverPubkeyInput: HTMLInputElement;
   signerSelect: HTMLSelectElement;
@@ -94,12 +106,20 @@ ui.terminalContainer.addEventListener("click", focusKeyboardCapture);
 window.addEventListener("focus", focusKeyboardCapture);
 
 const storedSettings = readStoredSettings(window.localStorage);
-const initialSettings = resolveInitialSettings(previewConfig, storedSettings);
+let savedProfiles = readStoredProfiles(window.localStorage);
+let selectedProfileLabel = resolveInitialSelectedProfileLabel(savedProfiles, readSelectedProfileLabel(window.localStorage));
+const initialSettings = applyProfileSelection(
+  resolveInitialSettings(previewConfig, storedSettings),
+  savedProfiles,
+  selectedProfileLabel,
+);
+populateProfileOptions(savedProfiles, selectedProfileLabel);
 ui.relayInput.value = initialSettings.relayUrls.join("\n");
 ui.serverPubkeyInput.value = initialSettings.serverPubkey;
 ui.signerSelect.value = initialSettings.signerKind;
 ui.bunkerInput.value = initialSettings.bunkerConnectionUri;
 ui.modeText.textContent = previewConfig.modeLabel ?? "static";
+ui.profileSelect.value = selectedProfileLabel;
 
 let activeClient: Awaited<ReturnType<typeof createBrowserShellClient>> | null = null;
 let activeActorPubkey: string | null = null;
@@ -141,9 +161,18 @@ ui.connectButton.addEventListener("click", () => {
 ui.toggleSettingsButton.addEventListener("click", () => {
   setSettingsExpanded(ui.appRoot.dataset.settingsExpanded !== "true");
 });
+ui.profileSelect.addEventListener("change", () => {
+  applySelectedProfile(ui.profileSelect.value);
+});
+ui.importProfileButton.addEventListener("click", () => {
+  tryImportProfile();
+});
 ui.resetButton.addEventListener("click", () => {
   clearStoredSettings(window.localStorage);
+  clearSelectedProfileLabel(window.localStorage);
   ui.inviteInput.value = "";
+  selectedProfileLabel = "manual";
+  ui.profileSelect.value = "manual";
   setStatus("Cleared saved browser settings");
 });
 ui.reconnectButton.addEventListener("click", () => {
@@ -444,6 +473,39 @@ function collectSettings(): StoredBrowserSettings {
     signerKind: ui.signerSelect.value as BrowserSignerSelection,
     bunkerConnectionUri: ui.bunkerInput.value,
   });
+}
+
+function applySelectedProfile(label: string): void {
+  selectedProfileLabel = label;
+  if (label === "manual") {
+    clearSelectedProfileLabel(window.localStorage);
+    setStatus("Using manual relay and server settings");
+    return;
+  }
+
+  const next = applyProfileSelection(collectSettings(), savedProfiles, label);
+  ui.relayInput.value = next.relayUrls.join("\n");
+  ui.serverPubkeyInput.value = next.serverPubkey;
+  ui.signerSelect.value = next.signerKind;
+  ui.bunkerInput.value = next.bunkerConnectionUri;
+  writeSelectedProfileLabel(window.localStorage, label);
+  setStatus(`Loaded saved profile ${label}`);
+}
+
+function tryImportProfile(): void {
+  const imported = importBrowserProfile(ui.profileImportInput.value);
+  savedProfiles = upsertStoredProfile(window.localStorage, imported);
+  selectedProfileLabel = imported.label;
+  populateProfileOptions(savedProfiles, imported.label);
+  ui.profileSelect.value = imported.label;
+  ui.profileImportInput.value = "";
+  writeSelectedProfileLabel(window.localStorage, imported.label);
+  const next = applyProfileSelection(collectSettings(), savedProfiles, imported.label);
+  ui.relayInput.value = next.relayUrls.join("\n");
+  ui.serverPubkeyInput.value = next.serverPubkey;
+  ui.signerSelect.value = next.signerKind;
+  ui.bunkerInput.value = next.bunkerConnectionUri;
+  setStatus(`Imported profile ${imported.label}`);
 }
 
 async function resolveSigner(
@@ -749,6 +811,9 @@ async function warmTerminalFonts(): Promise<void> {
 
 function getUiElements(): UiElements {
   const appRoot = document.querySelector<HTMLElement>(".shell-app");
+  const profileSelect = document.querySelector<HTMLSelectElement>("[data-field='profile-select']");
+  const profileImportInput = document.querySelector<HTMLTextAreaElement>("[data-field='profile-import']");
+  const importProfileButton = document.querySelector<HTMLButtonElement>("[data-action='import-profile']");
   const relayInput = document.querySelector<HTMLTextAreaElement>("[data-field='relays']");
   const serverPubkeyInput = document.querySelector<HTMLInputElement>("[data-field='server-pubkey']");
   const signerSelect = document.querySelector<HTMLSelectElement>("[data-field='signer']");
@@ -770,6 +835,9 @@ function getUiElements(): UiElements {
 
   if (
     !appRoot ||
+    !profileSelect ||
+    !profileImportInput ||
+    !importProfileButton ||
     !relayInput ||
     !serverPubkeyInput ||
     !signerSelect ||
@@ -794,6 +862,9 @@ function getUiElements(): UiElements {
 
   return {
     appRoot,
+    profileSelect,
+    profileImportInput,
+    importProfileButton,
     relayInput,
     serverPubkeyInput,
     signerSelect,
@@ -813,6 +884,21 @@ function getUiElements(): UiElements {
     bannerText,
     terminalContainer,
   };
+}
+
+function populateProfileOptions(profiles: BrowserProfile[], selectedLabel: string): void {
+  ui.profileSelect.innerHTML = "";
+  const manualOption = document.createElement("option");
+  manualOption.value = "manual";
+  manualOption.textContent = "Manual Settings";
+  ui.profileSelect.appendChild(manualOption);
+  for (const profile of profiles) {
+    const option = document.createElement("option");
+    option.value = profile.label;
+    option.textContent = profile.label;
+    ui.profileSelect.appendChild(option);
+  }
+  ui.profileSelect.value = selectedLabel;
 }
 
 function readPreviewConfig(): PreviewConfig {

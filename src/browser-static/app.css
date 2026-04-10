@@ -69,8 +69,17 @@
   resize: vertical;
 }
 
+.field textarea[data-field="profile-import"] {
+  min-height: 4.5rem;
+}
+
 .settings-grid .field--wide {
   grid-column: 1 / -1;
+}
+
+.field-actions {
+  display: flex;
+  align-items: end;
 }
 
 .banner {
