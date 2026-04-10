@@ -41,6 +41,7 @@ and ContextVM shell surface intact.
   - `proxy_status=0`
   - `exec_status=7`
   - `browser_static_status=0`
+  - `profile_browser_status=0`
   - `invite_onboarding_status=0`
 - release verify is green on this branch with:
   - `release_verify_public_shell_status=0`
@@ -51,62 +52,44 @@ and ContextVM shell surface intact.
   - `relay.contextvm.org` remains too laggy for primary interactive shell use
   - ContextVM solved host reachability, but browser distribution and relay bootstrap remain explicit product work
 
-## Remaining TDD Slices
+## Outcome
 
-### Slice A: Browser Transport Parity
+- persisted allowlist and invite state are implemented and exercised through CLI admin commands
+- shell access is now enforced at the `session_*` tool boundary by authenticated signer pubkey
+- the browser path is now a static Nostr-native client with signer selection, invite onboarding,
+  saved profiles, and deterministic preview/release proofs
+- the routine gate proves static browser connect, saved-profile connect, invite onboarding, aged
+  attach, restart recovery, relay recovery, soak, idle expiry, proxy smoke, and exit-status
+  reporting
+- the release-grade gate proves fresh-checkout verification plus public-relay shell and
+  browser-static compatibility
+- the primary operator posture is now explicit:
+  - private relay first
+  - SSH tunnel fallback when relay reachability is constrained
+  - `relay.contextvm.org` only as a compatibility path
+- the main product lesson is also explicit: ContextVM removes the need for direct host reachability,
+  but browser asset delivery and relay bootstrap/discovery still need deliberate productization
 
-Goal: make the browser client reliable on the primary private-relay path without depending on ad hoc SSH tunneling for the relay leg.
+## Phase Exit
 
-TDD gates:
-- add a relay/bootstrap model test that covers separate browser-origin and relay-origin configuration
-- extend browser smoke to run against a distinct relay endpoint and prove `auth_status -> auth_redeem_invite -> session_open -> session_poll`
-- keep `bun run test:phase7-contract` green
+- deterministic unit/browser suite passed on branch
+- `bun run test:phase7-contract` passed on branch
+- `BUN_TMPDIR=/tmp BUN_INSTALL=/tmp/bun-install bun run scripts/csh.ts verify .env.csh.local`
+  passed on branch with `browser_static_status=0`, `profile_browser_status=0`, and
+  `invite_onboarding_status=0`
+- outside the sandbox, `BUN_TMPDIR=/tmp BUN_INSTALL=/tmp/bun-install bun run scripts/release-verify.ts .env.csh.local`
+  passed on branch with `release_verify_public_shell_status=0` and
+  `release_verify_public_browser_static_status=0`
 
-Closeout proof:
-- `bun run scripts/csh.ts verify .env.csh.local` still passes
-- a manual browser check on the primary private-relay path opens a shell without transport timeouts
+## Next Phase Inputs
 
-### Slice B: Static Browser Distribution
-
-Goal: stop treating `csh browser` as the only practical browser delivery path and make the static client independently hostable.
-
-TDD gates:
-- add a build/output test for the static bundle and asset manifest
-- add a static-host smoke that serves `dist/browser-static` without the repo-local preview server and verifies the browser client still connects
-- document the browser distribution contract in the guide surface
-
-Closeout proof:
-- `bun run csh:build-browser`
-- static-host smoke passes against the same host/relay path as the preview smoke
-
-### Slice C: Relay Bootstrap And Operator Profiles
-
-Goal: make the operator path closer to “know the server pubkey and route profile” instead of hand-entering relay details every time.
-
-TDD gates:
-- add profile parsing and persistence tests for named relay/server presets
-- add browser app tests for importing/selecting a saved profile
-- add CLI tests for emitting a shareable profile payload without private keys
-
-Closeout proof:
-- browser can connect from a saved profile with no manual relay re-entry
-- docs no longer imply that `npub` alone is sufficient without relay bootstrap
-
-### Slice D: Phase 9 Merge Closeout
-
-Goal: merge only after the product posture and proof surface match reality.
-
-TDD gates:
-- rerun the deterministic unit/browser suite
-- rerun `bun run test:phase7-contract`
-- rerun routine verify
-- rerun release verify outside the sandbox
-
-Closeout proof:
-- prompt, handoff, and audits all reflect the final browser/auth posture
-- branch is clean, pushed, and ready to merge to `master`
+- push `phase-9-nostr-browser`
+- rerun the full proof surface on pushed state if desired
+- merge the branch back into `master`
+- keep future product work focused on relay/bootstrap polish or distribution packaging, not on
+  reverting to host-local browser auth
 
 ## Closeout
 
-Phase 9 is ready for merge once the remaining slices above are closed, the docs/handoff surface stays
-aligned with the branch reality, and the branch is pushed.
+Phase 9 is complete on `phase-9-nostr-browser`. The branch is ready to push and then merge back
+into `master`.

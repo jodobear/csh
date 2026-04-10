@@ -53,7 +53,8 @@ Bootstrap a local env:
 csh bootstrap .env.csh.local
 ```
 
-The generated env includes browser credentials and defaults to a loopback/private relay.
+The generated env includes deprecated bridge credentials for fallback/admin use and defaults to a
+loopback/private relay.
 It also sets `CSH_SCROLLBACK_LINES=10000` for the persisted session scrollback path.
 
 Check readiness and the resolved runtime state:
@@ -143,6 +144,21 @@ Enter the relay URL and server pubkey, choose a signer, and connect with your No
 Shell access is granted only when the signer pubkey is already on the host allowlist or redeems a
 valid one-time invite token.
 
+Admin helpers for that auth flow:
+
+```bash
+csh auth allowlist add <pubkey> .env.csh.local
+csh auth invite create .env.csh.local
+csh profile export .env.csh.local
+```
+
+If you want to host the static browser bundle independently of the repo-local preview server:
+
+```bash
+csh browser build
+csh browser serve-static .env.csh.local
+```
+
 If you intentionally expose the browser UI beyond loopback, set:
 
 ```bash
@@ -159,10 +175,12 @@ The default browser flow is:
 
 1. run `csh browser <config>`
 2. open the printed local URL
-3. log in with the configured browser credentials
-4. use the reconnect button if you want to reattach a persisted session
+3. enter the relay URL and server pubkey, or import a saved profile from `csh profile export`
+4. choose a signer and connect with your Nostr identity
+5. if needed, redeem a one-time invite token for shell access
+6. use the reconnect button if you want to reattach a persisted session
 
-The browser UI is an operator-side bridge, not a public multi-user shell surface.
+The browser UI is a static signer-based operator client, not a public multi-user shell surface.
 
 ## Terminal Fidelity Posture
 
@@ -200,3 +218,14 @@ Recommended host lifecycle:
 
 `relay.contextvm.org` is now a working compatibility path, but it is still not the preferred
 operator relay. Use your own relay or an SSH tunnel first.
+
+## Product Posture Note
+
+ContextVM removes the need for direct host reachability, but it does not remove the need for:
+
+- reachable relays
+- an intentionally hosted browser asset path
+- explicit relay/bootstrap information for operators
+
+Knowing the server pubkey is not sufficient by itself if the relay path is not reachable or known to
+the operator.

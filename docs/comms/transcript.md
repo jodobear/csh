@@ -325,3 +325,10 @@ Append-only project communication history.
 - When: 2026-04-10 03:42 WEST
 - What: Ran live Phase 9 browser tests against the static client and recorded the product lessons from them. Browser auth plus invite onboarding worked, the private-relay path proved materially better interactive latency than the public relay path, and the branch gained a browser UX/transport fix slice: signer-aware browser session persistence, fresh-connect behavior, timeout-aware browser retries, batched terminal input writes, a collapsible setup panel, and bundled `MesloLGS NF` preview assets with font warm-up. The remaining Phase 9 work was rewritten into explicit TDD slices in the active prompt: browser transport parity, independent static browser distribution, relay bootstrap/operator profiles, and merge closeout. The key posture note is now explicit: ContextVM removes host reachability requirements, but browser delivery and relay bootstrap still need deliberate productization.
 - Session: local repo execution
+
+### 2026-04-10 05:05 WEST
+
+- Who: Codex
+- When: 2026-04-10 05:05 WEST
+- What: Closed the final Phase 9 branch-state gap and the remaining operator docs drift. The branch now records the saved-profile browser proof alongside the existing static-browser and invite-onboarding proofs, and the prompt/handoff/guides now describe the completed posture accurately: `phase-9-nostr-browser` is ready to push/merge, `csh browser` is a signer-based static preview, `csh browser build` and `csh browser serve-static` cover independent static distribution, `csh auth allowlist ...` plus `csh auth invite ...` own shell authorization/onboarding, and `csh profile export` emits shareable browser profiles without private keys. The transport lesson from live testing is now explicit in the deployment guide too: ContextVM removed direct host reachability requirements, but relay reachability and browser distribution still need deliberate operator bootstrap.
+- Session: local repo execution
