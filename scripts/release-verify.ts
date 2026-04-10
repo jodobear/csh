@@ -14,8 +14,8 @@ type ReleaseLogPaths = {
   publicEnvFile: string;
   publicHostLog: string;
   publicShellLog: string;
-  publicBrowserLog: string;
-  publicBrowserSmokeLog: string;
+  publicBrowserStaticLog: string;
+  publicBrowserStaticSmokeLog: string;
 };
 
 export function buildPublicRelayEnv(
@@ -49,8 +49,8 @@ function releaseLogPaths(rootDir = repoRoot()): ReleaseLogPaths {
     publicEnvFile: path.join(rootDir, ".csh-runtime", "release-public.env"),
     publicHostLog: path.join(root, "public-host.log"),
     publicShellLog: path.join(root, "public-shell.log"),
-    publicBrowserLog: path.join(root, "public-browser.log"),
-    publicBrowserSmokeLog: path.join(root, "public-browser-smoke.log"),
+    publicBrowserStaticLog: path.join(root, "public-browser-static.log"),
+    publicBrowserStaticSmokeLog: path.join(root, "public-browser-static-smoke.log"),
   };
 }
 
@@ -142,7 +142,7 @@ async function runPublicRelayCompatibility(
     const browser = await startLoggedProcess(
       "bun",
       ["run", "scripts/csh.ts", "browser", logs.publicEnvFile],
-      logs.publicBrowserLog,
+      logs.publicBrowserStaticLog,
       {
         cwd: repoRoot(),
         env: {
@@ -152,21 +152,26 @@ async function runPublicRelayCompatibility(
       },
     );
     browserPid = browser.pid;
-    await waitForLogMarker(logs.publicBrowserLog, "csh browser UI (contextvm) listening on", browser.pid, 30_000);
+    await waitForLogMarker(
+      logs.publicBrowserStaticLog,
+      "csh static browser preview listening on",
+      browser.pid,
+      30_000,
+    );
     await waitForTcpListener("127.0.0.1", browserPort, browser.pid, 30_000);
 
     const browserStatus = await runCommand("bun", ["run", "csh:browser-smoke"], {
       cwd: repoRoot(),
       stdio: "pipe-to-log",
-      logPath: logs.publicBrowserSmokeLog,
+      logPath: logs.publicBrowserStaticSmokeLog,
       env: {
         BUN_TMPDIR: "/tmp",
         BUN_INSTALL: "/tmp/bun-install",
         CVM_ENV_FILE: logs.publicEnvFile,
       },
     });
-    const browserOutput = safeRead(logs.publicBrowserSmokeLog);
-    if (browserStatus !== 0 || !browserOutput.includes("__BROWSER__/")) {
+    const browserOutput = safeRead(logs.publicBrowserStaticSmokeLog);
+    if (browserStatus !== 0 || !browserOutput.includes("__BROWSER_STATIC__/")) {
       throw new Error(`public relay browser proof failed with exit code ${browserStatus}`);
     }
 
@@ -202,10 +207,10 @@ if (import.meta.main) {
   console.log(`release_verify_public_relay=${PUBLIC_RELAY_URL}`);
   console.log(`release_verify_public_shell_log=${logs.publicShellLog}`);
   console.log(`release_verify_public_shell_status=${publicProof.shellStatus}`);
-  console.log(`release_verify_public_browser_log=${logs.publicBrowserLog}`);
+  console.log(`release_verify_public_browser_static_log=${logs.publicBrowserStaticLog}`);
   console.log(`release_verify_public_browser_port=${publicProof.browserPort}`);
-  console.log(`release_verify_public_browser_smoke_log=${logs.publicBrowserSmokeLog}`);
-  console.log(`release_verify_public_browser_status=${publicProof.browserStatus}`);
+  console.log(`release_verify_public_browser_static_smoke_log=${logs.publicBrowserStaticSmokeLog}`);
+  console.log(`release_verify_public_browser_static_status=${publicProof.browserStatus}`);
 }
 
 async function runCommand(

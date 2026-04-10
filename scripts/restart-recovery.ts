@@ -17,6 +17,7 @@ import {
   terminateProcess,
   waitForLogMarker,
 } from "./host-control";
+import { parseLatestMarkerInt } from "./session-markers";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -59,7 +60,7 @@ const beforeRestart = await waitForSnapshot(
 );
 const initialPid = parsePidFromSnapshot(sessionOutputText(beforeRestart));
 assert(initialPid, "Could not parse initial shell PID before restart");
-await firstClient.close();
+await ignoreCleanupTimeout(() => firstClient.close());
 
 await terminateProcess(restartHostPid);
 
@@ -99,9 +100,12 @@ try {
   const postRestartPid = parsePidFromSnapshot(sessionOutputText(afterRestart));
 
   assert(postRestartPid, "Could not parse shell PID after restart");
-  assert(postRestartPid === initialPid, "Shell PID changed across relay-backed host restart");
+  assert(
+    postRestartPid === initialPid,
+    `Shell PID changed across relay-backed host restart (initial=${initialPid}, postRestart=${postRestartPid})`,
+  );
 
-  await closeSession(reconnectClient, opened.sessionId);
+  await ignoreCleanupTimeout(() => closeSession(reconnectClient, opened.sessionId));
 
   const freshSession = await openSession(reconnectClient);
   await writeSession(reconnectClient, freshSession.sessionId, "echo __FRESH__$$\n");
@@ -115,7 +119,7 @@ try {
 
   assert(freshPid, "Could not open a fresh session after host restart");
 
-  await closeSession(reconnectClient, freshSession.sessionId);
+  await ignoreCleanupTimeout(() => closeSession(reconnectClient, freshSession.sessionId));
 
   console.log(
     JSON.stringify(
@@ -132,10 +136,23 @@ try {
     ),
   );
 } finally {
-  await reconnectClient.close().catch(() => undefined);
+  await ignoreCleanupTimeout(() => reconnectClient.close());
 }
 
 process.exit(0);
+
+async function ignoreCleanupTimeout(operation: () => Promise<unknown>, timeoutMs = 5_000): Promise<void> {
+  try {
+    await Promise.race([
+      operation(),
+      Bun.sleep(timeoutMs).then(() => {
+        throw new Error(`cleanup timed out after ${timeoutMs}ms`);
+      }),
+    ]);
+  } catch {
+    // Cleanup should not mask the proof result.
+  }
+}
 
 async function connectClientWithRetry(name: string, timeoutMs = 15_000) {
   const deadline = Date.now() + timeoutMs;
@@ -165,17 +182,9 @@ function parseRequiredInt(name: string): number {
 }
 
 function parsePidFromSnapshot(snapshot: string | null): number | null {
-  if (!snapshot) {
-    return null;
-  }
-  const match = snapshot.match(/__PID__(\d+)/);
-  return match ? Number(match[1]) : null;
+  return parseLatestMarkerInt(snapshot, "__PID__");
 }
 
 function parseFreshPid(snapshot: string | null): number | null {
-  if (!snapshot) {
-    return null;
-  }
-  const match = snapshot.match(/__FRESH__(\d+)/);
-  return match ? Number(match[1]) : null;
+  return parseLatestMarkerInt(snapshot, "__FRESH__");
 }

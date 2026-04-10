@@ -304,3 +304,31 @@ Append-only project communication history.
 - When: 2026-04-09 19:20 WEST
 - What: Closed the final Phase 8 hardening slice and restored the startup surface to steady state. Added `scripts/release-verify.ts` plus `scripts/release-verify.test.ts`, wired `csh verify release` into the CLI, and split the verification contract into a routine gate (`csh verify`) and a heavier release-grade gate (`csh verify release`). Outside the sandbox, `bun run scripts/release-verify.ts .env.csh.local` passed end to end: fresh-checkout verification succeeded from an isolated clone, the public-relay shell proof returned `/workspace/projects/csh`, and the public-relay browser proof returned `__BROWSER__/workspace/projects/csh` with `release_verify_public_shell_status=0` and `release_verify_public_browser_status=0`. The deployment guide, scripts guide, prompt routing, handoff, and deployment-resilience audit were updated to mark Phase 8 complete.
 - Session: local repo execution
+
+### 2026-04-10 02:36 WEST
+
+- Who: Codex
+- When: 2026-04-10 02:36 WEST
+- What: Stabilized the in-progress Phase 9 branch `phase-9-nostr-browser` and moved the new browser/auth lane off `master` so the pushed Phase 8 baseline remained clean. Added the static-client Playwright helpers (`scripts/playwright-cli.ts`, `scripts/browser-smoke.ts`, `scripts/invite-onboarding-smoke.ts`, `scripts/aged-browser-attach.ts`), a repo-local verify cleanup helper (`scripts/verify-cleanup.ts`), and signer/runtime fixes needed for the Nostr-native browser path: the browser signer layer now preserves NIP-44 support, the PTY manager now reports close-only state changes correctly, and the routine proofs for soak and relay recovery now assert session-state continuity instead of brittle shell-PID identity. On `phase-9-nostr-browser`, `bun test --timeout 15000 src/auth/state.test.ts src/auth/server-contract.test.ts scripts/auth-cli.test.ts src/browser-static/storage.test.ts src/browser-static/signers.test.ts src/browser-static/signers-test.test.ts src/browser-static/app.test.ts scripts/release-verify.test.ts scripts/host-control.test.ts` passed, `bun run test:phase7-contract` passed, `bun run scripts/csh.ts verify .env.csh.local` passed with `browser_static_status=0` and `invite_onboarding_status=0`, and outside the sandbox `bun run scripts/release-verify.ts .env.csh.local` passed with `release_verify_public_shell_status=0` and `release_verify_public_browser_static_status=0`.
+- Session: local repo execution
+
+### 2026-04-10 03:07 WEST
+
+- Who: Codex
+- When: 2026-04-10 03:07 WEST
+- What: Closed the remaining Phase 9 posture drift in the active docs surface. Updated `README.md`, `scripts/README.md`, `docs/guides/csh-cli-operations.md`, `docs/guides/server-setup.md`, the live security/operator/deployment audits, and `handoff.md` so the production browser posture is now described consistently as static Nostr-native first, with signer-based auth plus allowlist/invite enforcement as the primary boundary and `csh browser-bridge` documented only as a deprecated fallback. The proof tables were also aligned to the current `browser_static_status`, `invite_onboarding_status`, and `release_verify_public_browser_static_status` outputs on `phase-9-nostr-browser`.
+- Session: local repo execution
+
+### 2026-04-10 03:42 WEST
+
+- Who: Codex
+- When: 2026-04-10 03:42 WEST
+- What: Ran live Phase 9 browser tests against the static client and recorded the product lessons from them. Browser auth plus invite onboarding worked, the private-relay path proved materially better interactive latency than the public relay path, and the branch gained a browser UX/transport fix slice: signer-aware browser session persistence, fresh-connect behavior, timeout-aware browser retries, batched terminal input writes, a collapsible setup panel, and bundled `MesloLGS NF` preview assets with font warm-up. The remaining Phase 9 work was rewritten into explicit TDD slices in the active prompt: browser transport parity, independent static browser distribution, relay bootstrap/operator profiles, and merge closeout. The key posture note is now explicit: ContextVM removes host reachability requirements, but browser delivery and relay bootstrap still need deliberate productization.
+- Session: local repo execution
+
+### 2026-04-10 05:05 WEST
+
+- Who: Codex
+- When: 2026-04-10 05:05 WEST
+- What: Closed the final Phase 9 branch-state gap and the remaining operator docs drift. The branch now records the saved-profile browser proof alongside the existing static-browser and invite-onboarding proofs, and the prompt/handoff/guides now describe the completed posture accurately: `phase-9-nostr-browser` is ready to push/merge, `csh browser` is a signer-based static preview, `csh browser build` and `csh browser serve-static` cover independent static distribution, `csh auth allowlist ...` plus `csh auth invite ...` own shell authorization/onboarding, and `csh profile export` emits shareable browser profiles without private keys. The transport lesson from live testing is now explicit in the deployment guide too: ContextVM removed direct host reachability requirements, but relay reachability and browser distribution still need deliberate operator bootstrap.
+- Session: local repo execution

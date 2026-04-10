@@ -4,6 +4,15 @@ import { spawn } from "node:child_process";
 import path from "node:path";
 
 import {
+  addAllowlistEntry,
+  createInvite,
+  listAllowlistEntries,
+  listInvites,
+  removeAllowlistEntry,
+  revokeInvite,
+} from "./auth-cli";
+import { exportProfile } from "./profile-cli";
+import {
   closeSession,
   createDirectClient,
   loadEnvFile,
@@ -11,7 +20,6 @@ import {
   pollSession,
   sessionOutputText,
   sleep,
-  writeSession,
 } from "./client-common";
 import {
   currentUsername,
@@ -105,13 +113,30 @@ Commands:
   host check [config-path]       Validate host config and runtime readiness
   host print-config [config-path] Print redacted config
   host systemd-unit [config-path] Print or write a hardened systemd unit
+  auth allowlist list [config-path]
+                                List persisted shell allowlist entries
+  auth allowlist add <pubkey> [config-path]
+                                Add a persisted shell allowlist entry
+  auth allowlist remove <pubkey> [config-path]
+                                Remove a persisted shell allowlist entry
+  auth invite create [config-path]
+                                Create a one-time browser onboarding invite
+  auth invite list [config-path]
+                                List invite metadata without plaintext tokens
+  auth invite revoke <invite-id> [config-path]
+                                Revoke a one-time browser onboarding invite
+  profile export [config-path]   Emit a shareable browser profile JSON payload
   direct [config-path]           Run the direct smoke test
   lifecycle [config-path]        Run reconnect/session cleanup verification
   proxy [config-path]            Run the stdio proxy smoke test
   exec <command> [config-path]   Execute one shell command in a fresh remote shell session
   shell [config-path]            Start the interactive operator shell
-  browser [config-path]          Start the browser terminal UI over ContextVM
-  browser-local                  Start the browser terminal UI against a local stdio server
+  browser [config-path]          Start the static browser client preview server
+  browser build                  Build the static browser client bundle
+  browser serve-static [config-path]
+                                Serve the built static browser client bundle
+  browser-bridge [config-path]   Start the deprecated browser bridge over ContextVM
+  browser-bridge-local           Start the deprecated browser bridge against local stdio
   verify [config-path]           Run the routine verification loop
   verify release [config-path]   Run the release-grade verification flow
   help                           Show this help
@@ -124,6 +149,8 @@ Flags:
   --prefix <dir>                 Install prefix for csh install
   --user <user>                  User for rendered systemd unit
   --group <group>                Group for rendered systemd unit
+  --label <text>                 Optional label for auth allowlist/invite entries
+  --ttl-seconds <seconds>        Invite lifetime in seconds for auth invite create
   --json                         Emit JSON for status/check/doctor
   --force                        Overwrite a non-managed launcher during install
   --no-runtime                   Skip bun install/build during install
@@ -451,6 +478,148 @@ async function commandHostSystemdUnit(parsed: ParsedArgs): Promise<void> {
   process.stdout.write(unitText);
 }
 
+async function commandAuth(parsed: ParsedArgs): Promise<void> {
+  const area = parsed.positionals[1];
+  const action = parsed.positionals[2];
+
+  if (area === "allowlist" && action === "list") {
+    const configPath = configPathFrom(parsed, parsed.positionals[3]);
+    const entries = await listAllowlistEntries(configPath);
+    if (shouldUseJson(parsed)) {
+      console.log(JSON.stringify({ configPath, allowlist: entries }, null, 2));
+      return;
+    }
+    if (entries.length === 0) {
+      console.log("No allowlist entries.");
+      return;
+    }
+    for (const entry of entries) {
+      console.log(
+        [
+          entry.pubkey,
+          entry.label ? `label=${entry.label}` : null,
+          `source=${entry.source}`,
+          `createdAt=${entry.createdAt}`,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      );
+    }
+    return;
+  }
+
+  if (area === "allowlist" && action === "add") {
+    const pubkey = parsed.positionals[3];
+    if (!pubkey) {
+      throw new Error("auth allowlist add requires a pubkey argument.");
+    }
+    const configPath = configPathFrom(parsed, parsed.positionals[4]);
+    const entry = await addAllowlistEntry(pubkey, {
+      configPath,
+      label: typeof parsed.flags.label === "string" ? parsed.flags.label : null,
+    });
+    if (shouldUseJson(parsed)) {
+      console.log(JSON.stringify({ configPath, entry }, null, 2));
+      return;
+    }
+    console.log(`Added allowlist entry: ${entry.pubkey}`);
+    return;
+  }
+
+  if (area === "allowlist" && action === "remove") {
+    const pubkey = parsed.positionals[3];
+    if (!pubkey) {
+      throw new Error("auth allowlist remove requires a pubkey argument.");
+    }
+    const configPath = configPathFrom(parsed, parsed.positionals[4]);
+    const removed = await removeAllowlistEntry(pubkey, configPath);
+    if (shouldUseJson(parsed)) {
+      console.log(JSON.stringify({ configPath, pubkey, removed }, null, 2));
+    } else if (removed) {
+      console.log(`Removed allowlist entry: ${pubkey}`);
+    } else {
+      console.log(`Allowlist entry not found: ${pubkey}`);
+    }
+    if (!removed) {
+      process.exit(1);
+    }
+    return;
+  }
+
+  if (area === "invite" && action === "create") {
+    const configPath = configPathFrom(parsed, parsed.positionals[3]);
+    const ttlValue = parsed.flags["ttl-seconds"];
+    const ttlSeconds =
+      typeof ttlValue === "string" && ttlValue.length > 0 ? Number(ttlValue) : null;
+    if (ttlValue && (ttlSeconds === null || !Number.isFinite(ttlSeconds) || ttlSeconds <= 0)) {
+      throw new Error("--ttl-seconds must be a positive number");
+    }
+    const invite = await createInvite({
+      configPath,
+      label: typeof parsed.flags.label === "string" ? parsed.flags.label : null,
+      ttlSeconds,
+    });
+    if (shouldUseJson(parsed)) {
+      console.log(JSON.stringify({ configPath, invite }, null, 2));
+      return;
+    }
+    console.log(`Invite id: ${invite.inviteId}`);
+    console.log(`Invite token: ${invite.inviteToken}`);
+    console.log("Store the token now; it is not persisted in plaintext.");
+    return;
+  }
+
+  if (area === "invite" && action === "list") {
+    const configPath = configPathFrom(parsed, parsed.positionals[3]);
+    const invites = await listInvites(configPath);
+    if (shouldUseJson(parsed)) {
+      console.log(JSON.stringify({ configPath, invites }, null, 2));
+      return;
+    }
+    if (invites.length === 0) {
+      console.log("No invites.");
+      return;
+    }
+    for (const invite of invites) {
+      console.log(
+        [
+          invite.id,
+          invite.label ? `label=${invite.label}` : null,
+          invite.expiresAt ? `expiresAt=${invite.expiresAt}` : null,
+          invite.revokedAt ? `revokedAt=${invite.revokedAt}` : null,
+          invite.redeemedAt ? `redeemedAt=${invite.redeemedAt}` : null,
+          invite.redeemedBy ? `redeemedBy=${invite.redeemedBy}` : null,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      );
+    }
+    return;
+  }
+
+  if (area === "invite" && action === "revoke") {
+    const inviteId = parsed.positionals[3];
+    if (!inviteId) {
+      throw new Error("auth invite revoke requires an invite id.");
+    }
+    const configPath = configPathFrom(parsed, parsed.positionals[4]);
+    const revoked = await revokeInvite(inviteId, configPath);
+    if (shouldUseJson(parsed)) {
+      console.log(JSON.stringify({ configPath, inviteId, revoked }, null, 2));
+    } else if (revoked) {
+      console.log(`Revoked invite: ${inviteId}`);
+    } else {
+      console.log(`Invite not found: ${inviteId}`);
+    }
+    if (!revoked) {
+      process.exit(1);
+    }
+    return;
+  }
+
+  throw new Error(`Unknown auth command: ${[area, action].filter(Boolean).join(" ") || "(missing)"}`);
+}
+
 async function commandStatus(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
   const config = loadConfig(configPath);
@@ -458,6 +627,20 @@ async function commandStatus(parsed: ParsedArgs): Promise<void> {
   const runtime = await gatherRuntimeCheck();
   runtime.warnings.push(...loopbackRelayWarnings(config));
   printStatus(config, mode, runtime, parsed);
+}
+
+async function commandProfile(parsed: ParsedArgs): Promise<void> {
+  const action = parsed.positionals[1];
+  if (action === "export") {
+    const configPath = configPathFrom(parsed, parsed.positionals[2]);
+    const profile = await exportProfile(configPath, {
+      label: typeof parsed.flags.label === "string" ? parsed.flags.label : undefined,
+    });
+    console.log(JSON.stringify(profile, null, 2));
+    return;
+  }
+
+  throw new Error(`Unknown profile command: ${action ?? "(missing)"}`);
 }
 
 async function commandDoctor(parsed: ParsedArgs): Promise<void> {
@@ -563,13 +746,12 @@ async function commandExec(parsed: ParsedArgs): Promise<void> {
   const session = await openSession(client, {
     cols: 120,
     rows: 40,
+    command: `/bin/sh -lc ${shellQuote(remoteCommand)}`,
   });
   let shouldCloseSession = true;
   let exitCode = 0;
 
   try {
-    await writeSession(client, session.sessionId, `${remoteCommand}\nexit\n`);
-
     const timeoutMs = 15_000;
     const startedAt = Date.now();
     let cursor = session.cursor;
@@ -630,6 +812,10 @@ function stripDeadPaneFooter(snapshot: string): string {
   return snapshot.replace(/\n*Pane is dead \(status[^\n]*\):?\s*$/s, "");
 }
 
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
+}
+
 async function commandShell(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
   requireHealthyConfig(configPath, "client");
@@ -648,6 +834,57 @@ async function commandShell(parsed: ParsedArgs): Promise<void> {
 }
 
 async function commandBrowser(parsed: ParsedArgs): Promise<void> {
+  const subcommand = parsed.positionals[1];
+  if (subcommand === "build") {
+    const code = await runCommand("bun", ["run", "scripts/build-browser-assets.ts"]);
+    process.exit(code);
+  }
+  if (subcommand === "serve-static") {
+    const configPath = configPathFrom(parsed, parsed.positionals[2]);
+    let browserHost = process.env.CSH_BROWSER_HOST || "127.0.0.1";
+    let browserPort = process.env.CSH_BROWSER_PORT || "4318";
+    const extraEnv: Record<string, string> = {};
+
+    if (await Bun.file(configPath).exists()) {
+      const config = requireHealthyConfig(configPath, "client");
+      process.env.CVM_ENV_FILE = configPath;
+      loadEnvFile(configPath);
+      browserHost = process.env.CSH_BROWSER_HOST || config.browserHost;
+      browserPort = process.env.CSH_BROWSER_PORT || String(config.browserPort);
+      if (process.env.CVM_CLIENT_PRIVATE_KEY || process.env.CSH_CLIENT_PRIVATE_KEY) {
+        extraEnv.CSH_BROWSER_DEFAULT_SIGNER = "test";
+      }
+    }
+
+    console.error(`Browser URL: http://${browserHost}:${browserPort}`);
+    console.error("Use Ctrl-C in this terminal to stop the static browser dist server.");
+    const code = await runCommand("bun", ["run", "scripts/serve-static-browser.ts"], extraEnv);
+    process.exit(code);
+  }
+
+  const configPath = configPathFrom(parsed, parsed.positionals[1]);
+  let browserHost = process.env.CSH_BROWSER_HOST || "127.0.0.1";
+  let browserPort = process.env.CSH_BROWSER_PORT || "4318";
+  const extraEnv: Record<string, string> = {};
+
+  if (await Bun.file(configPath).exists()) {
+    const config = requireHealthyConfig(configPath, "client");
+    process.env.CVM_ENV_FILE = configPath;
+    loadEnvFile(configPath);
+    browserHost = process.env.CSH_BROWSER_HOST || config.browserHost;
+    browserPort = process.env.CSH_BROWSER_PORT || String(config.browserPort);
+    if (process.env.CVM_CLIENT_PRIVATE_KEY || process.env.CSH_CLIENT_PRIVATE_KEY) {
+      extraEnv.CSH_BROWSER_DEFAULT_SIGNER = "test";
+    }
+  }
+
+  console.error(`Browser URL: http://${browserHost}:${browserPort}`);
+  console.error("Use Ctrl-C in this terminal to stop the static browser preview.");
+  const code = await runCommand("bun", ["run", "src/browser-static/preview-server.ts"], extraEnv);
+  process.exit(code);
+}
+
+async function commandBrowserBridge(parsed: ParsedArgs): Promise<void> {
   const configPath = configPathFrom(parsed, parsed.positionals[1]);
   const config = requireHealthyConfig(configPath, "client");
   process.env.CVM_ENV_FILE = configPath;
@@ -665,19 +902,19 @@ async function commandBrowser(parsed: ParsedArgs): Promise<void> {
   } else {
     console.error("Browser auth credentials will be generated at startup because none are set in the config.");
   }
-  console.error("Use Ctrl-C in this terminal to stop the local browser bridge.");
+  console.error("Use Ctrl-C in this terminal to stop the deprecated browser bridge.");
   const code = await runCommand("bun", ["run", "src/browser/contextvm-server.ts"]);
   process.exit(code);
 }
 
-async function commandBrowserLocal(): Promise<void> {
+async function commandBrowserBridgeLocal(): Promise<void> {
   const host = process.env.CSH_BROWSER_HOST || "127.0.0.1";
   const port = process.env.CSH_BROWSER_PORT || "4318";
   const scrollback = process.env.CSH_SCROLLBACK_LINES || "10000";
   console.error(`Browser URL: http://${host}:${port}`);
   console.error(`Scrollback lines: ${scrollback}`);
   console.error("Browser auth credentials will be generated at startup if they are not already set in the environment.");
-  console.error("Use Ctrl-C in this terminal to stop the local browser bridge.");
+  console.error("Use Ctrl-C in this terminal to stop the deprecated local browser bridge.");
   const code = await runCommand("bun", ["run", "src/browser/server.ts"]);
   process.exit(code);
 }
@@ -707,13 +944,16 @@ function completionScript(shell: string): string {
     "config",
     "runtime",
     "host",
+    "auth",
+    "profile",
     "direct",
     "lifecycle",
     "proxy",
     "exec",
     "shell",
     "browser",
-    "browser-local",
+    "browser-bridge",
+    "browser-bridge-local",
     "verify",
     "help",
   ];
@@ -725,6 +965,8 @@ function completionScript(shell: string): string {
     "--prefix",
     "--user",
     "--group",
+    "--label",
+    "--ttl-seconds",
     "--json",
     "--force",
     "--no-runtime",
@@ -899,6 +1141,14 @@ async function main(): Promise<void> {
     await commandHostSystemdUnit(parsed);
     return;
   }
+  if (command === "auth") {
+    await commandAuth(parsed);
+    return;
+  }
+  if (command === "profile") {
+    await commandProfile(parsed);
+    return;
+  }
   if (command === "direct") {
     await commandDirect(parsed);
     return;
@@ -923,8 +1173,12 @@ async function main(): Promise<void> {
     await commandBrowser(parsed);
     return;
   }
-  if (command === "browser-local") {
-    await commandBrowserLocal();
+  if (command === "browser-bridge") {
+    await commandBrowserBridge(parsed);
+    return;
+  }
+  if (command === "browser-bridge-local" || command === "browser-local") {
+    await commandBrowserBridgeLocal();
     return;
   }
   if (command === "verify") {

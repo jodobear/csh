@@ -1,198 +1,157 @@
 #!/usr/bin/env bun
+import { randomUUID } from "node:crypto";
+import { getPublicKey } from "nostr-tools";
 import {
   closeSession,
   createDirectClient,
   loadEnvFile,
   openSession,
-  sessionOutputText,
   sleep,
   waitForSnapshot,
   writeSession,
 } from "./client-common";
-
-type BrowserRuntimeConfig = {
-  apiToken: string;
-};
-
-type SessionPollResult = {
-  sessionId: string;
-  changed: boolean;
-  cursor: number;
-  snapshot: string | null;
-  snapshotBase64?: string | null;
-  delta?: string | null;
-  deltaBase64?: string | null;
-  cols: number;
-  rows: number;
-  closedAt: string | null;
-  exitStatus: number | null;
-};
+import { runPlaywright } from "./playwright-cli";
+import { deriveSessionStateNamespace } from "../src/browser-static/storage";
 
 loadEnvFile();
 
 const browserHost = process.env.CSH_BROWSER_HOST || "127.0.0.1";
 const browserPort = process.env.CSH_BROWSER_PORT || "4318";
-const browserAuthUser = process.env.CSH_BROWSER_AUTH_USER || "csh";
-const browserAuthPassword = process.env.CSH_BROWSER_AUTH_PASSWORD;
+const relayUrls = (process.env.CVM_RELAYS || process.env.CSH_NOSTR_RELAY_URLS || "")
+  .split(",")
+  .map((value) => value.trim())
+  .filter(Boolean);
+const serverPubkey = (process.env.CVM_SERVER_PUBKEY || process.env.CSH_SERVER_PUBKEY || "").trim();
+const actorSecretKeyHex = process.env.CVM_CLIENT_PRIVATE_KEY || process.env.CSH_CLIENT_PRIVATE_KEY || "";
+const actorPubkey = getPublicKey(Buffer.from(actorSecretKeyHex, "hex"));
 const ageMs = Number.parseInt(process.env.CSH_AGED_BROWSER_ATTACH_MS ?? "6000", 10);
 const sessionId =
   process.env.CSH_AGED_BROWSER_SESSION_ID ?? `csh-aged-browser-${Date.now()}-${process.pid}`;
-
-if (!browserAuthPassword) {
-  throw new Error("Missing CSH_BROWSER_AUTH_PASSWORD for aged browser attach");
-}
-
-function assert(condition: unknown, message: string): asserts condition {
-  if (!condition) {
-    throw new Error(message);
-  }
-}
-
 const baseUrl = `http://${browserHost}:${browserPort}`;
-const authHeader = `Basic ${Buffer.from(`${browserAuthUser}:${browserAuthPassword}`, "utf8").toString("base64")}`;
-const authHeaders = {
-  authorization: authHeader,
-};
+const playwrightSession = `csh-aged-browser-${Date.now()}-${randomUUID()}`;
 
 const directClient = await createDirectClient("csh-aged-browser");
 
-try {
-  const opened = await openSession(directClient, { sessionId });
-  await writeSession(directClient, opened.sessionId, "cd /tmp\nprintf '__AGE__%s\\n' \"$PWD\"\n");
-  const firstResult = await waitForSnapshot(
-    directClient,
-    opened.sessionId,
-    (snapshot) => snapshot.includes("__AGE__/tmp"),
-    { cursor: opened.cursor },
-  );
-
-  const health = await fetch(`${baseUrl}/healthz`, {
-    headers: authHeaders,
-  });
-  if (!health.ok) {
-    throw new Error(`Browser health check failed with status ${health.status}`);
-  }
-
-  const rootResponse = await fetch(`${baseUrl}/`, {
-    headers: authHeaders,
-  });
-  if (!rootResponse.ok) {
-    throw new Error(`Browser root fetch failed with status ${rootResponse.status}`);
-  }
-
-  const runtimeConfig = parseRuntimeConfig(await rootResponse.text());
-  const apiHeaders = {
-    ...authHeaders,
-    "content-type": "application/json",
-    "x-csh-browser-token": runtimeConfig.apiToken,
-  };
-
-  await sleep(ageMs);
-
-  await postJson("/api/session/write", apiHeaders, {
-    sessionId: opened.sessionId,
-    inputBase64: Buffer.from("printf '__BROWSER_ATTACH__%s\\n' \"$PWD\"\n", "utf8").toString("base64"),
+await main()
+  .then(() => {
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
   });
 
-  const browserPoll = await waitForBrowserPoll(
-    opened.sessionId,
-    firstResult.cursor,
-    (result) => sessionOutputTextFromBrowser(result)?.includes("__BROWSER_ATTACH__/tmp") === true,
-    apiHeaders,
-    15_000,
-  );
-
-  const output = sessionOutputTextFromBrowser(browserPoll) ?? "";
-  assert(output.includes("__BROWSER_ATTACH__/tmp"), "Browser did not attach to the aged session");
-
-  await postJson("/api/session/close", apiHeaders, {
-    sessionId: opened.sessionId,
-  });
-
-  console.log(
-    JSON.stringify(
-      {
-        browserUrl: baseUrl,
-        sessionId: opened.sessionId,
-        ageMs,
-        output,
-      },
-      null,
-      2,
-    ),
-  );
-} finally {
-  await closeSession(directClient, sessionId).catch(() => undefined);
-  await directClient.close().catch(() => undefined);
-}
-
-process.exit(0);
-
-async function postJson<T>(
-  route: string,
-  headers: Record<string, string>,
-  body: Record<string, unknown>,
-): Promise<T> {
-  const response = await fetch(`${baseUrl}${route}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-  });
-  const payload = await response.json();
-  if (!response.ok) {
-    throw new Error(
-      typeof payload === "object" && payload !== null && "error" in payload
-        ? String(payload.error)
-        : `Request failed with status ${response.status}`,
+async function main(): Promise<void> {
+  try {
+    const opened = await openSession(directClient, { sessionId });
+    await writeSession(directClient, opened.sessionId, "cd /tmp\nprintf '__AGE__%s\\n' \"$PWD\"\n");
+    await waitForSnapshot(
+      directClient,
+      opened.sessionId,
+      (snapshot) => snapshot.includes("__AGE__/tmp"),
+      { cursor: opened.cursor },
     );
-  }
-  return payload as T;
-}
+    await sleep(ageMs);
 
-async function waitForBrowserPoll(
-  sessionId: string,
-  initialCursor: number,
-  predicate: (result: SessionPollResult) => boolean,
-  headers: Record<string, string>,
-  timeoutMs: number,
-): Promise<SessionPollResult> {
-  const startedAt = Date.now();
-  let cursor = initialCursor;
-  let last: SessionPollResult | null = null;
-
-  while (Date.now() - startedAt < timeoutMs) {
-    const result = await postJson<SessionPollResult>("/api/session/poll", headers, {
-      sessionId,
-      cursor,
-      keepAlive: true,
+    const stateNamespace = deriveSessionStateNamespace({
+      relayUrls,
+      serverPubkey,
+      actorPubkey,
     });
-    cursor = result.cursor;
-    last = result;
 
-    if (predicate(result)) {
-      return result;
+    await runPlaywright(["open", baseUrl], { session: playwrightSession });
+    await runPlaywright(["snapshot"], { session: playwrightSession });
+    await runPlaywright(
+      [
+        "run-code",
+        `async page => {
+          await page.evaluate(() => {
+            localStorage.setItem(
+              "csh.browser-static.sessionId.${stateNamespace}",
+              ${JSON.stringify(opened.sessionId)},
+            );
+          });
+          await page.reload();
+          await page.waitForFunction(() => Boolean(document.querySelector("[data-action='connect']")));
+        }`,
+      ],
+      { session: playwrightSession },
+    );
+    await runPlaywright(
+      [
+        "run-code",
+        `async page => {
+          await page.locator("[data-action='reconnect']").click();
+          await page.waitForFunction(() => {
+            const status = document.querySelector("[data-status]")?.textContent || "";
+            const actor = document.querySelector("[data-actor]")?.textContent || "";
+            const session = document.querySelector("[data-session]")?.textContent || "";
+            return status.startsWith("Error:") || (actor !== "pending" && session === ${JSON.stringify(opened.sessionId)});
+          }, undefined, { timeout: 20000 });
+          const status = await page.evaluate(() => document.querySelector("[data-status]")?.textContent || "");
+          if (status.startsWith("Error:")) {
+            throw new Error(status);
+          }
+        }`,
+      ],
+      { session: playwrightSession },
+    );
+    await runPlaywright(
+      [
+        "run-code",
+        `async page => {
+          await page.evaluate(() => {
+            const input = document.querySelector("[data-terminal-input]");
+            if (!(input instanceof HTMLTextAreaElement)) {
+              throw new Error("terminal input capture was not found");
+            }
+            input.value = "printf '__BROWSER_ATTACH__%s\\\\n' \\\"$PWD\\\"\\n";
+            input.dispatchEvent(new Event("input", { bubbles: true }));
+          });
+        }`,
+      ],
+      { session: playwrightSession },
+    );
+
+    const polled = await waitForSnapshot(
+      directClient,
+      opened.sessionId,
+      (snapshot) => snapshot.includes("__BROWSER_ATTACH__/tmp"),
+      { cursor: 0 },
+    );
+    const output = JSON.stringify(polled);
+    if (!output.includes("__BROWSER_ATTACH__/tmp")) {
+      throw new Error(`Static aged browser attach did not observe expected output for session ${opened.sessionId}`);
     }
 
-    await sleep(60);
+    console.log(
+      JSON.stringify(
+        {
+          browserUrl: baseUrl,
+          sessionId: opened.sessionId,
+          ageMs,
+          output,
+        },
+        null,
+        2,
+      ),
+    );
+  } finally {
+    await ignoreCleanupTimeout(() => closeSession(directClient, sessionId));
+    await ignoreCleanupTimeout(() => directClient.close());
+    await ignoreCleanupTimeout(() => runPlaywright(["close"], { session: playwrightSession }));
   }
-
-  throw new Error(`Timed out waiting for browser attach on ${sessionId}: ${JSON.stringify(last, null, 2)}`);
 }
 
-function parseRuntimeConfig(html: string): BrowserRuntimeConfig {
-  const match = html.match(/window\.__CSH_BROWSER_CONFIG__ = (\{[\s\S]*?\});/);
-  if (!match) {
-    throw new Error("Browser root did not include runtime config");
+async function ignoreCleanupTimeout(operation: () => Promise<unknown>, timeoutMs = 5_000): Promise<void> {
+  try {
+    await Promise.race([
+      operation(),
+      Bun.sleep(timeoutMs).then(() => {
+        throw new Error(`cleanup timed out after ${timeoutMs}ms`);
+      }),
+    ]);
+  } catch {
+    // Cleanup should not mask the proof result.
   }
-  return JSON.parse(match[1]) as BrowserRuntimeConfig;
-}
-
-function sessionOutputTextFromBrowser(result: SessionPollResult): string | null {
-  if (result.snapshotBase64) {
-    return Buffer.from(result.snapshotBase64, "base64").toString("utf8");
-  }
-  if (result.deltaBase64) {
-    return Buffer.from(result.deltaBase64, "base64").toString("utf8");
-  }
-  return result.snapshot ?? result.delta ?? null;
 }

@@ -53,8 +53,11 @@ These scripts compose the repo-local interactive shell path:
    ```
 
 4. Inspect or edit `.env.csh.local` if you want different relays or metadata.
-   The browser UI now expects credentials from `CSH_BROWSER_AUTH_USER` and
-   `CSH_BROWSER_AUTH_PASSWORD`. Session scrollback depth is controlled by `CSH_SCROLLBACK_LINES`.
+   The primary browser path is the static signer-based client served by `csh browser`.
+   `CSH_BROWSER_AUTH_USER` and `CSH_BROWSER_AUTH_PASSWORD` now apply only to the deprecated
+   `csh browser-bridge` fallback. Session scrollback depth is controlled by
+   `CSH_SCROLLBACK_LINES`. For browser onboarding and shell authorization, use
+   `csh auth allowlist ...`, `csh auth invite ...`, and `csh profile export`.
 
 ## Run
 
@@ -124,7 +127,22 @@ These scripts compose the repo-local interactive shell path:
    csh browser .env.csh.local
    ```
 
-   Then authenticate in the browser with the credentials from `.env.csh.local`.
+   Then enter the relay URL and server pubkey, choose a signer, and connect with your Nostr
+   identity. If that signer is not already allowlisted for shell access, redeem a one-time invite
+   token from `csh auth invite create`.
+
+11. Build or serve the static browser client independently of the preview server:
+
+   ```bash
+   csh browser build
+   csh browser serve-static .env.csh.local
+   ```
+
+12. Export a shareable browser profile payload without private keys:
+
+   ```bash
+   csh profile export .env.csh.local
+   ```
 
 ## Notes
 
@@ -134,10 +152,12 @@ These scripts compose the repo-local interactive shell path:
   backed by the detached helper in `scripts/pty-session.py`.
 - The current default operator path is the interactive client at `csh shell`, with `csh exec`
   kept for one-shot commands and `csh browser` available for the browser terminal UI.
+- Shell access on the Phase 9 browser path is always allowlist-based. `csh auth allowlist ...`
+  manages persistent allowed pubkeys, and `csh auth invite ...` manages one-time onboarding tokens.
 - `csh verify` is the routine local/private-relay-first gate. `csh verify release` is the heavier
   periodic gate for fresh-checkout and public-relay compatibility proof.
-- Browser UI access is authenticated even on loopback. Remote browser mode additionally requires
-  `CSH_BROWSER_TRUST_PROXY_TLS=1` behind an HTTPS/TLS-terminating reverse proxy.
+- The primary browser flow is signer-based, not Basic Auth. `csh browser-bridge` remains only as a
+  deprecated fallback/admin path.
 - Terminal fidelity is now native-PTY-backed, with reconnect and browser polling driven by the
   session log plus snapshot-or-delta reads.
 - The repo-local SDK proxy path also works and is available when you want a stdio MCP bridge.

@@ -1,0 +1,119 @@
+@import "../browser/app.css";
+
+@font-face {
+  font-family: "MesloLGS NF";
+  src: url("./assets/MesloLGSNF-Regular.ttf") format("truetype");
+  font-display: swap;
+}
+
+.shell-app,
+.shell-app .xterm {
+  font-family: "MesloLGS NF", "Noto Sans Mono", "IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", monospace;
+}
+
+.shell-app {
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+
+.shell-app[data-settings-expanded="false"] {
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.settings-card {
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  border-radius: 18px;
+  box-shadow: 0 18px 70px rgba(0, 0, 0, 0.28);
+  padding: 1rem 1.15rem;
+  display: grid;
+  gap: 0.9rem;
+}
+
+.shell-app[data-settings-expanded="false"] .settings-card {
+  display: none;
+}
+
+.settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.9rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.field label {
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.field textarea,
+.field input,
+.field select {
+  width: 100%;
+  border: 1px solid rgba(239, 159, 67, 0.22);
+  background: rgba(15, 13, 10, 0.86);
+  color: var(--text);
+  border-radius: 14px;
+  padding: 0.8rem 0.9rem;
+  font: inherit;
+}
+
+.field textarea {
+  min-height: 7rem;
+  resize: vertical;
+}
+
+.field textarea[data-field="profile-import"] {
+  min-height: 4.5rem;
+}
+
+.settings-grid .field--wide {
+  grid-column: 1 / -1;
+}
+
+.field-actions {
+  display: flex;
+  align-items: end;
+}
+
+.banner {
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.statusbar {
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.status-meta {
+  overflow-wrap: anywhere;
+}
+
+.title p {
+  max-width: 46rem;
+}
+
+.terminal-shell {
+  min-height: 0;
+}
+
+.terminal-output-mirror {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .title p {
+    display: none;
+  }
+}

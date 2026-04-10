@@ -90,7 +90,9 @@ Use a relay you control for real operator work. The canonical deployment path li
 
 ## Notes
 
-- The browser UI is operator-local and loopback-bound by default.
+- The primary browser path is now a static Nostr-native client preview served by `csh browser`.
+- Browser shell access is signer-based and enforced by the host allowlist/invite boundary.
+- The deprecated browser bridge still exists as an admin fallback, but it is no longer the primary operator path.
 - Sessions persist across client reconnects and can survive host restart when the same runtime state is reused.
 - The backend now runs a native PTY session manager with byte-safe input handling, reconnect support,
   and snapshot-or-delta polling for CLI and browser operators.

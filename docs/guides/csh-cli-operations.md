@@ -89,8 +89,33 @@ Start the browser terminal UI:
 csh browser .env.csh.local
 ```
 
-The browser will prompt for the credentials from `CSH_BROWSER_AUTH_USER` and
-`CSH_BROWSER_AUTH_PASSWORD`.
+The primary browser flow is signer-based. Enter your relay URL and server pubkey, choose a signer
+(`NIP-07`, bunker, Amber, or the verify-only test signer in preview/test flows), and the client
+will use `auth_status` plus `auth_redeem_invite` to determine whether the current Nostr identity is
+already allowlisted for shell access.
+
+`CSH_BROWSER_AUTH_USER` and `CSH_BROWSER_AUTH_PASSWORD` now apply only to the deprecated
+`csh browser-bridge` fallback.
+
+Manage shell authorization and browser onboarding:
+
+```bash
+csh auth allowlist list .env.csh.local
+csh auth invite create .env.csh.local
+```
+
+Export a shareable browser profile payload without private keys:
+
+```bash
+csh profile export .env.csh.local
+```
+
+Build or serve the independently hostable static browser bundle:
+
+```bash
+csh browser build
+csh browser serve-static .env.csh.local
+```
 
 Run the end-to-end verification loop:
 
@@ -124,11 +149,10 @@ recovery. In practice that gives the expected shell-editing set:
 ## Secure Defaults
 
 - `bootstrap` writes the env file with `0600` permissions
-- host mode requires an allowlist unless `GW_ALLOW_UNLISTED_CLIENTS=1`
+- shell access is allowlist-based on the Phase 9 browser/auth lane
 - default log level is `error` to reduce transport noise in normal operation
 - interactive sessions are owner-bound when the ContextVM gateway injects the authenticated client pubkey
-- browser mode is authenticated even on loopback, and remote browser mode also requires
-  `CSH_BROWSER_TRUST_PROXY_TLS=1`
+- the primary browser path is signer-based and invite-aware; `csh browser-bridge` is deprecated fallback only
 - the `systemd` unit uses `NoNewPrivileges`, `ProtectSystem=strict`, `ProtectHome=read-only`, and `UMask=0077`
 - transport posture and deployment guidance live in [server-setup.md](/workspace/projects/csh/docs/guides/server-setup.md)
 

@@ -19,10 +19,14 @@ RELAY_RECOVERY_RELAY_LOG="${CSH_RELAY_RECOVERY_RELAY_LOG:-$ROOT_DIR/.csh-runtime
 RESTART_LOG="${CSH_RESTART_LOG:-$ROOT_DIR/.csh-runtime/logs/restart-recovery.log}"
 RESTART_HOST_LOG="${CSH_RESTART_HOST_LOG:-$ROOT_DIR/.csh-runtime/logs/restart-host.log}"
 BROWSER_LOG="${CSH_BROWSER_LOG:-$ROOT_DIR/.csh-runtime/logs/browser.log}"
-BROWSER_SMOKE_LOG="${CSH_BROWSER_SMOKE_LOG:-$ROOT_DIR/.csh-runtime/logs/browser-smoke.log}"
+BROWSER_STATIC_SMOKE_LOG="${CSH_BROWSER_STATIC_SMOKE_LOG:-$ROOT_DIR/.csh-runtime/logs/browser-static-smoke.log}"
+PROFILE_BROWSER_SMOKE_LOG="${CSH_PROFILE_BROWSER_SMOKE_LOG:-$ROOT_DIR/.csh-runtime/logs/profile-browser-smoke.log}"
+INVITE_ONBOARDING_LOG="${CSH_INVITE_ONBOARDING_LOG:-$ROOT_DIR/.csh-runtime/logs/invite-onboarding.log}"
 
 mkdir -p "$(dirname "$HOST_LOG")"
 rm -f "$IDLE_ENV_FILE"
+
+bun run scripts/verify-cleanup.ts >/dev/null 2>&1 || true
 
 relay_pid=""
 
@@ -43,6 +47,7 @@ cleanup() {
     kill "$relay_pid" 2>/dev/null || true
     wait "$relay_pid" 2>/dev/null || true
   fi
+  bun run scripts/verify-cleanup.ts >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 
@@ -203,7 +208,7 @@ browser_pid=$!
 
 browser_ready=0
 for _ in $(seq 1 30); do
-  if grep -q "csh browser UI (contextvm) listening on" "$BROWSER_LOG" 2>/dev/null; then
+  if grep -q "csh static browser preview listening on" "$BROWSER_LOG" 2>/dev/null; then
     browser_ready=1
     break
   fi
@@ -296,8 +301,18 @@ proxy_status=$?
 set -e
 
 set +e
-CVM_ENV_FILE="$ENV_FILE" bun run csh:browser-smoke >"$BROWSER_SMOKE_LOG" 2>&1
-browser_status=$?
+CVM_ENV_FILE="$ENV_FILE" bun run csh:static-browser-smoke "$ENV_FILE" >"$BROWSER_STATIC_SMOKE_LOG" 2>&1
+browser_static_status=$?
+set -e
+
+set +e
+CVM_ENV_FILE="$ENV_FILE" bun run csh:profile-browser-smoke "$ENV_FILE" >"$PROFILE_BROWSER_SMOKE_LOG" 2>&1
+profile_browser_status=$?
+set -e
+
+set +e
+CVM_ENV_FILE="$ENV_FILE" bun run csh:invite-onboarding-smoke "$ENV_FILE" >"$INVITE_ONBOARDING_LOG" 2>&1
+invite_onboarding_status=$?
 set -e
 
 printf 'default_operator_path=%s\n' "direct-bun-client"
@@ -321,18 +336,33 @@ printf 'relay_recovery_relay_log=%s\n' "$RELAY_RECOVERY_RELAY_LOG"
 printf 'restart_status=%s\n' "$restart_status"
 printf 'proxy_status=%s\n' "$proxy_status"
 printf 'exec_status=%s\n' "$exec_status"
-printf 'browser_status=%s\n' "$browser_status"
+printf 'browser_static_status=%s\n' "$browser_static_status"
+printf 'browser_status=%s\n' "$browser_static_status"
+printf 'profile_browser_status=%s\n' "$profile_browser_status"
+printf 'invite_onboarding_status=%s\n' "$invite_onboarding_status"
 printf 'host_log=%s\n' "$HOST_LOG"
 printf 'restart_log=%s\n' "$RESTART_LOG"
 printf 'restart_host_log=%s\n' "$RESTART_HOST_LOG"
 printf 'proxy_log=%s\n' "$PROXY_LOG"
 printf 'browser_log=%s\n' "$BROWSER_LOG"
-printf 'browser_smoke_log=%s\n' "$BROWSER_SMOKE_LOG"
+printf 'browser_static_log=%s\n' "$BROWSER_LOG"
+printf 'browser_static_smoke_log=%s\n' "$BROWSER_STATIC_SMOKE_LOG"
+printf 'profile_browser_smoke_log=%s\n' "$PROFILE_BROWSER_SMOKE_LOG"
+printf 'browser_smoke_log=%s\n' "$BROWSER_STATIC_SMOKE_LOG"
+printf 'invite_onboarding_log=%s\n' "$INVITE_ONBOARDING_LOG"
 
 if [[ "$proxy_status" != "0" ]]; then
   exit "$proxy_status"
 fi
 
-if [[ "$browser_status" != "0" ]]; then
-  exit "$browser_status"
+if [[ "$browser_static_status" != "0" ]]; then
+  exit "$browser_static_status"
+fi
+
+if [[ "$profile_browser_status" != "0" ]]; then
+  exit "$profile_browser_status"
+fi
+
+if [[ "$invite_onboarding_status" != "0" ]]; then
+  exit "$invite_onboarding_status"
 fi
