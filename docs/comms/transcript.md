@@ -318,3 +318,10 @@ Append-only project communication history.
 - When: 2026-04-10 03:07 WEST
 - What: Closed the remaining Phase 9 posture drift in the active docs surface. Updated `README.md`, `scripts/README.md`, `docs/guides/csh-cli-operations.md`, `docs/guides/server-setup.md`, the live security/operator/deployment audits, and `handoff.md` so the production browser posture is now described consistently as static Nostr-native first, with signer-based auth plus allowlist/invite enforcement as the primary boundary and `csh browser-bridge` documented only as a deprecated fallback. The proof tables were also aligned to the current `browser_static_status`, `invite_onboarding_status`, and `release_verify_public_browser_static_status` outputs on `phase-9-nostr-browser`.
 - Session: local repo execution
+
+### 2026-04-10 03:42 WEST
+
+- Who: Codex
+- When: 2026-04-10 03:42 WEST
+- What: Ran live Phase 9 browser tests against the static client and recorded the product lessons from them. Browser auth plus invite onboarding worked, the private-relay path proved materially better interactive latency than the public relay path, and the branch gained a browser UX/transport fix slice: signer-aware browser session persistence, fresh-connect behavior, timeout-aware browser retries, batched terminal input writes, a collapsible setup panel, and bundled `MesloLGS NF` preview assets with font warm-up. The remaining Phase 9 work was rewritten into explicit TDD slices in the active prompt: browser transport parity, independent static browser distribution, relay bootstrap/operator profiles, and merge closeout. The key posture note is now explicit: ContextVM removes host reachability requirements, but browser delivery and relay bootstrap still need deliberate productization.
+- Session: local repo execution

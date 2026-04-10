@@ -15,6 +15,8 @@
   - `master` still reflects the Phase 8 stable verification baseline
   - `phase-9-nostr-browser` carries the Nostr-native browser/auth work
   - the Phase 9 branch is runnable through the current autonomous gate
+  - live browser auth/onboarding works, and private-relay shell UX is acceptable on a low-latency path
+  - browser delivery and relay bootstrap are still explicit product work; ContextVM removed host reachability requirements, not browser hosting/relay selection concerns
   - the canonical verify loop exercises restart recovery, relay interruption/recovery,
     longer-lived session soak, short-TTL idle expiry, aged browser attach, static browser smoke,
     and invite onboarding
@@ -143,9 +145,9 @@ These proofs reflect the native-PTY backend plus the refreshed 2026-04-09 verifi
 
 ## Next Actions
 
-1. Push `phase-9-nostr-browser` and decide the merge path back into `master`.
-2. Refresh the Phase 9 audit/docs surface if any operator posture claims still mention the older browser bridge as primary.
-3. After merge, choose the next lane from the new Nostr-native browser/auth baseline.
+1. Commit the current browser UX/transport slice on `phase-9-nostr-browser`.
+2. Close the remaining Phase 9 TDD slices in [phase-9-nostr-browser-auth.md](/workspace/projects/csh/docs/prompts/phase-9-nostr-browser-auth.md): browser transport parity, static browser distribution, and relay bootstrap/operator profiles.
+3. Push `phase-9-nostr-browser`, rerun the full proof set, and only then merge it back into `master`.
 
 ## Process Notes
 
