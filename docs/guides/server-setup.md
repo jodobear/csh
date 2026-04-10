@@ -139,7 +139,9 @@ csh browser /tmp/csh-client.env
 ```
 
 Open `http://127.0.0.1:4318`.
-Authenticate with `CSH_BROWSER_AUTH_USER` and `CSH_BROWSER_AUTH_PASSWORD`.
+Enter the relay URL and server pubkey, choose a signer, and connect with your Nostr identity.
+Shell access is granted only when the signer pubkey is already on the host allowlist or redeems a
+valid one-time invite token.
 
 If you intentionally expose the browser UI beyond loopback, set:
 
@@ -148,7 +150,8 @@ CSH_BROWSER_ALLOW_REMOTE=1
 CSH_BROWSER_TRUST_PROXY_TLS=1
 ```
 
-and put it behind an HTTPS/TLS-terminating reverse proxy.
+and put it behind an HTTPS/TLS-terminating reverse proxy. `CSH_BROWSER_AUTH_USER` and
+`CSH_BROWSER_AUTH_PASSWORD` apply only to the deprecated `csh browser-bridge` fallback.
 
 ## Browser Operator Path
 

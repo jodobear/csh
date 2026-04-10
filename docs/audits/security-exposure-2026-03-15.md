@@ -18,15 +18,26 @@ Question: where can this repo expose a shell, identity, or secret more broadly t
 ### `security-exposure-browser-01`
 
 - Severity: high
-- Summary: remote browser mode previously exposed the browser app and embedded API token to any reachable client. Remote mode now requires explicit Basic Auth credentials before any page, asset, or API request is served.
+- Summary: the old browser bridge previously exposed the browser app and embedded API token to any
+  reachable client. The production browser posture is now a static Nostr-native client where shell
+  access is enforced by authenticated signer pubkey plus the host allowlist/invite boundary. The
+  credentialed HTTP bridge remains only as a deprecated fallback.
 - Evidence:
-  - [server-core.ts](/workspace/projects/csh/src/browser/server-core.ts#L68)
-  - [server-core.ts](/workspace/projects/csh/src/browser/server-core.ts#L135)
-  - [server-core.ts](/workspace/projects/csh/src/browser/server-core.ts#L272)
-  - [server-core.ts](/workspace/projects/csh/src/browser/server-core.ts#L332)
-- Status: closed 2026-03-15
-- Resolution: `CSH_BROWSER_ALLOW_REMOTE=1` now requires `CSH_BROWSER_AUTH_USER` and `CSH_BROWSER_AUTH_PASSWORD`, and the browser server enforces HTTP Basic Auth before serving `/`, assets, or `/api/*`.
-- Proof: local in-process browser auth check returned `401` for unauthenticated and wrong-password requests and `200` for correct credentials.
+  - [server.ts](/workspace/projects/csh/src/auth/server.ts)
+  - [state.ts](/workspace/projects/csh/src/auth/state.ts)
+  - [app.ts](/workspace/projects/csh/src/browser-static/app.ts)
+  - [preview-server.ts](/workspace/projects/csh/src/browser-static/preview-server.ts)
+  - [server-core.ts](/workspace/projects/csh/src/browser/server-core.ts)
+- Status: closed 2026-04-10
+- Resolution: the primary browser path no longer relies on a server-held API token or HTTP Basic
+  Auth. The static client authenticates through a real Nostr signer, the host resolves the
+  authenticated signer pubkey server-side, `session_*` tools fail closed for non-allowlisted
+  signers, and one-time invite redemption is the only Phase 9 onboarding path for new browser keys.
+  The legacy HTTP bridge is retained only as a deprecated admin fallback.
+- Proof:
+  - `bun test --timeout 15000 src/auth/state.test.ts src/auth/server-contract.test.ts src/browser-static/signers.test.ts src/browser-static/signers-test.test.ts src/browser-static/app.test.ts` passed on 2026-04-10
+  - `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-10 with `browser_static_status=0` and `invite_onboarding_status=0`
+  - outside the sandbox, `bun run scripts/release-verify.ts .env.csh.local` passed on 2026-04-10 with `release_verify_public_browser_static_status=0`
 
 ### `security-exposure-runtime-01`
 

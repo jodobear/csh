@@ -53,8 +53,10 @@ These scripts compose the repo-local interactive shell path:
    ```
 
 4. Inspect or edit `.env.csh.local` if you want different relays or metadata.
-   The browser UI now expects credentials from `CSH_BROWSER_AUTH_USER` and
-   `CSH_BROWSER_AUTH_PASSWORD`. Session scrollback depth is controlled by `CSH_SCROLLBACK_LINES`.
+   The primary browser path is the static signer-based client served by `csh browser`.
+   `CSH_BROWSER_AUTH_USER` and `CSH_BROWSER_AUTH_PASSWORD` now apply only to the deprecated
+   `csh browser-bridge` fallback. Session scrollback depth is controlled by
+   `CSH_SCROLLBACK_LINES`.
 
 ## Run
 

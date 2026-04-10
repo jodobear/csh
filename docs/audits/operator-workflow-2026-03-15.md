@@ -176,14 +176,14 @@ Question: where does the operator-facing workflow mislead the user, lose state, 
 - Evidence:
   - [aged-browser-attach.ts](/workspace/projects/csh/scripts/aged-browser-attach.ts)
   - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh)
-  - [app.ts](/workspace/projects/csh/src/browser/app.ts)
-- Status: closed 2026-04-09
+  - [app.ts](/workspace/projects/csh/src/browser-static/app.ts)
+- Status: closed 2026-04-10
 - Resolution: `scripts/aged-browser-attach.ts` now opens a named session over the normal operator
-  path, lets that session age for a bounded window, and then attaches through the authenticated
-  browser bridge while `scripts/run-autonomous-loop.sh` records `aged-browser-attach.log` as part
-  of the canonical verify loop.
+  path, lets that session age for a bounded window, and then attaches through the static
+  signer-based browser client while `scripts/run-autonomous-loop.sh` records
+  `aged-browser-attach.log` as part of the canonical verify loop.
 - Proof:
-  - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with
+  - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-10 with
     `aged_browser_attach_status=0`
   - `aged-browser-attach.log` captured `ageMs: 6000` plus `__BROWSER_ATTACH__/tmp` from the aged
     session

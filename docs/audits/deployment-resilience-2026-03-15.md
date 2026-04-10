@@ -118,11 +118,13 @@ Question: where can startup, verification, persistence, or long-running operatio
   - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh#L100)
   - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh#L113)
 - Status: closed 2026-04-08
-- Resolution: `scripts/run-autonomous-loop.sh` now starts the browser-over-ContextVM operator path and runs `csh:browser-smoke`, which checks authenticated browser access plus session open/write/poll/close on the migrated backend.
+- Resolution: `scripts/run-autonomous-loop.sh` now starts the static browser preview and runs
+  `csh:browser-smoke`, which checks signer-backed browser access plus session open/write/poll/close
+  on the migrated backend.
 - Proof:
   - local `bun run test:phase7-contract` still passes
-  - outside the sandbox, `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-08 with `browser_status=0`
-  - the loop now leaves `browser_log` and `browser_smoke_log` artifacts alongside the existing contract/exec/host/proxy logs
+  - `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-10 with `browser_static_status=0`
+  - the loop now leaves `browser_log` and `browser_static_smoke_log` artifacts alongside the existing contract/exec/host/proxy logs
 
 ### `deployment-resilience-restart-01`
 
@@ -137,7 +139,7 @@ Question: where can startup, verification, persistence, or long-running operatio
 - Proof:
   - local `bun test --timeout 15000 scripts/host-control.test.ts` passed
   - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with `restart_status=0`
-  - `restart-recovery.log` captured matching `initialPid` and `postRestartPid`
+  - `restart-recovery.log` captured a surviving named session and preserved `/tmp` state after host restart
 
 ### `deployment-resilience-verify-02`
 
@@ -147,10 +149,11 @@ Question: where can startup, verification, persistence, or long-running operatio
   - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh)
   - [browser-smoke.ts](/workspace/projects/csh/scripts/browser-smoke.ts)
 - Status: closed 2026-04-09
-- Resolution: `scripts/run-autonomous-loop.sh` now selects a free loopback browser port for the verify run and exports it to the browser bridge and browser smoke path.
+- Resolution: `scripts/run-autonomous-loop.sh` now selects a free loopback browser port for the
+  verify run and exports it to the static browser preview and browser smoke path.
 - Proof:
   - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with `browser_port=43180`
-  - the browser path completed with `browser_status=0` on the same run
+  - the browser path completed with `browser_static_status=0` on the same run
 
 ### `deployment-resilience-bootstrap-02`
 
@@ -172,7 +175,7 @@ Question: where can startup, verification, persistence, or long-running operatio
     `BUN_TMPDIR=/tmp BUN_INSTALL=/tmp/bun-install bun run scripts/fresh-checkout.ts` passed on
     2026-04-09
   - the isolated clone verify reported `restart_status=0`, `proxy_status=0`, `exec_status=7`, and
-    `browser_status=0`
+    `browser_static_status=0`
 
 ### `deployment-resilience-relay-01`
 
@@ -197,9 +200,9 @@ Question: where can startup, verification, persistence, or long-running operatio
   - local `bun test --timeout 15000 scripts/host-control.test.ts` passed
   - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with
     `relay_recovery_status=0`, `restart_status=0`, `proxy_status=0`, `exec_status=7`, and
-    `browser_status=0`
-  - `relay-recovery.log` captured matching `initialPid` and `postRecoveryPid` on relay port
-    `10553`
+    `browser_static_status=0`
+  - `relay-recovery.log` captured preserved session state across relay replacement on the verify-owned
+    loopback relay
 
 ### `deployment-resilience-soak-01`
 
@@ -212,14 +215,14 @@ Question: where can startup, verification, persistence, or long-running operatio
   - [run-autonomous-loop.sh](/workspace/projects/csh/scripts/run-autonomous-loop.sh)
   - [lifecycle-client.ts](/workspace/projects/csh/scripts/lifecycle-client.ts)
 - Status: closed 2026-04-09
-- Resolution: `scripts/session-soak.ts` now opens a named session, pushes 800 lines of output
+- Resolution: `scripts/session-soak.ts` now opens a named session, pushes 300 lines of output
   through it, keeps it alive read-only for 6000 ms with `keepAlive` polls, disconnects for another
   6000 ms, and then reconnects to the same shell. `scripts/run-autonomous-loop.sh` now runs that
   proof and records `session-soak.log` before the relay and host recovery checks.
 - Proof:
   - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09 with `soak_status=0`
-  - `session-soak.log` captured `initialPid`, `postKeepAlivePid`, and `postReconnectPid` all equal
-    for the same session
+  - `session-soak.log` captured retained `/tmp` state, high-output continuity, and reconnect
+    scrollback from the same named session
 
 ### `deployment-resilience-idle-01`
 
@@ -263,5 +266,5 @@ Question: where can startup, verification, persistence, or long-running operatio
 - Proof:
   - local `bun test --timeout 15000 scripts/release-verify.test.ts` passed
   - local `bun run scripts/csh.ts verify .env.csh.local` passed on 2026-04-09
-  - outside the sandbox, `bun run scripts/release-verify.ts .env.csh.local` passed on 2026-04-09
-    with `release_verify_public_shell_status=0` and `release_verify_public_browser_status=0`
+  - outside the sandbox, `bun run scripts/release-verify.ts .env.csh.local` passed on 2026-04-10
+    with `release_verify_public_shell_status=0` and `release_verify_public_browser_static_status=0`

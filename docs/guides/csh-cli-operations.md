@@ -89,8 +89,13 @@ Start the browser terminal UI:
 csh browser .env.csh.local
 ```
 
-The browser will prompt for the credentials from `CSH_BROWSER_AUTH_USER` and
-`CSH_BROWSER_AUTH_PASSWORD`.
+The primary browser flow is signer-based. Enter your relay URL and server pubkey, choose a signer
+(`NIP-07`, bunker, Amber, or the verify-only test signer in preview/test flows), and the client
+will use `auth_status` plus `auth_redeem_invite` to determine whether the current Nostr identity is
+already allowlisted for shell access.
+
+`CSH_BROWSER_AUTH_USER` and `CSH_BROWSER_AUTH_PASSWORD` now apply only to the deprecated
+`csh browser-bridge` fallback.
 
 Run the end-to-end verification loop:
 
