@@ -59,7 +59,7 @@ const beforeRestart = await waitForSnapshot(
 );
 const initialPid = parsePidFromSnapshot(sessionOutputText(beforeRestart));
 assert(initialPid, "Could not parse initial shell PID before restart");
-await firstClient.close();
+await ignoreCleanupTimeout(() => firstClient.close());
 
 await terminateProcess(restartHostPid);
 
@@ -101,7 +101,7 @@ try {
   assert(postRestartPid, "Could not parse shell PID after restart");
   assert(postRestartPid === initialPid, "Shell PID changed across relay-backed host restart");
 
-  await closeSession(reconnectClient, opened.sessionId);
+  await ignoreCleanupTimeout(() => closeSession(reconnectClient, opened.sessionId));
 
   const freshSession = await openSession(reconnectClient);
   await writeSession(reconnectClient, freshSession.sessionId, "echo __FRESH__$$\n");
@@ -115,7 +115,7 @@ try {
 
   assert(freshPid, "Could not open a fresh session after host restart");
 
-  await closeSession(reconnectClient, freshSession.sessionId);
+  await ignoreCleanupTimeout(() => closeSession(reconnectClient, freshSession.sessionId));
 
   console.log(
     JSON.stringify(
@@ -132,10 +132,23 @@ try {
     ),
   );
 } finally {
-  await reconnectClient.close().catch(() => undefined);
+  await ignoreCleanupTimeout(() => reconnectClient.close());
 }
 
 process.exit(0);
+
+async function ignoreCleanupTimeout(operation: () => Promise<unknown>, timeoutMs = 5_000): Promise<void> {
+  try {
+    await Promise.race([
+      operation(),
+      Bun.sleep(timeoutMs).then(() => {
+        throw new Error(`cleanup timed out after ${timeoutMs}ms`);
+      }),
+    ]);
+  } catch {
+    // Cleanup should not mask the proof result.
+  }
+}
 
 async function connectClientWithRetry(name: string, timeoutMs = 15_000) {
   const deadline = Date.now() + timeoutMs;

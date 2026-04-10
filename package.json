@@ -34,6 +34,7 @@
     "csh:release-verify": "bun run scripts/release-verify.ts",
     "csh:proxy-smoke": "bun run scripts/proxy-smoke.ts",
     "csh:browser-smoke": "bun run scripts/browser-smoke.ts",
+    "csh:invite-onboarding-smoke": "bun run scripts/invite-onboarding-smoke.ts",
     "test:release-verify": "bun test --timeout 15000 scripts/release-verify.test.ts"
   },
   "dependencies": {

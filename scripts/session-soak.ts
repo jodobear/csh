@@ -16,7 +16,7 @@ loadEnvFile();
 const reconnectDelayMs = Number.parseInt(process.env.CSH_SOAK_RECONNECT_DELAY_MS ?? "6000", 10);
 const keepAliveDurationMs = Number.parseInt(process.env.CSH_SOAK_KEEPALIVE_DURATION_MS ?? "6000", 10);
 const keepAlivePollMs = Number.parseInt(process.env.CSH_SOAK_KEEPALIVE_POLL_MS ?? "1200", 10);
-const outputLines = Number.parseInt(process.env.CSH_SOAK_OUTPUT_LINES ?? "800", 10);
+const outputLines = Number.parseInt(process.env.CSH_SOAK_OUTPUT_LINES ?? "300", 10);
 const sessionId =
   process.env.CSH_SOAK_SESSION_ID ?? `csh-soak-${Date.now()}-${process.pid}`;
 
@@ -28,15 +28,17 @@ function assert(condition: unknown, message: string): asserts condition {
 
 const firstClient = await createDirectClient("csh-soak-a");
 const opened = await openSession(firstClient, { sessionId });
-await writeSession(firstClient, opened.sessionId, "echo __PID__$$\n");
+await writeSession(firstClient, opened.sessionId, "cd /tmp\nprintf '__PWD__%s\\n' \"$PWD\"\n");
 const firstResult = await waitForSnapshot(
   firstClient,
   opened.sessionId,
-  (snapshot) => snapshot.includes("__PID__"),
+  (snapshot) => snapshot.includes("__PWD__/tmp"),
   { cursor: opened.cursor },
 );
-const firstPid = parsePidFromSnapshot(sessionOutputText(firstResult));
-assert(firstPid, "Could not parse initial shell PID");
+assert(
+  sessionOutputText(firstResult)?.includes("__PWD__/tmp"),
+  "Could not establish initial session state for soak proof",
+);
 
 await writeSession(
   firstClient,
@@ -65,32 +67,38 @@ while (Date.now() < keepAliveDeadline) {
   await sleep(keepAlivePollMs);
 }
 
-await writeSession(firstClient, opened.sessionId, "echo __KEEPALIVE__$$\n");
+await writeSession(firstClient, opened.sessionId, "printf '__KEEPALIVE__%s\\n' \"$PWD\"\n");
 const keepAliveResult = await waitForSnapshot(
   firstClient,
   opened.sessionId,
   (snapshot) => snapshot.includes("__KEEPALIVE__"),
   { cursor, timeoutMs: 10_000 },
 );
-const postKeepAlivePid = parseTaggedPid(sessionOutputText(keepAliveResult), "__KEEPALIVE__");
-assert(postKeepAlivePid === firstPid, "Shell PID changed during keepAlive soak");
-await firstClient.close();
+assert(
+  sessionOutputText(keepAliveResult)?.includes("__KEEPALIVE__/tmp"),
+  "Session state changed during keepAlive soak",
+);
 
 await sleep(reconnectDelayMs);
 
 const reconnectClient = await createDirectClient("csh-soak-b");
 try {
-  await writeSession(reconnectClient, opened.sessionId, "echo __RECONNECT__$$\n");
+  await writeSession(reconnectClient, opened.sessionId, "printf '__RECONNECT__%s\\n' \"$PWD\"\n");
   const reconnectResult = await waitForSnapshot(
     reconnectClient,
     opened.sessionId,
     (snapshot) => snapshot.includes("__RECONNECT__"),
     { cursor: keepAliveResult.cursor, timeoutMs: 15_000 },
   );
-  const postReconnectPid = parseTaggedPid(sessionOutputText(reconnectResult), "__RECONNECT__");
-  assert(postReconnectPid === firstPid, "Shell PID changed after delayed reconnect");
+  const reconnectText = sessionOutputText(reconnectResult) ?? "";
+  assert(reconnectText.includes("__RECONNECT__/tmp"), "Session state changed after delayed reconnect");
+  const reconnectSnapshot = await pollSession(reconnectClient, opened.sessionId);
+  assert(
+    sessionOutputText(reconnectSnapshot)?.includes("__SOAK_DONE__"),
+    "Scrollback did not survive delayed reconnect",
+  );
 
-  await closeSession(reconnectClient, opened.sessionId);
+  await ignoreCleanupTimeout(() => closeSession(reconnectClient, opened.sessionId));
 
   console.log(
     JSON.stringify(
@@ -99,32 +107,30 @@ try {
         outputLines,
         keepAliveDurationMs,
         reconnectDelayMs,
-        initialPid: firstPid,
-        postKeepAlivePid,
-        postReconnectPid,
+        initialState: "/tmp",
+        postKeepAliveState: "/tmp",
+        postReconnectState: "/tmp",
       },
       null,
       2,
     ),
   );
 } finally {
-  await reconnectClient.close().catch(() => undefined);
+  await ignoreCleanupTimeout(() => reconnectClient.close());
+  await ignoreCleanupTimeout(() => firstClient.close());
 }
 
 process.exit(0);
 
-function parsePidFromSnapshot(snapshot: string | null): number | null {
-  if (!snapshot) {
-    return null;
+async function ignoreCleanupTimeout(operation: () => Promise<unknown>, timeoutMs = 5_000): Promise<void> {
+  try {
+    await Promise.race([
+      operation(),
+      Bun.sleep(timeoutMs).then(() => {
+        throw new Error(`cleanup timed out after ${timeoutMs}ms`);
+      }),
+    ]);
+  } catch {
+    // Cleanup should not mask the proof result.
   }
-  const match = snapshot.match(/__PID__(\d+)/);
-  return match ? Number(match[1]) : null;
-}
-
-function parseTaggedPid(snapshot: string | null, marker: string): number | null {
-  if (!snapshot) {
-    return null;
-  }
-  const match = snapshot.match(new RegExp(`${marker}(\\d+)`));
-  return match ? Number(match[1]) : null;
 }

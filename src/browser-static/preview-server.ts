@@ -22,10 +22,10 @@ type AssetMap = {
 await startStaticPreviewServer();
 
 async function startStaticPreviewServer(): Promise<void> {
-  const assets = await buildAssets();
+  const previewConfig = resolvePreviewConfig();
+  const assets = await buildAssets(previewConfig);
   const host = process.env.CSH_BROWSER_HOST || "127.0.0.1";
   const port = Number.parseInt(process.env.CSH_BROWSER_PORT || "4318", 10);
-  const previewConfig = resolvePreviewConfig();
   const server = Bun.serve({
     hostname: host,
     port,
@@ -58,10 +58,10 @@ async function startStaticPreviewServer(): Promise<void> {
   console.error(`csh static browser preview listening on http://${server.hostname}:${server.port}`);
 }
 
-async function buildAssets(): Promise<AssetMap> {
+async function buildAssets(previewConfig: PreviewConfig): Promise<AssetMap> {
   const prebuiltDir = path.join(PROJECT_ROOT, "dist", "browser-static");
   const scriptCandidate = path.join(prebuiltDir, "app.js");
-  if (await Bun.file(scriptCandidate).exists()) {
+  if (!previewConfig.enableTestSigner && (await Bun.file(scriptCandidate).exists())) {
     const byPath = new Map<string, { contents: Uint8Array; contentType: string }>();
     const scriptPath = "/assets/app.js";
     byPath.set(scriptPath, {
@@ -130,13 +130,17 @@ function resolvePreviewConfig(): PreviewConfig {
     .split(",")
     .map((value) => value.trim())
     .filter(Boolean);
+  const testSignerPrivateKey =
+    process.env.CSH_BROWSER_TEST_SIGNER_PRIVATE_KEY ||
+    process.env.CVM_CLIENT_PRIVATE_KEY ||
+    process.env.CSH_CLIENT_PRIVATE_KEY;
   return {
     defaultRelayUrls: relayUrls,
     defaultServerPubkey: (process.env.CVM_SERVER_PUBKEY || process.env.CSH_SERVER_PUBKEY || "").trim(),
     defaultSignerKind:
       process.env.CSH_BROWSER_DEFAULT_SIGNER === "test" ? "test" : "nip07",
-    enableTestSigner: Boolean(process.env.CVM_CLIENT_PRIVATE_KEY || process.env.CSH_CLIENT_PRIVATE_KEY),
-    testSignerPrivateKey: process.env.CVM_CLIENT_PRIVATE_KEY || process.env.CSH_CLIENT_PRIVATE_KEY,
+    enableTestSigner: Boolean(testSignerPrivateKey),
+    testSignerPrivateKey,
     modeLabel: "static-preview",
   };
 }
@@ -206,6 +210,7 @@ function renderHtml(assets: AssetMap, previewConfig: PreviewConfig): string {
       </section>
       <section class="terminal-card">
         <div class="terminal-shell" data-terminal></div>
+        <pre class="terminal-output-mirror" data-terminal-output aria-hidden="true"></pre>
       </section>
     </main>
     <script>

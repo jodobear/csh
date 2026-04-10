@@ -53,6 +53,7 @@ type UiElements = {
   sessionText: HTMLElement;
   actorText: HTMLElement;
   modeText: HTMLElement;
+  terminalOutput: HTMLElement;
   terminalContainer: HTMLElement;
   bannerText: HTMLElement;
 };
@@ -147,18 +148,26 @@ async function connectAndOpenSession(): Promise<void> {
 
 async function connectClient(): Promise<void> {
   const settings = collectSettings();
+  setStatus(`Resolving ${settings.signerKind.toUpperCase()} signer...`);
   const signer = await resolveSigner(settings.signerKind, {
     bunkerConnectionUri: settings.bunkerConnectionUri,
   });
+  if (!signer.nip44?.encrypt || !signer.nip44?.decrypt) {
+    throw new Error(`${signer.label} does not support NIP-44 encryption required by ContextVM`);
+  }
+  setStatus("Connecting to ContextVM shell gateway...");
   const nextClient = await createBrowserShellClient({
     signer,
     relayUrls: settings.relayUrls,
     serverPubkey: settings.serverPubkey,
   });
+  setStatus("Checking shell access...");
   const authStatus = await nextClient.authStatus();
   if (shouldRedeemInvite(authStatus, ui.inviteInput.value)) {
+    setStatus("Redeeming invite...");
     await nextClient.redeemInvite(ui.inviteInput.value.trim());
   }
+  setStatus("Verifying shell access...");
   const verifiedStatus = await nextClient.authStatus();
   if (!verifiedStatus.allowlisted) {
     await nextClient.close();
@@ -211,6 +220,7 @@ async function reconnectOrOpenSession(): Promise<void> {
     }
   }
 
+  setStatus("Opening shell session...");
   const opened = await queueRpc(() =>
     activeClient!.openSession({
       ...getTerminalSize(),
@@ -324,11 +334,15 @@ async function pollRemote(): Promise<void> {
 
 function renderSnapshot(snapshotBase64: string): void {
   terminal.reset();
-  terminal.write(decodeBase64(snapshotBase64));
+  const snapshot = decodeBase64(snapshotBase64);
+  terminal.write(snapshot);
+  ui.terminalOutput.textContent = new TextDecoder().decode(snapshot);
 }
 
 function renderDelta(deltaBase64: string): void {
-  terminal.write(decodeBase64(deltaBase64));
+  const delta = decodeBase64(deltaBase64);
+  terminal.write(delta);
+  ui.terminalOutput.textContent = `${ui.terminalOutput.textContent ?? ""}${new TextDecoder().decode(delta)}`;
 }
 
 function collectSettings(): StoredBrowserSettings {
@@ -554,6 +568,7 @@ function handleKeyboardCapturePaste(event: ClipboardEvent): void {
 function createKeyboardCapture(container: HTMLElement): HTMLTextAreaElement {
   const input = document.createElement("textarea");
   input.className = "terminal-keyboard-capture";
+  input.setAttribute("data-terminal-input", "1");
   input.setAttribute("aria-label", "Terminal input");
   input.setAttribute("autocapitalize", "off");
   input.setAttribute("autocomplete", "off");
@@ -582,6 +597,7 @@ function getUiElements(): UiElements {
   const sessionText = document.querySelector<HTMLElement>("[data-session]");
   const actorText = document.querySelector<HTMLElement>("[data-actor]");
   const modeText = document.querySelector<HTMLElement>("[data-mode]");
+  const terminalOutput = document.querySelector<HTMLElement>("[data-terminal-output]");
   const bannerText = document.querySelector<HTMLElement>("[data-banner]");
   const terminalContainer = document.querySelector<HTMLElement>("[data-terminal]");
 
@@ -600,6 +616,7 @@ function getUiElements(): UiElements {
     !sessionText ||
     !actorText ||
     !modeText ||
+    !terminalOutput ||
     !bannerText ||
     !terminalContainer
   ) {
@@ -621,6 +638,7 @@ function getUiElements(): UiElements {
     sessionText,
     actorText,
     modeText,
+    terminalOutput,
     bannerText,
     terminalContainer,
   };

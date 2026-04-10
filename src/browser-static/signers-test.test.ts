@@ -8,6 +8,8 @@ describe("browser test signer", () => {
     });
 
     const pubkey = await signer.getPublicKey();
+    const ciphertext = await signer.nip44?.encrypt(pubkey, "hello");
+    const plaintext = ciphertext ? await signer.nip44?.decrypt(pubkey, ciphertext) : undefined;
     expect(pubkey).toHaveLength(64);
     expect(await signer.signEvent({
       kind: 22242,
@@ -17,5 +19,7 @@ describe("browser test signer", () => {
     })).toMatchObject({
       pubkey,
     });
+    expect(typeof ciphertext).toBe("string");
+    expect(plaintext).toBe("hello");
   });
 });

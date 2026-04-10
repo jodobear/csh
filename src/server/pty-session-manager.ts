@@ -325,7 +325,9 @@ export class PtySessionManager {
     }
 
     const requestedRevision = cursor ?? -1;
-    const changed = requestedRevision !== session.revision;
+    const changed =
+      requestedRevision !== session.revision ||
+      (cursor !== undefined && Boolean(session.closedAt));
     const snapshotBase64 = state.output.toString("base64");
     const deltaBase64 = collectOutputDelta(
       state.output,

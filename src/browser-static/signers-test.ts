@@ -8,17 +8,15 @@ export function createTestSigner(input: {
   signEvent?: (event: EventTemplate) => Promise<VerifiedEvent>;
 }): BrowserSigner {
   const signer = new PrivateKeySigner(input.privateKeyHex);
-  return {
-    kind: "test",
+  const baseSignEvent = signer.signEvent.bind(signer);
+  return Object.assign(signer, {
+    kind: "test" as const,
     label: input.label ?? "Test signer",
-    async getPublicKey(): Promise<string> {
-      return await signer.getPublicKey();
-    },
     async signEvent(event: EventTemplate): Promise<VerifiedEvent> {
       if (input.signEvent) {
         return await input.signEvent(event);
       }
-      return await signer.signEvent(event);
+      return await baseSignEvent(event);
     },
-  };
+  });
 }
