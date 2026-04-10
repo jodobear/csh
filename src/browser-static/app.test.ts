@@ -1,5 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { resolveInitialSettings, shouldRedeemInvite } from "./app-model";
+import {
+  appendTerminalMirror,
+  resolveInitialSettings,
+  shouldRedeemInvite,
+  shouldStartWithExpandedSettings,
+  TERMINAL_MIRROR_LIMIT,
+} from "./app-model";
 
 describe("browser static app helpers", () => {
   test("prefers stored settings over preview defaults", () => {
@@ -44,5 +50,18 @@ describe("browser static app helpers", () => {
         "   ",
       ),
     ).toBe(false);
+  });
+
+  test("caps the hidden terminal mirror to the trailing window", () => {
+    const initial = "a".repeat(TERMINAL_MIRROR_LIMIT - 4);
+    const next = appendTerminalMirror(initial, "bcdefghi");
+    expect(next.length).toBe(TERMINAL_MIRROR_LIMIT);
+    expect(next.endsWith("bcdefghi")).toBe(true);
+    expect(next.startsWith("aaaa")).toBe(true);
+  });
+
+  test("starts with setup expanded only when there is no saved session", () => {
+    expect(shouldStartWithExpandedSettings(null)).toBe(true);
+    expect(shouldStartWithExpandedSettings("session-123")).toBe(false);
   });
 });

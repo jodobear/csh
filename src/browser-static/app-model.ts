@@ -15,6 +15,8 @@ export type PreviewConfig = {
   modeLabel?: string;
 };
 
+export const TERMINAL_MIRROR_LIMIT = 16_000;
+
 export function resolveInitialSettings(
   preview: PreviewConfig,
   stored: StoredBrowserSettings | null,
@@ -29,4 +31,16 @@ export function resolveInitialSettings(
 
 export function shouldRedeemInvite(status: AuthStatusResult, inviteToken: string): boolean {
   return !status.allowlisted && inviteToken.trim().length > 0;
+}
+
+export function appendTerminalMirror(current: string, incoming: string): string {
+  const combined = `${current}${incoming}`;
+  if (combined.length <= TERMINAL_MIRROR_LIMIT) {
+    return combined;
+  }
+  return combined.slice(-TERMINAL_MIRROR_LIMIT);
+}
+
+export function shouldStartWithExpandedSettings(initialSessionId: string | null): boolean {
+  return initialSessionId === null;
 }

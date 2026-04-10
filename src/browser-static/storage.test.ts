@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   clearStoredSettings,
   deriveStateNamespace,
+  deriveSessionStateNamespace,
   normalizeStoredSettings,
   readStoredSettings,
   writeStoredSettings,
@@ -65,6 +66,14 @@ describe("browser static storage", () => {
         serverPubkey: "A".repeat(64),
       }),
     ).toBe(`static:${"a".repeat(64)}:wss://relay.example,wss://second.example`);
+
+    expect(
+      deriveSessionStateNamespace({
+        relayUrls: ["wss://relay.example", "wss://relay.example", "wss://second.example"],
+        serverPubkey: "A".repeat(64),
+        actorPubkey: "B".repeat(64),
+      }),
+    ).toBe(`static:${"a".repeat(64)}:wss://relay.example,wss://second.example:${"b".repeat(64)}`);
   });
 });
 

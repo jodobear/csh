@@ -41,6 +41,11 @@ type ShellClientOptions = {
   logLevel?: "debug" | "info" | "warn" | "error" | "silent";
 };
 
+type RetryOptions = {
+  retries?: number;
+  backoffMs?: number;
+};
+
 export async function createBrowserShellClient(options: ShellClientOptions) {
   const client = new Client({
     name: "csh-browser-static",
@@ -63,13 +68,14 @@ export async function createBrowserShellClient(options: ShellClientOptions) {
 
   return {
     async authStatus(): Promise<AuthStatusResult> {
-      return await callTool<AuthStatusResult>(client, "auth_status", {});
+      return await callToolWithRetry<AuthStatusResult>(client, "auth_status", {}, { retries: 2 });
     },
     async redeemInvite(inviteToken: string): Promise<AuthStatusResult & { redeemed: boolean }> {
-      return await callTool<AuthStatusResult & { redeemed: boolean }>(
+      return await callToolWithRetry<AuthStatusResult & { redeemed: boolean }>(
         client,
         "auth_redeem_invite",
         { inviteToken },
+        { retries: 2 },
       );
     },
     async openSession(args: {
@@ -103,7 +109,7 @@ export async function createBrowserShellClient(options: ShellClientOptions) {
       cursor?: number;
       keepAlive?: boolean;
     }): Promise<SessionPollResult> {
-      return await callTool<SessionPollResult>(client, "session_poll", args);
+      return await callToolWithRetry<SessionPollResult>(client, "session_poll", args, { retries: 1 });
     },
     async closeSession(sessionId: string): Promise<void> {
       await callTool(client, "session_close", { sessionId });
@@ -125,4 +131,31 @@ async function callTool<T>(
       arguments: args,
     }),
   );
+}
+
+async function callToolWithRetry<T>(
+  client: Client,
+  name: string,
+  args: Record<string, unknown>,
+  options: RetryOptions = {},
+): Promise<T> {
+  const retries = options.retries ?? 1;
+  const backoffMs = options.backoffMs ?? 900;
+  let attempt = 0;
+  while (true) {
+    try {
+      return await callTool<T>(client, name, args);
+    } catch (error) {
+      if (attempt >= retries || !isTimeoutError(error)) {
+        throw error;
+      }
+      attempt += 1;
+      await Bun.sleep(backoffMs * attempt);
+    }
+  }
+}
+
+function isTimeoutError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /request timed out/i.test(message);
 }

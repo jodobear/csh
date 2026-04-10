@@ -59,28 +59,6 @@ async function startStaticPreviewServer(): Promise<void> {
 }
 
 async function buildAssets(previewConfig: PreviewConfig): Promise<AssetMap> {
-  const prebuiltDir = path.join(PROJECT_ROOT, "dist", "browser-static");
-  const scriptCandidate = path.join(prebuiltDir, "app.js");
-  if (!previewConfig.enableTestSigner && (await Bun.file(scriptCandidate).exists())) {
-    const byPath = new Map<string, { contents: Uint8Array; contentType: string }>();
-    const scriptPath = "/assets/app.js";
-    byPath.set(scriptPath, {
-      contents: new Uint8Array(await readFile(scriptCandidate)),
-      contentType: "text/javascript; charset=utf-8",
-    });
-    const stylesheetPaths: string[] = [];
-    const stylesheetCandidate = path.join(prebuiltDir, "app.css");
-    if (await Bun.file(stylesheetCandidate).exists()) {
-      const stylesheetPath = "/assets/app.css";
-      stylesheetPaths.push(stylesheetPath);
-      byPath.set(stylesheetPath, {
-        contents: new Uint8Array(await readFile(stylesheetCandidate)),
-        contentType: "text/css; charset=utf-8",
-      });
-    }
-    return { scriptPath, stylesheetPaths, byPath };
-  }
-
   const build = await Bun.build({
     entrypoints: [path.join(PROJECT_ROOT, "src", "browser-static", "app.ts")],
     target: "browser",
@@ -90,7 +68,7 @@ async function buildAssets(previewConfig: PreviewConfig): Promise<AssetMap> {
     sourcemap: "none",
     naming: "[name].[ext]",
     define: {
-      __CSH_BROWSER_ENABLE_TEST_SIGNER__: "true",
+      __CSH_BROWSER_ENABLE_TEST_SIGNER__: previewConfig.enableTestSigner ? "true" : "false",
     },
   });
 
@@ -108,9 +86,7 @@ async function buildAssets(previewConfig: PreviewConfig): Promise<AssetMap> {
     const contents = new Uint8Array(await output.arrayBuffer());
     byPath.set(routePath, {
       contents,
-      contentType: routePath.endsWith(".css")
-        ? "text/css; charset=utf-8"
-        : "text/javascript; charset=utf-8",
+      contentType: detectContentType(routePath),
     });
     if (routePath.endsWith(".css")) {
       stylesheetPaths.push(routePath);
@@ -122,6 +98,22 @@ async function buildAssets(previewConfig: PreviewConfig): Promise<AssetMap> {
     throw new Error("Static browser preview bundle did not emit a JavaScript asset");
   }
   return { scriptPath, stylesheetPaths, byPath };
+}
+
+function detectContentType(routePath: string): string {
+  if (routePath.endsWith(".css")) {
+    return "text/css; charset=utf-8";
+  }
+  if (routePath.endsWith(".js")) {
+    return "text/javascript; charset=utf-8";
+  }
+  if (routePath.endsWith(".ttf")) {
+    return "font/ttf";
+  }
+  if (routePath.endsWith(".woff2")) {
+    return "font/woff2";
+  }
+  return "application/octet-stream";
 }
 
 function resolvePreviewConfig(): PreviewConfig {
@@ -168,6 +160,7 @@ function renderHtml(assets: AssetMap, previewConfig: PreviewConfig): string {
         </div>
         <div class="actions">
           <button class="button button-accent" type="button" data-action="connect">Connect</button>
+          <button class="button" type="button" data-action="toggle-settings">Hide Setup</button>
           <button class="button" type="button" data-action="reset">Reset Saved Settings</button>
           <button class="button" type="button" data-action="reconnect">Reconnect</button>
           <button class="button" type="button" data-action="interrupt">Interrupt</button>

@@ -2,12 +2,18 @@ import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
 import "./app.css";
-import { resolveInitialSettings, shouldRedeemInvite, type PreviewConfig } from "./app-model.js";
+import {
+  appendTerminalMirror,
+  resolveInitialSettings,
+  shouldRedeemInvite,
+  shouldStartWithExpandedSettings,
+  type PreviewConfig,
+} from "./app-model.js";
 import { createBrowserShellClient } from "./client.js";
 import { createAmberSigner, createBunkerSignerAdapter, createNip07Signer, type BrowserSigner } from "./signers.js";
 import {
   clearStoredSettings,
-  deriveStateNamespace,
+  deriveSessionStateNamespace,
   normalizeStoredSettings,
   readStoredSettings,
   writeStoredSettings,
@@ -39,12 +45,14 @@ type PollResult = {
 };
 
 type UiElements = {
+  appRoot: HTMLElement;
   relayInput: HTMLTextAreaElement;
   serverPubkeyInput: HTMLInputElement;
   signerSelect: HTMLSelectElement;
   bunkerInput: HTMLInputElement;
   inviteInput: HTMLInputElement;
   connectButton: HTMLButtonElement;
+  toggleSettingsButton: HTMLButtonElement;
   resetButton: HTMLButtonElement;
   reconnectButton: HTMLButtonElement;
   interruptButton: HTMLButtonElement;
@@ -64,7 +72,8 @@ const terminal = new Terminal({
   cursorBlink: true,
   convertEol: true,
   scrollback: 10_000,
-  fontFamily: '"IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", monospace',
+  fontFamily:
+    '"IBM Plex Mono", "JetBrains Mono", "Symbols Nerd Font Mono", "Symbols Nerd Font", "Noto Sans Symbols 2", "Noto Sans Symbols", "SFMono-Regular", monospace',
   fontSize: 14,
   theme: {
     background: "#0f0d0a",
@@ -80,6 +89,7 @@ terminal.open(ui.terminalContainer);
 const keyboardCapture = createKeyboardCapture(ui.terminalContainer);
 ui.terminalContainer.tabIndex = 0;
 fitAddon.fit();
+void warmTerminalFonts();
 ui.terminalContainer.addEventListener("click", focusKeyboardCapture);
 window.addEventListener("focus", focusKeyboardCapture);
 
@@ -92,12 +102,17 @@ ui.bunkerInput.value = initialSettings.bunkerConnectionUri;
 ui.modeText.textContent = previewConfig.modeLabel ?? "static";
 
 let activeClient: Awaited<ReturnType<typeof createBrowserShellClient>> | null = null;
-let sessionId: string | null = readStoredSessionId(initialSettings);
+let activeActorPubkey: string | null = null;
+let sessionId: string | null = null;
 let cursor: number | null = null;
 let stopping = false;
 let closed = false;
 let pollTimer: number | null = null;
+let pollInFlight = false;
+let inputFlushTimer: number | null = null;
+let pendingInputChunks: Uint8Array[] = [];
 let rpcChain = Promise.resolve();
+let writeChain = Promise.resolve();
 let reconnectFallbackMessage: string | null = null;
 const textEncoder = new TextEncoder();
 
@@ -123,6 +138,9 @@ keyboardCapture.addEventListener("paste", handleKeyboardCapturePaste);
 ui.connectButton.addEventListener("click", () => {
   void connectAndOpenSession().catch(reportError);
 });
+ui.toggleSettingsButton.addEventListener("click", () => {
+  setSettingsExpanded(ui.appRoot.dataset.settingsExpanded !== "true");
+});
 ui.resetButton.addEventListener("click", () => {
   clearStoredSettings(window.localStorage);
   ui.inviteInput.value = "";
@@ -140,10 +158,14 @@ ui.closeButton.addEventListener("click", () => {
 
 setStatus("Enter relay, server, and signer settings to connect");
 setControlsDisabled(false, true);
+setSettingsExpanded(shouldStartWithExpandedSettings(null));
 
 async function connectAndOpenSession(): Promise<void> {
   await connectClient();
-  await reconnectOrOpenSession();
+  sessionId = null;
+  cursor = null;
+  clearStoredSessionId();
+  await openFreshSession();
 }
 
 async function connectClient(): Promise<void> {
@@ -176,6 +198,7 @@ async function connectClient(): Promise<void> {
 
   writeStoredSettings(window.localStorage, settings);
   activeClient = nextClient;
+  activeActorPubkey = verifiedStatus.actorPubkey;
   ui.actorText.textContent = verifiedStatus.actorPubkey;
   setStatus(`Connected as ${verifiedStatus.actorPubkey} to ${verifiedStatus.serverName}`);
   setBanner(
@@ -184,12 +207,14 @@ async function connectClient(): Promise<void> {
       : `Authenticated with ${settings.signerKind.toUpperCase()}.`,
   );
   setControlsDisabled(false, false);
+  setSettingsExpanded(false);
 }
 
 async function reconnectOrOpenSession(): Promise<void> {
   if (!activeClient) {
     await connectClient();
   }
+  sessionId = readStoredSessionId();
   cancelPollLoop();
   stopping = false;
   closed = false;
@@ -210,7 +235,8 @@ async function reconnectOrOpenSession(): Promise<void> {
       );
       setStatus("Reattached to existing session");
       setControlsDisabled(false, false);
-      schedulePoll();
+      setSettingsExpanded(false);
+      await pollRemote();
       return;
     } catch (error) {
       console.warn("Reattach failed, opening a fresh session", error);
@@ -220,6 +246,17 @@ async function reconnectOrOpenSession(): Promise<void> {
     }
   }
 
+  await openFreshSession();
+}
+
+async function openFreshSession(): Promise<void> {
+  cancelPollLoop();
+  stopping = false;
+  closed = false;
+  cursor = null;
+  terminal.reset();
+  fitAddon.fit();
+  focusKeyboardCapture();
   setStatus("Opening shell session...");
   const opened = await queueRpc(() =>
     activeClient!.openSession({
@@ -234,7 +271,8 @@ async function reconnectOrOpenSession(): Promise<void> {
   reconnectFallbackMessage = null;
   setSessionLabel(opened.sessionId);
   setControlsDisabled(false, false);
-  schedulePoll();
+  setSettingsExpanded(false);
+  await pollRemote();
 }
 
 async function interruptRemote(): Promise<void> {
@@ -256,12 +294,52 @@ async function sendBytes(input: Uint8Array): Promise<void> {
     return;
   }
 
-  await queueRpc(() =>
-    activeClient!.writeSession({
-      sessionId: sessionId!,
-      inputBase64: encodeBase64(input),
-    }),
+  pendingInputChunks.push(input);
+  const flushDelayMs = shouldFlushImmediately(input) ? 0 : 18;
+  if (inputFlushTimer !== null && flushDelayMs > 0) {
+    return;
+  }
+  if (inputFlushTimer !== null) {
+    window.clearTimeout(inputFlushTimer);
+  }
+
+  await new Promise<void>((resolve) => {
+    inputFlushTimer = window.setTimeout(() => {
+      inputFlushTimer = null;
+      void flushPendingInput().then(resolve, resolve);
+    }, flushDelayMs);
+  });
+}
+
+async function flushPendingInput(): Promise<void> {
+  if (!sessionId || !activeClient || stopping || pendingInputChunks.length === 0) {
+    pendingInputChunks = [];
+    return;
+  }
+
+  cancelPollLoop();
+  const encoded = encodeBase64(joinChunks(pendingInputChunks));
+  pendingInputChunks = [];
+  const next = writeChain.then(
+    () =>
+      activeClient!.writeSession({
+        sessionId: sessionId!,
+        inputBase64: encoded,
+      }),
+    () =>
+      activeClient!.writeSession({
+        sessionId: sessionId!,
+        inputBase64: encoded,
+      }),
   );
+  writeChain = next.then(
+    () => undefined,
+    () => undefined,
+  );
+  await next;
+  if (!closed && sessionId) {
+    schedulePoll(20);
+  }
 }
 
 async function closeRemoteSession(statusMessage: string): Promise<void> {
@@ -285,11 +363,11 @@ async function closeRemoteSession(statusMessage: string): Promise<void> {
   }
 }
 
-function schedulePoll(): void {
+function schedulePoll(delayMs = 90): void {
   cancelPollLoop();
   pollTimer = window.setTimeout(() => {
     void pollRemote().catch(reportError);
-  }, 60);
+  }, delayMs);
 }
 
 function cancelPollLoop(): void {
@@ -300,33 +378,44 @@ function cancelPollLoop(): void {
 }
 
 async function pollRemote(): Promise<void> {
-  if (!sessionId || !activeClient || stopping) {
+  if (!sessionId || !activeClient || stopping || pollInFlight) {
     return;
   }
 
-  const result = await queueRpc(() =>
-    activeClient!.pollSession({
+  pollInFlight = true;
+  try {
+    const result = await activeClient!.pollSession({
       sessionId: sessionId!,
       keepAlive: document.visibilityState === "visible",
       ...(cursor === null ? {} : { cursor }),
-    }),
-  );
+    });
 
-  cursor = result.cursor;
-  if (result.snapshotBase64) {
-    renderSnapshot(result.snapshotBase64);
-  } else if (result.deltaBase64) {
-    renderDelta(result.deltaBase64);
-  }
+    cursor = result.cursor;
+    if (result.snapshotBase64) {
+      renderSnapshot(result.snapshotBase64);
+    } else if (result.deltaBase64) {
+      renderDelta(result.deltaBase64);
+    }
 
-  if (result.closedAt) {
-    closed = true;
-    clearStoredSessionId();
-    sessionId = null;
-    setStatus(`Remote session closed${result.exitStatus !== null ? ` with status ${result.exitStatus}` : ""}`);
-    setSessionLabel("closed");
-    setControlsDisabled(false, true);
-    return;
+    if (result.closedAt) {
+      closed = true;
+      clearStoredSessionId();
+      sessionId = null;
+      setStatus(`Remote session closed${result.exitStatus !== null ? ` with status ${result.exitStatus}` : ""}`);
+      setSessionLabel("closed");
+      setControlsDisabled(false, true);
+      setSettingsExpanded(true);
+      return;
+    }
+  } catch (error) {
+    if (isBrowserTimeoutError(error)) {
+      setStatus("Waiting on relay response...");
+      schedulePoll(250);
+      return;
+    }
+    throw error;
+  } finally {
+    pollInFlight = false;
   }
 
   schedulePoll();
@@ -336,13 +425,16 @@ function renderSnapshot(snapshotBase64: string): void {
   terminal.reset();
   const snapshot = decodeBase64(snapshotBase64);
   terminal.write(snapshot);
-  ui.terminalOutput.textContent = new TextDecoder().decode(snapshot);
+  ui.terminalOutput.textContent = appendTerminalMirror("", new TextDecoder().decode(snapshot));
 }
 
 function renderDelta(deltaBase64: string): void {
   const delta = decodeBase64(deltaBase64);
   terminal.write(delta);
-  ui.terminalOutput.textContent = `${ui.terminalOutput.textContent ?? ""}${new TextDecoder().decode(delta)}`;
+  ui.terminalOutput.textContent = appendTerminalMirror(
+    ui.terminalOutput.textContent ?? "",
+    new TextDecoder().decode(delta),
+  );
 }
 
 function collectSettings(): StoredBrowserSettings {
@@ -389,28 +481,65 @@ async function resolveSigner(
   }
 }
 
-function readStoredSessionId(settings: StoredBrowserSettings): string | null {
-  return window.localStorage.getItem(sessionStorageKey(settings));
+function readStoredSessionId(): string | null {
+  const actorPubkey = activeActorPubkey;
+  if (!actorPubkey) {
+    return null;
+  }
+  const settings = collectSettings();
+  return (
+    window.localStorage.getItem(sessionStorageKey(settings, actorPubkey)) ??
+    window.localStorage.getItem(legacySessionStorageKey(settings))
+  );
 }
 
 function writeStoredSessionId(settings: StoredBrowserSettings, value: string): void {
-  window.localStorage.setItem(sessionStorageKey(settings), value);
+  const actorPubkey = activeActorPubkey;
+  if (!actorPubkey) {
+    return;
+  }
+  window.localStorage.setItem(sessionStorageKey(settings, actorPubkey), value);
+  window.localStorage.removeItem(legacySessionStorageKey(settings));
 }
 
 function clearStoredSessionId(): void {
+  const actorPubkey = activeActorPubkey;
+  if (!actorPubkey) {
+    return;
+  }
   const settings = collectSettings();
-  window.localStorage.removeItem(sessionStorageKey(settings));
+  window.localStorage.removeItem(sessionStorageKey(settings, actorPubkey));
+  window.localStorage.removeItem(legacySessionStorageKey(settings));
 }
 
-function sessionStorageKey(settings: StoredBrowserSettings): string {
-  return `csh.browser-static.sessionId.${deriveStateNamespace(settings)}`;
+function sessionStorageKey(settings: StoredBrowserSettings, actorPubkey: string): string {
+  return `csh.browser-static.sessionId.${deriveSessionStateNamespace({
+    relayUrls: settings.relayUrls,
+    serverPubkey: settings.serverPubkey,
+    actorPubkey,
+  })}`;
+}
+
+function legacySessionStorageKey(settings: StoredBrowserSettings): string {
+  return `csh.browser-static.sessionId.static:${settings.serverPubkey.trim().toLowerCase()}:${settings.relayUrls.join(",")}`;
 }
 
 function reportError(error: unknown): void {
   const message = error instanceof Error ? error.message : String(error);
   setStatus(`Error: ${message}`);
   setControlsDisabled(false, true);
+  setSettingsExpanded(true);
+  pendingInputChunks = [];
+  if (inputFlushTimer !== null) {
+    window.clearTimeout(inputFlushTimer);
+    inputFlushTimer = null;
+  }
   console.error(error);
+}
+
+function isBrowserTimeoutError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /request timed out/i.test(message);
 }
 
 function queueRpc<T>(operation: () => Promise<T>): Promise<T> {
@@ -439,6 +568,21 @@ function decodeBase64(value: string): Uint8Array {
   return bytes;
 }
 
+function joinChunks(chunks: Uint8Array[]): Uint8Array {
+  const totalLength = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const joined = new Uint8Array(totalLength);
+  let offset = 0;
+  for (const chunk of chunks) {
+    joined.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return joined;
+}
+
+function shouldFlushImmediately(input: Uint8Array): boolean {
+  return input.some((byte) => byte === 0x03 || byte === 0x0a || byte === 0x0d || byte === 0x1b);
+}
+
 function getTerminalSize(): { cols: number; rows: number } {
   const cols = Math.max(20, Math.min(400, terminal.cols || 80));
   const rows = Math.max(20, Math.min(400, terminal.rows || 24));
@@ -459,10 +603,16 @@ function setBanner(message: string): void {
 
 function setControlsDisabled(disabled: boolean, closedState = false): void {
   ui.connectButton.disabled = disabled;
+  ui.toggleSettingsButton.disabled = disabled;
   ui.resetButton.disabled = disabled;
   ui.reconnectButton.disabled = disabled || (!closed && Boolean(sessionId));
   ui.interruptButton.disabled = disabled || closedState || !sessionId;
   ui.closeButton.disabled = disabled || closedState || !sessionId;
+}
+
+function setSettingsExpanded(expanded: boolean): void {
+  ui.appRoot.dataset.settingsExpanded = expanded ? "true" : "false";
+  ui.toggleSettingsButton.textContent = expanded ? "Hide Setup" : "Show Setup";
 }
 
 function toTerminalInput(event: KeyboardEvent): string | null {
@@ -537,7 +687,7 @@ function handleKeyboardCaptureKeydown(event: KeyboardEvent): void {
   }
 
   event.preventDefault();
-  void sendBytes(new TextEncoder().encode(input)).catch(reportError);
+  void sendBytes(textEncoder.encode(input)).catch(reportError);
 }
 
 function handleKeyboardCaptureInput(): void {
@@ -550,7 +700,7 @@ function handleKeyboardCaptureInput(): void {
   }
   const input = keyboardCapture.value;
   keyboardCapture.value = "";
-  void sendBytes(new TextEncoder().encode(input)).catch(reportError);
+  void sendBytes(textEncoder.encode(input)).catch(reportError);
 }
 
 function handleKeyboardCapturePaste(event: ClipboardEvent): void {
@@ -562,7 +712,7 @@ function handleKeyboardCapturePaste(event: ClipboardEvent): void {
     return;
   }
   event.preventDefault();
-  void sendBytes(new TextEncoder().encode(pastedText)).catch(reportError);
+  void sendBytes(textEncoder.encode(pastedText)).catch(reportError);
 }
 
 function createKeyboardCapture(container: HTMLElement): HTMLTextAreaElement {
@@ -582,13 +732,30 @@ function focusKeyboardCapture(): void {
   keyboardCapture.focus();
 }
 
+async function warmTerminalFonts(): Promise<void> {
+  if (!("fonts" in document)) {
+    return;
+  }
+  try {
+    await document.fonts.load('14px "MesloLGS NF"');
+    await document.fonts.ready;
+    terminal.options.fontFamily =
+      '"MesloLGS NF", "Noto Sans Mono", "IBM Plex Mono", "JetBrains Mono", "SFMono-Regular", monospace';
+    fitAddon.fit();
+  } catch (error) {
+    console.warn("Terminal font preload failed", error);
+  }
+}
+
 function getUiElements(): UiElements {
+  const appRoot = document.querySelector<HTMLElement>(".shell-app");
   const relayInput = document.querySelector<HTMLTextAreaElement>("[data-field='relays']");
   const serverPubkeyInput = document.querySelector<HTMLInputElement>("[data-field='server-pubkey']");
   const signerSelect = document.querySelector<HTMLSelectElement>("[data-field='signer']");
   const bunkerInput = document.querySelector<HTMLInputElement>("[data-field='bunker-uri']");
   const inviteInput = document.querySelector<HTMLInputElement>("[data-field='invite']");
   const connectButton = document.querySelector<HTMLButtonElement>("[data-action='connect']");
+  const toggleSettingsButton = document.querySelector<HTMLButtonElement>("[data-action='toggle-settings']");
   const resetButton = document.querySelector<HTMLButtonElement>("[data-action='reset']");
   const reconnectButton = document.querySelector<HTMLButtonElement>("[data-action='reconnect']");
   const interruptButton = document.querySelector<HTMLButtonElement>("[data-action='interrupt']");
@@ -602,12 +769,14 @@ function getUiElements(): UiElements {
   const terminalContainer = document.querySelector<HTMLElement>("[data-terminal]");
 
   if (
+    !appRoot ||
     !relayInput ||
     !serverPubkeyInput ||
     !signerSelect ||
     !bunkerInput ||
     !inviteInput ||
     !connectButton ||
+    !toggleSettingsButton ||
     !resetButton ||
     !reconnectButton ||
     !interruptButton ||
@@ -624,12 +793,14 @@ function getUiElements(): UiElements {
   }
 
   return {
+    appRoot,
     relayInput,
     serverPubkeyInput,
     signerSelect,
     bunkerInput,
     inviteInput,
     connectButton,
+    toggleSettingsButton,
     resetButton,
     reconnectButton,
     interruptButton,

@@ -66,6 +66,14 @@ export function deriveStateNamespace(input: {
   return `static:${input.serverPubkey.trim().toLowerCase()}:${dedupeRelayUrls(input.relayUrls).join(",")}`;
 }
 
+export function deriveSessionStateNamespace(input: {
+  relayUrls: string[];
+  serverPubkey: string;
+  actorPubkey: string;
+}): string {
+  return `${deriveStateNamespace(input)}:${input.actorPubkey.trim().toLowerCase()}`;
+}
+
 function normalizeSignerKind(value: string): BrowserSignerSelection {
   switch (value) {
     case "nip07":
